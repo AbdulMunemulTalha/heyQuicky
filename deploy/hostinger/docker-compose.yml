@@ -51,7 +51,10 @@ services:
 
   # Reachable only from the app, on the project's private network.
   mongo:
-    image: mongo:8
+    # MongoDB 8.x refuses to start on Linux kernel 6.19+ (SERVER-121912), which
+    # Ubuntu 26.04 ships; 7.0 runs fine. Cache capped so it shares the server politely.
+    image: mongo:7.0
+    command: ["--wiredTigerCacheSizeGB", "1"]
     restart: unless-stopped
     volumes:
       - mongo_data:/data/db
