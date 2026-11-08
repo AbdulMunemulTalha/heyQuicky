@@ -6,8 +6,9 @@ import { setup } from './helpers.js';
 let server;
 let base;
 
+let ctx;
 before(async () => {
-  const ctx = setup();
+  ctx = await setup();
   ({ server } = createApp(ctx.db, ctx.config));
   await new Promise((resolve) => server.listen(0, resolve));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -37,9 +38,32 @@ test('serves the landing page at / and the app at /app', async () => {
   assert.match(bangla.data, /<html lang="bn">/);
   assert.match(bangla.data, /শুরু করুন/);
   assert.match(bangla.data, /href="\/app\?signup=1"/);
-  const app = await call('/app');
-  assert.equal(app.status, 200);
-  assert.match(app.data, /id="onboarding"/);
+});
+
+test('serves the built React dashboard at /app', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'quicky-client-'));
+  mkdirSync(join(dir, 'assets'));
+  writeFileSync(join(dir, 'index.html'), '<div id="root"></div>');
+  writeFileSync(join(dir, 'assets', 'app.js'), 'console.log(1)');
+  const built = createApp(ctx.db, ctx.config, { clientDir: dir });
+  await new Promise((resolve) => built.server.listen(0, resolve));
+  const url = `http://127.0.0.1:${built.server.address().port}`;
+  try {
+    for (const path of ['/app', '/app/', '/app?connect=abc']) {
+      const res = await fetch(url + path);
+      assert.equal(res.status, 200, path);
+      assert.match(await res.text(), /id="root"/);
+    }
+    assert.equal((await fetch(`${url}/app/assets/app.js`)).status, 200);
+    rmSync(join(dir, 'index.html'));
+    assert.equal((await fetch(`${url}/app`)).status, 503, 'explains a missing build');
+  } finally {
+    await new Promise((resolve) => built.server.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('a new shop starts onboarding and walks through the steps', async () => {
@@ -82,20 +106,12 @@ test('a new shop starts onboarding and walks through the steps', async () => {
 });
 
 test('shops created before onboarding existed are treated as set up', async () => {
-  const { DatabaseSync } = await import('node:sqlite');
-  const { openDb } = await import('../src/db.js');
-  const { mkdtempSync, rmSync } = await import('node:fs');
-  const { join } = await import('node:path');
-  const { tmpdir } = await import('node:os');
-  const dir = mkdtempSync(join(tmpdir(), 'quicky-'));
-  try {
-    const old = new DatabaseSync(join(dir, 'old.db'));
-    old.exec("CREATE TABLE workspaces (id INTEGER PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT ''); INSERT INTO workspaces (name) VALUES ('Old shop');");
-    old.close();
-    const db = openDb(join(dir, 'old.db'));
-    assert.equal(db.prepare('SELECT onboarding_step FROM workspaces').get().onboarding_step, 'done');
-    db.close();
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  const { freshDb } = await import('./helpers.js');
+  const db = await freshDb();
+  // A workspace document written before the onboarding fields existed.
+  await db.workspaces.collection.insertOne({ _id: 1, name: 'Old shop' });
+  const ws = await db.workspaces.findById(1);
+  assert.equal(ws.onboarding_step, 'done');
+  assert.equal(ws.delivery_inside_dhaka, 70);
+  assert.equal(ws.delivery_outside_dhaka, 130);
 });

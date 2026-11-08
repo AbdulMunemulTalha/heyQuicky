@@ -9,7 +9,7 @@ let base;
 let ctx;
 
 before(async () => {
-  ctx = setup({ env: { META_APP_SECRET: 'appsecret', META_VERIFY_TOKEN: 'verify-me', DRY_RUN: '1' } });
+  ctx = await setup({ env: { META_APP_SECRET: 'appsecret', META_VERIFY_TOKEN: 'verify-me', DRY_RUN: '1' } });
   ({ server } = createApp(ctx.db, ctx.config));
   await new Promise((resolve) => server.listen(0, resolve));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -76,7 +76,7 @@ test('owner can add moderators and remove them, releasing their customers', asyn
   const conversation = all.data[0];
   await call(`/api/conversations/${conversation.id}/assign`, { method: 'POST', token: ownerToken, body: { userId: created.data.user.id } });
   await call(`/api/team/${created.data.user.id}`, { method: 'PATCH', token: ownerToken, body: { isActive: false } });
-  assert.equal(ctx.db.prepare('SELECT assigned_user_id FROM conversations WHERE id = ?').get(conversation.id).assigned_user_id, null);
+  assert.equal((await ctx.db.conversations.findById(conversation.id).lean()).assigned_user_id, null);
   assert.equal((await call('/api/me', { token: modToken })).status, 401, 'removed moderator is signed out');
 });
 

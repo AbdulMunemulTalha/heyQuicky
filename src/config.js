@@ -8,7 +8,10 @@ function cleanSecret(value) {
 export function loadConfig(env = process.env) {
   return {
     port: Number(env.PORT || 3000),
-    dbPath: env.DATABASE_PATH || 'data/quicky.db',
+    mongoUrl: env.MONGODB_URI || 'mongodb://127.0.0.1:27017/quicky',
+    // A SQLite database from before the move to MongoDB. Copied in once, on the
+    // first start with an empty MongoDB; the file itself is never changed.
+    sqliteImportPath: env.SQLITE_IMPORT_PATH || '',
     isProduction: env.NODE_ENV === 'production',
     // When true, replies are stored but never sent to Meta. Useful for local demos.
     dryRun: env.DRY_RUN === '1' || env.DRY_RUN === 'true',

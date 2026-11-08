@@ -44,10 +44,9 @@ export function createImporter(db, config, inbox, { fetchImpl, emit = () => {} }
   const base = `https://graph.facebook.com/${config.meta.graphVersion}`;
   const running = new Set();
 
-  function setStatus(channelId, fields) {
-    const sets = Object.keys(fields).map((k) => `${k} = ?`).join(', ');
-    db.prepare(`UPDATE channels SET ${sets} WHERE id = ?`).run(...Object.values(fields), channelId);
-    const channel = db.prepare('SELECT workspace_id FROM channels WHERE id = ?').get(channelId);
+  async function setStatus(channelId, fields) {
+    const channel = await db.channels.findOneAndUpdate({ _id: channelId }, { $set: fields },
+      { new: true, projection: { workspace_id: 1 }, lean: true });
     if (channel) emit(channel.workspace_id, 'channels', null);
   }
 
@@ -68,8 +67,8 @@ export function createImporter(db, config, inbox, { fetchImpl, emit = () => {} }
       const threads = recent
         .map((c) => toThread(c, { platform: channel.platform, businessId: channel.external_id, channelExternalId: channel.external_id }))
         .filter(Boolean);
-      conversations += inbox.importHistory(channel.id, threads).conversations;
-      setStatus(channel.id, { import_count: conversations });
+      conversations += (await inbox.importHistory(channel._id, threads)).conversations;
+      await setStatus(channel._id, { import_count: conversations });
       // Conversations come newest first, so an old one means the rest are older.
       next = recent.length < (page.data ?? []).length ? null : page.paging?.next ?? null;
     }
@@ -77,21 +76,24 @@ export function createImporter(db, config, inbox, { fetchImpl, emit = () => {} }
   }
 
   return {
-    // Runs in the background; progress is stored on the channel and pushed to the dashboard.
-    start(channelId) {
-      const channel = db.prepare('SELECT * FROM channels WHERE id = ?').get(channelId);
+    // Runs in the background; progress is stored on the channel and pushed to the
+    // dashboard. Resolves to false when nothing was started, otherwise to a
+    // promise that settles when the import finishes.
+    async start(channelId) {
+      const channel = await db.channels.findById(channelId).lean();
       if (!channel || running.has(channelId)) return false;
       if (!['messenger', 'instagram'].includes(channel.platform) || !channel.access_token || config.dryRun) return false;
       running.add(channelId);
-      setStatus(channelId, { import_status: 'running', import_count: 0, import_error: null });
+      await setStatus(channelId, { import_status: 'running', import_count: 0, import_error: null });
       const done = importMetaChannel(channel)
         .then((count) => setStatus(channelId, { import_status: 'done', import_count: count }))
         .catch((err) => {
           console.warn(`import of ${channel.platform} channel ${channelId} failed: ${err.message}`);
-          setStatus(channelId, { import_status: 'failed', import_error: err.message });
+          return setStatus(channelId, { import_status: 'failed', import_error: err.message });
         })
         .finally(() => running.delete(channelId));
-      return done;
+      // Wrapped so awaiting start() doesn't wait for the whole import.
+      return { done };
     },
   };
 }

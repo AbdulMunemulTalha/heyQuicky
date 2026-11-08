@@ -4,7 +4,7 @@ import { createApp } from '../src/app.js';
 import { setup } from './helpers.js';
 
 test('serves the privacy policy, terms and data deletion pages Meta asks for', async () => {
-  const ctx = setup({ env: { OPERATOR_NAME: 'Quicky <BD>', SUPPORT_EMAIL: 'help@example.com' } });
+  const ctx = await setup({ env: { OPERATOR_NAME: 'Quicky <BD>', SUPPORT_EMAIL: 'help@example.com' } });
   const { server } = createApp(ctx.db, ctx.config);
   await new Promise((resolve) => server.listen(0, resolve));
   try {
@@ -23,7 +23,7 @@ test('serves the privacy policy, terms and data deletion pages Meta asks for', a
 });
 
 test('legal pages default to info@heyquicky.com', async () => {
-  const ctx = setup();
+  const ctx = await setup();
   const { server } = createApp(ctx.db, ctx.config);
   await new Promise((resolve) => server.listen(0, resolve));
   try {

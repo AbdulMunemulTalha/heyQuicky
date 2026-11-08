@@ -31,7 +31,7 @@ let meta;
 
 before(async () => {
   meta = fakeMeta();
-  ctx = setup({
+  ctx = await setup({
     env: { META_APP_ID: 'APP', META_APP_SECRET: 'SECRET', META_WHATSAPP_CONFIG_ID: 'WACFG', TOKEN_ENCRYPTION_KEY: KEY, PUBLIC_URL: 'https://inbox.example.com/' },
   });
   ({ server } = createApp(ctx.db, ctx.config, { fetchImpl: meta.fetchImpl }));
@@ -56,7 +56,7 @@ async function call(path, { method = 'GET', body, token } = {}) {
 
 const login = async (email) => (await call('/api/auth/login', { method: 'POST', body: { email, password: 'password123' } })).data.token;
 
-test('encrypts tokens and still reads old plain-text ones', () => {
+test('encrypts tokens and still reads old plain-text ones', async () => {
   const key = parseKey(KEY);
   const stored = encryptSecret('EAAB-page-token', key);
   assert.match(stored, /^enc:v1:/);
@@ -108,7 +108,7 @@ test('connects a Facebook Page and its Instagram account after login', async () 
   assert.deepEqual(pages.data.map((p) => p.name), ['Demo Fashion', 'Second Shop']);
   assert.ok(!JSON.stringify(pages.data).includes('PAGE1'));
   assert.equal(pages.data[0].instagram.username, 'demofashion');
-  assert.ok(!ctx.db.prepare('SELECT payload FROM pending_connections').get().payload.includes('PAGE1'));
+  assert.ok(!(await ctx.db.pendingConnections.findOne().lean()).payload.includes('PAGE1'));
 
   const done = await call(`/api/connect/facebook/${pendingId}`, { method: 'POST', token: ownerToken, body: { messenger: ['111'], instagram: ['999'] } });
   assert.deepEqual(done.data, { connected: ['Demo Fashion', '@demofashion'], problems: [], importing: true });
@@ -116,7 +116,7 @@ test('connects a Facebook Page and its Instagram account after login', async () 
   assert.equal(subscribe.auth, 'Bearer PAGE1');
   assert.equal(subscribe.body.subscribed_fields, 'messages,message_echoes');
 
-  const channels = ctx.db.prepare("SELECT platform, external_id, name, access_token FROM channels WHERE external_id IN ('111', '999') ORDER BY platform").all();
+  const channels = await ctx.db.channels.find({ external_id: { $in: ['111', '999'] } }).sort({ platform: 1 }).lean();
   assert.deepEqual(channels.map((c) => [c.platform, c.external_id, c.name]), [['instagram', '999', '@demofashion'], ['messenger', '111', 'Demo Fashion']]);
   for (const c of channels) {
     assert.match(c.access_token, /^enc:v1:/);
@@ -151,7 +151,7 @@ test('connects a WhatsApp number from Embedded Signup', async () => {
   const exchange = meta.calls.find((c) => c.params.code === 'WACODE');
   assert.equal(exchange.params.redirect_uri, undefined);
 
-  const channel = ctx.db.prepare("SELECT * FROM channels WHERE platform = 'whatsapp' AND external_id = '77777'").get();
+  const channel = await ctx.db.channels.findOne({ platform: 'whatsapp', external_id: '77777' }).lean();
   assert.equal(channel.waba_id, '55555');
   assert.equal(decryptSecret(channel.access_token, ctx.config.tokenKey), 'BIZTOKEN');
 
@@ -162,12 +162,11 @@ test('connects a WhatsApp number from Embedded Signup', async () => {
 test('a channel whose token Meta rejects is flagged for reconnection', async () => {
   meta.on('POST', /\/me\/messages/, () => [400, { error: { message: 'Error validating access token: session has expired', code: 190 } }]);
   const ownerToken = await login('owner@shop.test');
-  const channel = ctx.db.prepare("SELECT * FROM channels WHERE platform = 'messenger' AND external_id = '111'").get();
+  const channel = await ctx.db.channels.findOne({ platform: 'messenger', external_id: '111' }).lean();
   // A customer writes in on the connected Page, then the reply fails.
-  ctx.db.prepare("INSERT INTO contacts (workspace_id, channel_id, external_id) VALUES (?, ?, 'PSID1')").run(channel.workspace_id, channel.id);
-  const contact = ctx.db.prepare("SELECT id FROM contacts WHERE external_id = 'PSID1'").get();
-  const conv = Number(ctx.db.prepare('INSERT INTO conversations (workspace_id, channel_id, contact_id, last_inbound_at) VALUES (?, ?, ?, ?)')
-    .run(channel.workspace_id, channel.id, contact.id, new Date().toISOString()).lastInsertRowid);
+  const contact = await ctx.db.insert(ctx.db.contacts, { workspace_id: channel.workspace_id, channel_id: channel._id, external_id: 'PSID1' });
+  const conv = (await ctx.db.insert(ctx.db.conversations,
+    { workspace_id: channel.workspace_id, channel_id: channel._id, contact_id: contact.id, last_inbound_at: new Date() })).id;
   const reply = await call(`/api/conversations/${conv}/messages`, { method: 'POST', token: ownerToken, body: { text: 'hi' } });
   assert.equal(reply.data.status, 'failed');
   const sent = meta.calls.findLast((c) => c.path.endsWith('/me/messages'));
@@ -197,7 +196,7 @@ test('connects a WhatsApp Business app number and starts syncing its chats', asy
   const calls = meta.calls.slice(before);
   assert.ok(!calls.some((c) => c.path.endsWith('/register')), 'does not re-register a Business app number');
   assert.deepEqual(calls.filter((c) => c.path.endsWith('/smb_app_data')).map((c) => c.body.sync_type), ['smb_app_state_sync', 'history']);
-  const channel = ctx.db.prepare("SELECT * FROM channels WHERE external_id = '88888'").get();
+  const channel = await ctx.db.channels.findOne({ external_id: '88888' }).lean();
   assert.equal(channel.import_status, 'running');
   assert.equal(channel.waba_id, '66666');
 

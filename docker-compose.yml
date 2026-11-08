@@ -1,12 +1,27 @@
-# Runs Quicky behind Caddy, which gets and renews the HTTPS certificate
-# automatically. Point the domain's DNS A record at this server first.
+# Runs Quicky and its MongoDB behind Caddy, which gets and renews the HTTPS
+# certificate automatically. Point the domain's DNS A record at this server first.
 services:
   quicky:
     build: .
     restart: unless-stopped
     env_file: .env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/quicky
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # MongoDB is only reachable from the quicky container; no ports are published.
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
     volumes:
-      - quicky-data:/app/data
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
 
   caddy:
     image: caddy:2-alpine
@@ -21,5 +36,5 @@ services:
       - quicky
 
 volumes:
-  quicky-data:
+  mongo-data:
   caddy-data:

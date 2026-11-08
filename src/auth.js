@@ -1,5 +1,4 @@
 import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
-import { nowIso } from './db.js';
 
 const SESSION_DAYS = 30;
 
@@ -17,24 +16,24 @@ export function verifyPassword(password, stored) {
   return timingSafeEqual(actual, expected);
 }
 
-export function createSession(db, userId) {
+export async function createSession(db, userId) {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000).toISOString();
-  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expiresAt);
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
+  await db.sessions.create({ _id: token, user_id: userId, expires_at: expiresAt });
   return token;
 }
 
-export function deleteSession(db, token) {
-  db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+export async function deleteSession(db, token) {
+  await db.sessions.deleteOne({ _id: token });
 }
 
-export function userForToken(db, token) {
-  if (!token) return null;
-  return db.prepare(`
-    SELECT u.id, u.workspace_id, u.name, u.email, u.role, u.is_online
-    FROM sessions s JOIN users u ON u.id = s.user_id
-    WHERE s.token = ? AND s.expires_at > ? AND u.is_active = 1
-  `).get(token, nowIso()) ?? null;
+export async function userForToken(db, token) {
+  if (typeof token !== 'string' || !token) return null;
+  const session = await db.sessions.findOne({ _id: token, expires_at: { $gt: new Date() } }).lean();
+  if (!session) return null;
+  const user = await db.users.findOne({ _id: session.user_id, is_active: true },
+    { workspace_id: 1, name: 1, email: 1, role: 1, is_online: 1 }).lean();
+  return user ? { id: user._id, workspace_id: user.workspace_id, name: user.name, email: user.email, role: user.role, is_online: user.is_online } : null;
 }
 
 export function bearerToken(req) {
@@ -43,8 +42,8 @@ export function bearerToken(req) {
 }
 
 export function requireAuth(db) {
-  return (req, res, next) => {
-    const user = userForToken(db, bearerToken(req));
+  return async (req, res, next) => {
+    const user = await userForToken(db, bearerToken(req));
     if (!user) return res.status(401).json({ error: 'Not signed in' });
     req.user = user;
     next();

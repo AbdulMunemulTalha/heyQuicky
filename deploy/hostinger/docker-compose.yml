@@ -1,11 +1,11 @@
 # Quicky on a VPS that already has a web server (Caddy) on ports 80/443.
 # Deployed with Hostinger's Docker Manager as its own project: its own data
-# volume, its own network, and no published ports. The existing web server
+# volumes, its own network, and no published ports. The existing web server
 # reaches it over the "quicky_edge" network at http://quicky-app:3000.
 #
 # Docker Manager runs images but does not build them, so the stock Node image
-# downloads the code from GitHub on every start. Restarting the project
-# therefore deploys the latest push to the branch below.
+# downloads the code from GitHub on every start and builds the dashboard.
+# Restarting the project therefore deploys the latest push to the branch below.
 services:
   app:
     image: node:22-alpine
@@ -18,30 +18,57 @@ services:
         set -e;
         rm -rf /srv/quicky && mkdir -p /srv/quicky && cd /srv/quicky;
         wget -qO- "https://codeload.github.com/AbdulMunemulTalha/heyQuicky/tar.gz/refs/heads/$${QUICKY_BRANCH}" | tar xz --strip-components=1;
-        npm ci --omit=dev --no-audit --no-fund;
+        npm ci --no-audit --no-fund;
+        npm run build;
+        npm prune --omit=dev --no-audit --no-fund;
         exec node --disable-warning=ExperimentalWarning src/server.js
     env_file:
       - .env
     environment:
       NODE_ENV: production
       PORT: "3000"
-      DATABASE_PATH: /data/quicky.db
+      MONGODB_URI: mongodb://mongo:27017/quicky
+      # The SQLite database from before the move to MongoDB. It is copied into
+      # MongoDB once, on the first start with an empty MongoDB, and left as it is.
+      SQLITE_IMPORT_PATH: /data/quicky.db
       QUICKY_BRANCH: claude/bd-ecom-messaging-saas-73p1up
     volumes:
       - quicky_data:/data
+    depends_on:
+      mongo:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
       interval: 30s
       timeout: 5s
-      start_period: 120s
+      # Room for npm install and the dashboard build on every start.
+      start_period: 300s
     networks:
       edge:
         aliases:
           - quicky-app
+      internal: {}
+
+  # Reachable only from the app, on the project's private network.
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+    networks:
+      internal: {}
 
 networks:
   edge:
     name: quicky_edge
+  internal: {}
 
 volumes:
+  # Holds the old SQLite file; kept so nothing is lost and the import can run.
   quicky_data:
+  mongo_data:

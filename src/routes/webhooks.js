@@ -14,7 +14,7 @@ export function webhookRoutes(config, inbox, { db, emit = () => {} } = {}) {
     res.sendStatus(403);
   });
 
-  router.post('/webhooks/meta', (req, res) => {
+  router.post('/webhooks/meta', async (req, res) => {
     if (config.meta.appSecret) {
       if (!verifySignature(req.rawBody, req.get('x-hub-signature-256'), config.meta.appSecret)) {
         // Never log the secret itself; its length is enough to spot a bad paste (Meta's are 32 characters).
@@ -32,7 +32,7 @@ export function webhookRoutes(config, inbox, { db, emit = () => {} } = {}) {
     const outcome = { stored: 0, ignored: 0, failed: 0 };
     for (const message of messages) {
       try {
-        const result = inbox.ingestMessage(message);
+        const result = await inbox.ingestMessage(message);
         outcome[result.ignored ? 'ignored' : 'stored'] += 1;
         // Enough to trace a message without logging what the customer wrote.
         const kinds = message.attachments.map((at) => at.type).join(',') || 'none';
@@ -46,45 +46,55 @@ export function webhookRoutes(config, inbox, { db, emit = () => {} } = {}) {
         console.error('Failed to store webhook message', message.messageId, err);
       }
     }
-    for (const status of statuses) inbox.applyStatus(status);
+    for (const status of statuses) {
+      try {
+        await inbox.applyStatus(status);
+      } catch (err) {
+        console.error('Failed to store message status', status.messageId, err);
+      }
+    }
     // One line per delivery, without message contents.
     console.log(`webhook ${req.body?.object ?? '?'}: ${messages.length} messages (${outcome.stored} stored, `
       + `${outcome.ignored} ignored, ${outcome.failed} failed), ${statuses.length} statuses`);
     // Always acknowledge quickly, otherwise Meta retries and eventually disables the webhook.
     res.sendStatus(200);
     // History chunks can hold thousands of messages, so they are stored after answering Meta.
-    if (history.length || contacts.length) setImmediate(() => storeSyncedData(history, contacts));
+    if (history.length || contacts.length) {
+      setImmediate(() => storeSyncedData(history, contacts).catch((err) => console.error('Failed to store synced data', err)));
+    }
   });
 
   const findChannel = (platform, externalId) =>
-    db.prepare('SELECT id, workspace_id FROM channels WHERE platform = ? AND external_id = ?').get(platform, externalId);
+    db.channels.findOne({ platform, external_id: externalId }, { workspace_id: 1 }).lean();
 
-  function setImport(channel, fields) {
-    const sets = Object.keys(fields).map((k) => `${k} = ${k === 'import_count' ? 'import_count + ?' : '?'}`).join(', ');
-    db.prepare(`UPDATE channels SET ${sets} WHERE id = ?`).run(...Object.values(fields), channel.id);
+  // import_count is added to (history arrives in chunks); other fields are replaced.
+  async function setImport(channel, { import_count: count, ...fields }) {
+    const update = { $set: fields };
+    if (count !== undefined) update.$inc = { import_count: count };
+    await db.channels.updateOne({ _id: channel._id }, update);
     emit(channel.workspace_id, 'channels', null);
   }
 
-  function storeSyncedData(history, contacts) {
+  async function storeSyncedData(history, contacts) {
     for (const contact of contacts) {
-      const channel = findChannel(contact.platform, contact.channelExternalId);
-      if (channel) inbox.setContactName(channel.id, contact.contactExternalId, contact.name);
+      const channel = await findChannel(contact.platform, contact.channelExternalId);
+      if (channel) await inbox.setContactName(channel._id, contact.contactExternalId, contact.name);
     }
     for (const chunk of history) {
-      const channel = findChannel(chunk.platform, chunk.channelExternalId);
+      const channel = await findChannel(chunk.platform, chunk.channelExternalId);
       if (!channel) continue;
       try {
         if (chunk.declined) {
-          setImport(channel, { import_status: 'declined', import_error: chunk.error });
-          console.log(`history sync for channel ${channel.id}: declined by the business`);
+          await setImport(channel, { import_status: 'declined', import_error: chunk.error });
+          console.log(`history sync for channel ${channel._id}: declined by the business`);
           continue;
         }
-        const { conversations, messages } = inbox.importHistory(channel.id, chunk.threads);
-        setImport(channel, {
+        const { conversations, messages } = await inbox.importHistory(channel._id, chunk.threads);
+        await setImport(channel, {
           import_count: conversations,
           ...(chunk.progress === 100 ? { import_status: 'done' } : {}),
         });
-        console.log(`history sync for channel ${channel.id}: ${conversations} conversations, ${messages} new messages`
+        console.log(`history sync for channel ${channel._id}: ${conversations} conversations, ${messages} new messages`
           + `${chunk.progress === null ? '' : `, ${chunk.progress}% done`}`);
       } catch (err) {
         console.error('Failed to store WhatsApp history', err);

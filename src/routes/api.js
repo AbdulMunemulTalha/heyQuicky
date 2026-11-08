@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { randomBytes } from 'node:crypto';
-import { transaction } from '../db.js';
+import { row, isDuplicateKey, normalizeEmail } from '../db.js';
 import { hashPassword, verifyPassword, createSession, deleteSession, bearerToken, requireAuth, requireOwner } from '../auth.js';
 import { InboxError } from '../inbox.js';
 import { ordersCsv, normalizeBdPhone } from '../orders.js';
@@ -21,10 +21,6 @@ const publicChannel = (c) => ({
   conversationCount: c.conversation_count ?? 0,
 });
 
-const CHANNELS_WITH_COUNTS = `
-  SELECT ch.*, (SELECT COUNT(*) FROM conversations c WHERE c.channel_id = ch.id) AS conversation_count
-  FROM channels ch`;
-
 const CATEGORIES = ['fashion', 'beauty', 'electronics', 'food', 'home', 'kids', 'other'];
 const ONBOARDING_STEPS = ['business', 'channels', 'team', 'done'];
 
@@ -38,51 +34,71 @@ const publicWorkspace = (w) => ({
   deliveryOutsideDhaka: w.delivery_outside_dhaka,
 });
 
+const publicReply = (r) => ({ id: r._id, shortcut: r.shortcut, text: r.text });
+
 function required(body, fields) {
   for (const f of fields) {
     if (typeof body?.[f] !== 'string' || !body[f].trim()) throw new InboxError(400, `${f} is required`);
   }
 }
 
-const id = (req) => Number(req.params.id);
+// IDs in URLs are whole numbers; anything else can't match a record.
+function id(req) {
+  const n = Number(req.params.id);
+  if (!Number.isSafeInteger(n)) throw new InboxError(404, 'Not found');
+  return n;
+}
 
 export function apiRoutes(db, config, inbox, orders, importer) {
   const router = Router();
   const auth = requireAuth(db);
+  const getWorkspace = async (wsId) => row(await db.workspaces.findById(wsId).lean());
+  const getUser = async (userId) => row(await db.users.findById(userId).lean());
 
-  router.post('/auth/signup', (req, res) => {
+  async function openCounts(filter) {
+    const counts = await db.conversations.aggregate([{ $match: filter }, { $group: { _id: '$assigned_user_id', n: { $sum: 1 } } }]);
+    return new Map(counts.map((c) => [c._id, c.n]));
+  }
+
+  router.post('/auth/signup', async (req, res) => {
     required(req.body, ['businessName', 'name', 'email', 'password']);
-    const { businessName, name, email, password } = req.body;
+    const { businessName, name, password } = req.body;
+    const email = normalizeEmail(req.body.email);
     if (password.length < 8) throw new InboxError(400, 'Password must be at least 8 characters');
-    if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) throw new InboxError(409, 'Email already registered');
-    const userId = transaction(db, () => {
-      const ws = db.prepare("INSERT INTO workspaces (name, onboarding_step) VALUES (?, 'business')").run(businessName.trim());
-      return Number(db.prepare(`INSERT INTO users (workspace_id, name, email, password_hash, role, is_online)
-        VALUES (?, ?, ?, ?, 'owner', 1)`).run(ws.lastInsertRowid, name.trim(), email.trim(), hashPassword(password)).lastInsertRowid);
-    });
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    res.status(201).json({ token: createSession(db, userId), user: publicUser(user) });
+    if (await db.users.exists({ email })) throw new InboxError(409, 'Email already registered');
+    const ws = await db.insert(db.workspaces, { name: businessName.trim(), onboarding_step: 'business' });
+    let user;
+    try {
+      user = await db.insert(db.users, {
+        workspace_id: ws.id, name: name.trim(), email, password_hash: hashPassword(password), role: 'owner', is_online: true,
+      });
+    } catch (err) {
+      // Someone signed up with the same email at the same moment.
+      await db.workspaces.deleteOne({ _id: ws.id });
+      if (isDuplicateKey(err)) throw new InboxError(409, 'Email already registered');
+      throw err;
+    }
+    res.status(201).json({ token: await createSession(db, user.id), user: publicUser(user) });
   });
 
-  router.post('/auth/login', (req, res) => {
+  router.post('/auth/login', async (req, res) => {
     required(req.body, ['email', 'password']);
-    const user = db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1').get(req.body.email.trim());
+    const user = row(await db.users.findOne({ email: normalizeEmail(req.body.email), is_active: true }).lean());
     if (!user || !verifyPassword(req.body.password, user.password_hash)) {
       throw new InboxError(401, 'Wrong email or password');
     }
-    res.json({ token: createSession(db, user.id), user: publicUser(user) });
+    res.json({ token: await createSession(db, user.id), user: publicUser(user) });
   });
 
-  router.post('/auth/logout', auth, (req, res) => {
-    deleteSession(db, bearerToken(req));
+  router.post('/auth/logout', auth, async (req, res) => {
+    await deleteSession(db, bearerToken(req));
     res.sendStatus(204);
   });
 
-  router.get('/me', auth, (req, res) => {
-    const ws = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(req.user.workspace_id);
+  router.get('/me', auth, async (req, res) => {
     res.json({
       user: publicUser(req.user),
-      workspace: publicWorkspace(ws),
+      workspace: publicWorkspace(await getWorkspace(req.user.workspace_id)),
       devTools: !config.isProduction,
       connect: {
         facebook: Boolean(config.meta.appId && config.meta.appSecret),
@@ -94,45 +110,48 @@ export function apiRoutes(db, config, inbox, orders, importer) {
     });
   });
 
-  router.post('/me/duty', auth, (req, res) => {
-    const assigned = inbox.setOnDuty(req.user, Boolean(req.body?.online));
+  router.post('/me/duty', auth, async (req, res) => {
+    const assigned = await inbox.setOnDuty(req.user, Boolean(req.body?.online));
     res.json({ online: Boolean(req.body?.online), assigned });
   });
 
-  router.get('/conversations', auth, (req, res) => {
-    res.json(inbox.listConversations(req.user, { filter: req.query.filter, status: ['open', 'closed'].includes(req.query.status) ? req.query.status : 'all' }));
+  router.get('/conversations', auth, async (req, res) => {
+    res.json(await inbox.listConversations(req.user, {
+      filter: req.query.filter,
+      status: ['open', 'closed'].includes(req.query.status) ? req.query.status : 'all',
+    }));
   });
 
-  router.get('/conversations/:id/messages', auth, (req, res) => {
-    res.json(inbox.listMessages(req.user, id(req)));
+  router.get('/conversations/:id/messages', auth, async (req, res) => {
+    res.json(await inbox.listMessages(req.user, id(req)));
   });
 
-  // Express 5 forwards the rejected promise to the error handler below.
+  // Express 5 forwards rejected promises to the error handler below.
   router.post('/conversations/:id/messages', auth, async (req, res) => {
     res.status(201).json(await inbox.sendReply(req.user, id(req), req.body?.text));
   });
 
-  router.post('/conversations/:id/read', auth, (req, res) => {
-    res.json(inbox.markRead(req.user, id(req)));
+  router.post('/conversations/:id/read', auth, async (req, res) => {
+    res.json(await inbox.markRead(req.user, id(req)));
   });
 
-  router.post('/conversations/:id/status', auth, (req, res) => {
-    res.json(inbox.setStatus(req.user, id(req), req.body?.status));
+  router.post('/conversations/:id/status', auth, async (req, res) => {
+    res.json(await inbox.setStatus(req.user, id(req), req.body?.status));
   });
 
-  router.post('/conversations/:id/assign', auth, requireOwner, (req, res) => {
+  router.post('/conversations/:id/assign', auth, requireOwner, async (req, res) => {
     const userId = req.body?.userId == null ? null : Number(req.body.userId);
-    res.json(inbox.reassign(req.user, id(req), userId));
+    res.json(await inbox.reassign(req.user, id(req), userId));
   });
 
-  router.patch('/workspace', auth, requireOwner, (req, res) => {
+  router.patch('/workspace', auth, requireOwner, async (req, res) => {
     const body = req.body ?? {};
     const updates = {};
-    for (const [key, column] of [['deliveryInsideDhaka', 'delivery_inside_dhaka'], ['deliveryOutsideDhaka', 'delivery_outside_dhaka']]) {
+    for (const [key, field] of [['deliveryInsideDhaka', 'delivery_inside_dhaka'], ['deliveryOutsideDhaka', 'delivery_outside_dhaka']]) {
       if (body[key] === undefined) continue;
       const value = Number(body[key]);
       if (!Number.isInteger(value) || value < 0) throw new InboxError(400, 'Delivery charge must be a whole number of taka');
-      updates[column] = value;
+      updates[field] = value;
     }
     if (body.name !== undefined) {
       const name = String(body.name).trim();
@@ -152,15 +171,13 @@ export function apiRoutes(db, config, inbox, orders, importer) {
       if (!ONBOARDING_STEPS.includes(body.onboardingStep)) throw new InboxError(400, 'Unknown onboarding step');
       updates.onboarding_step = body.onboardingStep;
     }
-    // Column names come from the fixed lists above, never from the request.
-    for (const [column, value] of Object.entries(updates)) {
-      db.prepare(`UPDATE workspaces SET ${column} = ? WHERE id = ?`).run(value, req.user.workspace_id);
-    }
-    res.json(publicWorkspace(db.prepare('SELECT * FROM workspaces WHERE id = ?').get(req.user.workspace_id)));
+    // Field names come from the fixed lists above, never from the request.
+    if (Object.keys(updates).length) await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: updates });
+    res.json(publicWorkspace(await getWorkspace(req.user.workspace_id)));
   });
 
-  router.get('/conversations/:id/orders', auth, (req, res) => {
-    res.json({ draft: orders.draftFor(req.user, id(req)), orders: orders.forConversation(req.user, id(req)) });
+  router.get('/conversations/:id/orders', auth, async (req, res) => {
+    res.json({ draft: await orders.draftFor(req.user, id(req)), orders: await orders.forConversation(req.user, id(req)) });
   });
 
   router.post('/conversations/:id/orders', auth, async (req, res) => {
@@ -168,119 +185,140 @@ export function apiRoutes(db, config, inbox, orders, importer) {
     res.status(201).json(await orders.create(req.user, id(req), input, { sendSummary: Boolean(sendSummary) }));
   });
 
-  router.get('/orders', auth, (req, res) => {
-    res.json(orders.list(req.user, { status: req.query.status, q: req.query.q }));
+  router.get('/orders', auth, async (req, res) => {
+    res.json(await orders.list(req.user, { status: req.query.status, q: req.query.q }));
   });
 
-  router.get('/orders.csv', auth, (req, res) => {
+  router.get('/orders.csv', auth, async (req, res) => {
     const date = new Date().toISOString().slice(0, 10);
+    const list = await orders.list(req.user, { status: req.query.status, q: req.query.q });
     res.type('text/csv; charset=utf-8')
       .attachment(`orders-${date}.csv`)
       // The BOM makes Excel read Bangla names correctly.
-      .send(`\uFEFF${ordersCsv(orders.list(req.user, { status: req.query.status, q: req.query.q }))}`);
+      .send(`\uFEFF${ordersCsv(list)}`);
   });
 
-  router.patch('/orders/:id', auth, (req, res) => {
-    res.json(orders.update(req.user, id(req), { status: req.body?.status, note: req.body?.note }));
+  router.patch('/orders/:id', auth, async (req, res) => {
+    res.json(await orders.update(req.user, id(req), { status: req.body?.status, note: req.body?.note }));
   });
 
-  router.get('/saved-replies', auth, (req, res) => {
-    res.json(db.prepare('SELECT id, shortcut, text FROM saved_replies WHERE workspace_id = ? ORDER BY shortcut').all(req.user.workspace_id));
+  router.get('/saved-replies', auth, async (req, res) => {
+    const replies = await db.savedReplies.find({ workspace_id: req.user.workspace_id }).sort({ shortcut: 1 }).lean();
+    res.json(replies.map(publicReply));
   });
 
-  router.post('/saved-replies', auth, requireOwner, (req, res) => {
+  router.post('/saved-replies', auth, requireOwner, async (req, res) => {
     required(req.body, ['shortcut', 'text']);
     const shortcut = req.body.shortcut.trim().replace(/^\//, '').toLowerCase();
     if (!/^[a-z0-9_-]{1,30}$/.test(shortcut)) throw new InboxError(400, 'Shortcut can only use letters, numbers, - and _');
-    db.prepare(`
-      INSERT INTO saved_replies (workspace_id, shortcut, text) VALUES (?, ?, ?)
-      ON CONFLICT (workspace_id, shortcut) DO UPDATE SET text = excluded.text
-    `).run(req.user.workspace_id, shortcut, req.body.text.trim());
-    res.status(201).json(db.prepare('SELECT id, shortcut, text FROM saved_replies WHERE workspace_id = ? AND shortcut = ?')
-      .get(req.user.workspace_id, shortcut));
+    const filter = { workspace_id: req.user.workspace_id, shortcut };
+    const { doc } = await db.findOrCreate(db.savedReplies, filter, { text: req.body.text.trim() });
+    await db.savedReplies.updateOne({ _id: doc.id }, { $set: { text: req.body.text.trim() } });
+    res.status(201).json(publicReply(await db.savedReplies.findById(doc.id).lean()));
   });
 
-  router.delete('/saved-replies/:id', auth, requireOwner, (req, res) => {
-    db.prepare('DELETE FROM saved_replies WHERE id = ? AND workspace_id = ?').run(id(req), req.user.workspace_id);
+  router.delete('/saved-replies/:id', auth, requireOwner, async (req, res) => {
+    await db.savedReplies.deleteOne({ _id: id(req), workspace_id: req.user.workspace_id });
     res.sendStatus(204);
   });
 
-  router.get('/team', auth, (req, res) => {
-    const rows = db.prepare(`
-      SELECT u.*, (SELECT COUNT(*) FROM conversations c WHERE c.assigned_user_id = u.id AND c.status = 'open') AS open_count
-      FROM users u WHERE u.workspace_id = ? ORDER BY u.role DESC, u.name
-    `).all(req.user.workspace_id);
-    res.json(rows.map((u) => ({ ...publicUser(u), openCount: u.open_count })));
+  router.get('/team', auth, async (req, res) => {
+    const users = await db.users.find({ workspace_id: req.user.workspace_id }).lean();
+    const open = await openCounts({ workspace_id: req.user.workspace_id, status: 'open' });
+    // Owner first, then by name.
+    users.sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'owner' ? -1 : 1));
+    res.json(users.map((u) => ({ ...publicUser(row(u)), openCount: open.get(u._id) ?? 0 })));
   });
 
-  router.post('/team', auth, requireOwner, (req, res) => {
+  router.post('/team', auth, requireOwner, async (req, res) => {
     required(req.body, ['name', 'email']);
-    if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(req.body.email.trim())) {
-      throw new InboxError(409, 'Email already registered');
-    }
+    const email = normalizeEmail(req.body.email);
+    if (await db.users.exists({ email })) throw new InboxError(409, 'Email already registered');
     const password = req.body.password?.trim() || randomBytes(6).toString('base64url');
-    const { lastInsertRowid } = db.prepare(`INSERT INTO users (workspace_id, name, email, password_hash, role)
-      VALUES (?, ?, ?, ?, 'moderator')`).run(req.user.workspace_id, req.body.name.trim(), req.body.email.trim(), hashPassword(password));
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(lastInsertRowid);
+    let user;
+    try {
+      user = await db.insert(db.users, {
+        workspace_id: req.user.workspace_id, name: req.body.name.trim(), email, password_hash: hashPassword(password), role: 'moderator',
+      });
+    } catch (err) {
+      if (isDuplicateKey(err)) throw new InboxError(409, 'Email already registered');
+      throw err;
+    }
     res.status(201).json({ user: publicUser(user), password });
   });
 
-  router.patch('/team/:id', auth, requireOwner, (req, res) => {
-    const member = db.prepare("SELECT * FROM users WHERE id = ? AND workspace_id = ? AND role = 'moderator'")
-      .get(id(req), req.user.workspace_id);
+  router.patch('/team/:id', auth, requireOwner, async (req, res) => {
+    const member = await db.users.findOne({ _id: id(req), workspace_id: req.user.workspace_id, role: 'moderator' }).lean();
     if (!member) throw new InboxError(404, 'Moderator not found');
     if (typeof req.body?.isActive === 'boolean') {
-      transaction(db, () => {
-        db.prepare('UPDATE users SET is_active = ?, is_online = 0 WHERE id = ?').run(req.body.isActive ? 1 : 0, member.id);
-        if (!req.body.isActive) {
-          // A removed moderator's customers go back to the queue for the rest of the team.
-          db.prepare("UPDATE conversations SET assigned_user_id = NULL WHERE assigned_user_id = ? AND status = 'open'").run(member.id);
-          db.prepare('DELETE FROM sessions WHERE user_id = ?').run(member.id);
-        }
-      });
+      await db.users.updateOne({ _id: member._id }, { $set: { is_active: req.body.isActive, is_online: false } });
+      if (!req.body.isActive) {
+        // A removed moderator's customers go back to the queue for the rest of the team.
+        await db.conversations.updateMany({ assigned_user_id: member._id, status: 'open' }, { $set: { assigned_user_id: null } });
+        await db.sessions.deleteMany({ user_id: member._id });
+      }
     }
-    res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(member.id)));
+    res.json(publicUser(await getUser(member._id)));
   });
 
-  router.get('/channels', auth, (req, res) => {
-    res.json(db.prepare(`${CHANNELS_WITH_COUNTS} WHERE ch.workspace_id = ? ORDER BY ch.id`).all(req.user.workspace_id).map(publicChannel));
+  router.get('/channels', auth, async (req, res) => {
+    const channels = await db.channels.find({ workspace_id: req.user.workspace_id }).sort({ _id: 1 }).lean();
+    const counts = await db.conversations.aggregate([
+      { $match: { channel_id: { $in: channels.map((c) => c._id) } } },
+      { $group: { _id: '$channel_id', n: { $sum: 1 } } },
+    ]);
+    const byChannel = new Map(counts.map((c) => [c._id, c.n]));
+    res.json(channels.map((c) => publicChannel({ ...row(c), conversation_count: byChannel.get(c._id) ?? 0 })));
   });
 
-  router.post('/channels', auth, requireOwner, (req, res) => {
+  router.post('/channels', auth, requireOwner, async (req, res) => {
     required(req.body, ['platform', 'externalId', 'name']);
     const { platform, externalId, name, accessToken = '' } = req.body;
     if (!PLATFORMS.includes(platform)) throw new InboxError(400, 'Unknown platform');
-    if (db.prepare('SELECT 1 FROM channels WHERE platform = ? AND external_id = ?').get(platform, externalId.trim())) {
-      throw new InboxError(409, 'This account is already connected');
+    try {
+      const channel = await db.insert(db.channels, {
+        workspace_id: req.user.workspace_id, platform, external_id: externalId.trim(), name: name.trim(),
+        access_token: encryptSecret(String(accessToken).trim(), config.tokenKey),
+      });
+      res.status(201).json(publicChannel(channel));
+    } catch (err) {
+      if (isDuplicateKey(err)) throw new InboxError(409, 'This account is already connected');
+      throw err;
     }
-    const { lastInsertRowid } = db.prepare(`INSERT INTO channels (workspace_id, platform, external_id, name, access_token)
-      VALUES (?, ?, ?, ?, ?)`).run(req.user.workspace_id, platform, externalId.trim(), name.trim(),
-      encryptSecret(String(accessToken).trim(), config.tokenKey));
-    res.status(201).json(publicChannel(db.prepare('SELECT * FROM channels WHERE id = ?').get(lastInsertRowid)));
   });
 
   // Re-reads past Facebook/Instagram conversations (WhatsApp history can only be synced once, at connection).
-  router.post('/channels/:id/import', auth, requireOwner, (req, res) => {
-    const channel = db.prepare('SELECT * FROM channels WHERE id = ? AND workspace_id = ?').get(id(req), req.user.workspace_id);
+  router.post('/channels/:id/import', auth, requireOwner, async (req, res) => {
+    const channel = await db.channels.findOne({ _id: id(req), workspace_id: req.user.workspace_id }).lean();
     if (!channel) throw new InboxError(404, 'Channel not found');
     if (channel.platform === 'whatsapp') throw new InboxError(400, 'WhatsApp chat history can only be synced when the number is connected');
-    if (!importer?.start(channel.id)) throw new InboxError(409, 'An import is already running, or this channel has no access token');
+    if (!(await importer?.start(channel._id))) throw new InboxError(409, 'An import is already running, or this channel has no access token');
     res.status(202).json({ started: true });
   });
 
-  router.delete('/channels/:id', auth, requireOwner, (req, res) => {
-    db.prepare('DELETE FROM channels WHERE id = ? AND workspace_id = ?').run(id(req), req.user.workspace_id);
+  // Removing a channel removes its customers and chats; orders are kept but
+  // no longer linked to a chat.
+  router.delete('/channels/:id', auth, requireOwner, async (req, res) => {
+    const channel = await db.channels.findOneAndDelete({ _id: id(req), workspace_id: req.user.workspace_id }).lean();
+    if (channel) {
+      const conversations = (await db.conversations.find({ channel_id: channel._id }, { _id: 1 }).lean()).map((c) => c._id);
+      await db.messages.deleteMany({ conversation_id: { $in: conversations } });
+      await db.orders.updateMany({ conversation_id: { $in: conversations } }, { $set: { conversation_id: null } });
+      await db.conversations.deleteMany({ channel_id: channel._id });
+      await db.contacts.deleteMany({ channel_id: channel._id });
+    }
     res.sendStatus(204);
   });
 
   // Lets you try the inbox without a Meta app: pretends a customer wrote in.
   if (!config.isProduction) {
-    router.post('/dev/simulate', auth, (req, res) => {
-      const channel = db.prepare('SELECT * FROM channels WHERE id = ? AND workspace_id = ?')
-        .get(Number(req.body?.channelId), req.user.workspace_id);
+    router.post('/dev/simulate', auth, async (req, res) => {
+      const channelId = Number(req.body?.channelId);
+      const channel = Number.isSafeInteger(channelId)
+        && await db.channels.findOne({ _id: channelId, workspace_id: req.user.workspace_id }).lean();
       if (!channel) throw new InboxError(404, 'Channel not found');
       required(req.body, ['customerId', 'text']);
-      const result = inbox.ingestMessage({
+      const { nameLookup, ...result } = await inbox.ingestMessage({
         platform: channel.platform,
         channelExternalId: channel.external_id,
         contactExternalId: req.body.customerId.trim(),

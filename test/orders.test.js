@@ -10,7 +10,7 @@ const baseOrder = {
   items: [{ name: 'Red kurti (M)', qty: 2, price: 650 }],
 };
 
-test('normalizes Bangladeshi mobile numbers', () => {
+test('normalizes Bangladeshi mobile numbers', async () => {
   for (const input of ['01711111111', '017-1111-1111', '+8801711111111', '8801711111111', '008801711111111', '+880 1711 111111']) {
     assert.equal(normalizeBdPhone(input), '01711111111', input);
   }
@@ -19,7 +19,7 @@ test('normalizes Bangladeshi mobile numbers', () => {
   }
 });
 
-test('works out delivery and cash on delivery', () => {
+test('works out delivery and cash on delivery', async () => {
   const inside = buildOrder(baseOrder, WORKSPACE);
   assert.equal(inside.subtotal, 1300);
   assert.equal(inside.deliveryCharge, 70);
@@ -33,7 +33,7 @@ test('works out delivery and cash on delivery', () => {
   assert.equal(freeDelivery.codAmount, 1300);
 });
 
-test('rejects orders that do not add up', () => {
+test('rejects orders that do not add up', async () => {
   assert.throws(() => buildOrder({ ...baseOrder, phone: '12345' }, WORKSPACE), /Bangladeshi mobile/);
   assert.throws(() => buildOrder({ ...baseOrder, items: [] }, WORKSPACE), /at least one product/);
   assert.throws(() => buildOrder({ ...baseOrder, items: [{ name: 'x', qty: 1, price: 10.5 }] }, WORKSPACE), /whole number/);
@@ -43,7 +43,7 @@ test('rejects orders that do not add up', () => {
   assert.throws(() => buildOrder({ ...baseOrder, address: '  ' }, WORKSPACE), /Address is required/);
 });
 
-test('summary message lists products and the amount to collect', () => {
+test('summary message lists products and the amount to collect', async () => {
   const summary = orderSummary({
     id: 7, customer_name: 'Rahim', phone: '01711111111', address: 'Dhanmondi', area: 'outside_dhaka',
     items: [{ name: 'Panjabi', qty: 1, price: 120000 }], delivery_charge: 130, discount: 0, advance_paid: 200, cod_amount: 119930,
@@ -56,7 +56,7 @@ test('summary message lists products and the amount to collect', () => {
   assert.doesNotMatch(summary, /Discount/);
 });
 
-test('CSV export escapes commas and blocks spreadsheet formulas', () => {
+test('CSV export escapes commas and blocks spreadsheet formulas', async () => {
   const csv = ordersCsv([{
     id: 1, created_at: '2026-10-01T10:00:00.000Z', status: 'confirmed', customer_name: '=HYPERLINK("x")', phone: '01711111111',
     address: 'House 5, Road 3', area: 'inside_dhaka', items: [{ name: 'Kurti', qty: 2, price: 650 }],
@@ -81,14 +81,14 @@ function fakeFetch() {
 }
 
 test('moderator takes an order and the customer gets the summary on the same app', async () => {
-  const { db, config, mods, owner, user } = setup();
+  const { db, config, mods, owner, user } = await setup();
   const { calls, fetchImpl } = fakeFetch();
   const inbox = createInbox(db, config, { fetchImpl });
   const orders = createOrders(db, inbox);
-  const c = inbox.ingestMessage(inbound({ platform: 'whatsapp', channelExternalId: 'WA1', contactExternalId: '8801711111111', contactName: 'Sumi' })).conversation;
-  const mod = user(c.assigned_user_id);
+  const c = (await inbox.ingestMessage(inbound({ platform: 'whatsapp', channelExternalId: 'WA1', contactExternalId: '8801711111111', contactName: 'Sumi' }))).conversation;
+  const mod = await user(c.assigned_user_id);
 
-  assert.deepEqual(orders.draftFor(mod, c.id), { customerName: 'Sumi', phone: '01711111111', address: '', area: 'inside_dhaka' });
+  assert.deepEqual(await orders.draftFor(mod, c.id), { customerName: 'Sumi', phone: '01711111111', address: '', area: 'inside_dhaka' });
 
   const { order, summaryError } = await orders.create(mod, c.id, { ...baseOrder, customerName: 'Sumi' }, { sendSummary: true });
   assert.equal(summaryError, null);
@@ -97,29 +97,29 @@ test('moderator takes an order and the customer gets the summary on the same app
   assert.match(calls[0].text.body, /Order #\d+ confirmed/);
 
   // Next time the form remembers the address.
-  assert.equal(orders.draftFor(mod, c.id).address, baseOrder.address);
+  assert.equal((await orders.draftFor(mod, c.id)).address, baseOrder.address);
 
-  const other = user(mods.find((m) => m !== mod.id));
+  const other = await user(mods.find((m) => m !== mod.id));
   await assert.rejects(orders.create(other, c.id, baseOrder), (err) => err.status === 404);
-  assert.equal(orders.list(other).length, 0);
-  assert.throws(() => orders.update(other, order.id, { status: 'shipped' }), /not found/);
+  assert.equal((await orders.list(other)).length, 0);
+  await assert.rejects(orders.update(other, order.id, { status: 'shipped' }), /not found/);
 
-  assert.equal(orders.list(mod).length, 1);
-  assert.equal(orders.update(mod, order.id, { status: 'shipped' }).status, 'shipped');
-  assert.equal(orders.list(user(owner), { status: 'shipped' }).length, 1);
-  assert.equal(orders.list(user(owner), { q: '0171111' }).length, 1);
-  assert.equal(orders.list(user(owner), { q: `#${order.id}` }).length, 1);
-  assert.equal(orders.list(user(owner), { q: 'nobody' }).length, 0);
+  assert.equal((await orders.list(mod)).length, 1);
+  assert.equal((await orders.update(mod, order.id, { status: 'shipped' })).status, 'shipped');
+  assert.equal((await orders.list(await user(owner), { status: 'shipped' })).length, 1);
+  assert.equal((await orders.list(await user(owner), { q: '0171111' })).length, 1);
+  assert.equal((await orders.list(await user(owner), { q: `#${order.id}` })).length, 1);
+  assert.equal((await orders.list(await user(owner), { q: 'nobody' })).length, 0);
 });
 
 test('order is kept even when the summary cannot be sent', async () => {
-  const { db, config, user } = setup();
+  const { db, config, user } = await setup();
   const { calls, fetchImpl } = fakeFetch();
   const inbox = createInbox(db, config, { fetchImpl });
   const orders = createOrders(db, inbox);
   const timestamp = new Date(Date.now() - 30 * 3_600_000).toISOString();
-  const c = inbox.ingestMessage(inbound({ platform: 'whatsapp', channelExternalId: 'WA1', timestamp })).conversation;
-  const { order, summaryError } = await orders.create(user(c.assigned_user_id), c.id, baseOrder, { sendSummary: true });
+  const c = (await inbox.ingestMessage(inbound({ platform: 'whatsapp', channelExternalId: 'WA1', timestamp }))).conversation;
+  const { order, summaryError } = await orders.create(await user(c.assigned_user_id), c.id, baseOrder, { sendSummary: true });
   assert.ok(order.id);
   assert.match(summaryError, /24 hours/);
   assert.equal(calls.length, 0);

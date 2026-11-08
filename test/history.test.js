@@ -11,12 +11,12 @@ const HOUR = 3_600_000;
 const iso = (msAgo) => new Date(Date.now() - msAgo).toISOString();
 const graph = (msAgo) => iso(msAgo).replace(/\.\d+Z$/, '+0000');
 
-test('parses Graph timestamps with +0000 offsets', () => {
+test('parses Graph timestamps with +0000 offsets', async () => {
   assert.equal(graphTime('2026-10-03T10:15:35+0000'), '2026-10-03T10:15:35.000Z');
   assert.equal(graphTime('2026-10-03T16:15:35+0600'), '2026-10-03T10:15:35.000Z');
 });
 
-test('parses WhatsApp Business app history, contacts and echoes', () => {
+test('parses WhatsApp Business app history, contacts and echoes', async () => {
   const wrap = (field, value) => ({
     object: 'whatsapp_business_account',
     entry: [{ id: 'WABA', changes: [{ field, value: { metadata: { display_phone_number: '8801700000000', phone_number_id: 'WA1' }, ...value } }] }],
@@ -58,19 +58,24 @@ test('parses WhatsApp Business app history, contacts and echoes', () => {
   assert.deepEqual(contacts, [{ platform: 'whatsapp', channelExternalId: 'WA1', contactExternalId: '8801711111111', name: 'Sumi Apu' }]);
 });
 
-test('imported history is filed sensibly and never duplicated', () => {
-  const { db, config } = setup({ online: true });
+async function conversationsWithContacts(db) {
+  const convs = await db.conversations.find().lean();
+  const contacts = new Map((await db.contacts.find().lean()).map((c) => [c._id, c]));
+  return convs.map((c) => ({ ...c, external_id: contacts.get(c.contact_id).external_id, name: contacts.get(c.contact_id).name }));
+}
+
+test('imported history is filed sensibly and never duplicated', async () => {
+  const { db, config } = await setup({ online: true });
   const inbox = createInbox(db, config);
-  const channel = db.prepare("SELECT id FROM channels WHERE platform = 'messenger'").get().id;
+  const channel = (await db.channels.findOne({ platform: 'messenger' }).lean())._id;
   const msg = (id, direction, msAgo, text = id) => ({ messageId: id, direction, text, attachments: [], timestamp: iso(msAgo) });
   const threads = [
     { contactExternalId: 'waiting', contactName: 'Waiting Customer', messages: [msg('w1', 'out', 3 * HOUR), msg('w2', 'in', 2 * HOUR)] },
     { contactExternalId: 'answered', contactName: 'Answered', messages: [msg('a1', 'in', 5 * HOUR), msg('a2', 'out', 4 * HOUR)] },
     { contactExternalId: 'old', contactName: 'Old Customer', messages: [msg('o1', 'in', 30 * 24 * HOUR)] },
   ];
-  assert.deepEqual(inbox.importHistory(channel, threads), { conversations: 3, messages: 5 });
-  const rows = Object.fromEntries(db.prepare(`SELECT ct.external_id, ct.name, c.status, c.assigned_user_id, c.last_message_preview, c.last_inbound_at
-    FROM conversations c JOIN contacts ct ON ct.id = c.contact_id`).all().map((r) => [r.external_id, r]));
+  assert.deepEqual(await inbox.importHistory(channel, threads), { conversations: 3, messages: 5 });
+  const rows = Object.fromEntries((await conversationsWithContacts(db)).map((r) => [r.external_id, r]));
   assert.equal(rows.waiting.status, 'open', 'a recent unanswered customer stays open');
   assert.notEqual(rows.waiting.assigned_user_id, null, 'and is given to a moderator');
   assert.equal(rows.waiting.last_message_preview, 'w2');
@@ -78,22 +83,23 @@ test('imported history is filed sensibly and never duplicated', () => {
   assert.equal(rows.old.status, 'closed');
   assert.equal(rows.old.name, 'Old Customer');
   // Every chat shows in the inbox list; there is no separate "closed" list.
-  const owner = db.prepare("SELECT * FROM users WHERE role = 'owner'").get();
-  assert.equal(inbox.listConversations(owner, { filter: 'all' }).length, 3);
-  assert.equal(inbox.listConversations(owner, { filter: 'unassigned' }).length, 2);
+  const ownerDoc = await db.users.findOne({ role: 'owner' }).lean();
+  const owner = { ...ownerDoc, id: ownerDoc._id };
+  assert.equal((await inbox.listConversations(owner, { filter: 'all' })).length, 3);
+  assert.equal((await inbox.listConversations(owner, { filter: 'unassigned' })).length, 2);
 
   // Importing again, or the same message arriving live, adds nothing.
-  assert.deepEqual(inbox.importHistory(channel, threads), { conversations: 3, messages: 0 });
-  assert.deepEqual(inbox.ingestMessage(inbound({ contactExternalId: 'waiting', messageId: 'w2' })), { ignored: 'duplicate' });
+  assert.deepEqual(await inbox.importHistory(channel, threads), { conversations: 3, messages: 0 });
+  assert.deepEqual(await inbox.ingestMessage(inbound({ contactExternalId: 'waiting', messageId: 'w2' })), { ignored: 'duplicate' });
   // A new live message lands in the same conversation, with the same moderator.
-  const live = inbox.ingestMessage(inbound({ contactExternalId: 'waiting', messageId: 'w3' })).conversation;
+  const live = (await inbox.ingestMessage(inbound({ contactExternalId: 'waiting', messageId: 'w3' }))).conversation;
   assert.equal(live.assigned_user_id, rows.waiting.assigned_user_id);
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM messages').get().n, 6);
+  assert.equal(await db.messages.countDocuments(), 6);
 });
 
 test('imports past Messenger and Instagram conversations from the Conversations API', async () => {
-  const { db, config } = setup();
-  db.prepare("UPDATE channels SET page_id = 'PAGE1' WHERE platform = 'instagram'").run();
+  const { db, config } = await setup();
+  await db.channels.updateOne({ platform: 'instagram' }, { $set: { page_id: 'PAGE1' } });
   const calls = [];
   const fetchImpl = async (url) => {
     const u = new URL(url);
@@ -127,42 +133,43 @@ test('imports past Messenger and Instagram conversations from the Conversations 
   };
   const inbox = createInbox(db, config, { fetchImpl });
   const importer = createImporter(db, config, inbox, { fetchImpl });
-  const channelId = (p) => db.prepare('SELECT id FROM channels WHERE platform = ?').get(p).id;
+  const channelId = async (p) => (await db.channels.findOne({ platform: p }).lean())._id;
 
-  await importer.start(channelId('messenger'));
-  await importer.start(channelId('instagram'));
+  await (await importer.start(await channelId('messenger'))).done;
+  await (await importer.start(await channelId('instagram'))).done;
   assert.ok(!calls.some((c) => c.includes('after=never')), 'stops paging once conversations are older than the cutoff');
   assert.ok(calls.some((c) => c.startsWith('/v23.0/PAGE1/conversations?platform=instagram')), 'Instagram is read through its Page');
 
-  const msgs = db.prepare(`SELECT ct.name, m.direction, m.text, m.attachments FROM messages m
-    JOIN conversations c ON c.id = m.conversation_id JOIN contacts ct ON ct.id = c.contact_id ORDER BY m.created_at`).all();
+  const convs = new Map((await conversationsWithContacts(db)).map((c) => [c._id, c]));
+  const msgs = (await db.messages.find().sort({ created_at: 1 }).lean())
+    .map((m) => ({ ...m, name: convs.get(m.conversation_id).name }));
   assert.deepEqual(msgs.map((m) => [m.name, m.direction, m.text]), [
     ['Rahim Uddin', 'in', 'Stock ache?'],
     ['Rahim Uddin', 'out', 'Ji ache'],
     ['@tania.shop', 'in', 'Size L?'],
   ]);
-  assert.deepEqual(JSON.parse(msgs[0].attachments), [{ type: 'image', url: 'https://cdn/x.jpg' }]);
-  const status = db.prepare('SELECT import_status, import_count FROM channels WHERE platform = ?').get('messenger');
-  assert.deepEqual({ ...status }, { import_status: 'done', import_count: 1 });
+  assert.deepEqual(msgs[0].attachments, [{ type: 'image', url: 'https://cdn/x.jpg' }]);
+  const status = await db.channels.findOne({ platform: 'messenger' }, { _id: 0, import_status: 1, import_count: 1 }).lean();
+  assert.deepEqual(status, { import_status: 'done', import_count: 1 });
 
   assert.equal(toThread({ participants: { data: [{ id: 'PAGE1' }] }, messages: { data: [] } },
     { platform: 'messenger', businessId: 'PAGE1', channelExternalId: 'PAGE1' }), null, 'skips threads without a customer');
 });
 
 test('an import failure is reported on the channel', async () => {
-  const { db, config } = setup();
+  const { db, config } = await setup();
   const fetchImpl = async () => ({ ok: false, status: 400, json: async () => ({ error: { message: '(#200) Requires pages_read_engagement' } }) });
   const inbox = createInbox(db, config, { fetchImpl });
   const importer = createImporter(db, config, inbox, { fetchImpl });
-  const id = db.prepare("SELECT id FROM channels WHERE platform = 'messenger'").get().id;
-  await importer.start(id);
-  const row = db.prepare('SELECT import_status, import_error FROM channels WHERE id = ?').get(id);
+  const id = (await db.channels.findOne({ platform: 'messenger' }).lean())._id;
+  await (await importer.start(id)).done;
+  const row = await db.channels.findById(id).lean();
   assert.equal(row.import_status, 'failed');
   assert.match(row.import_error, /pages_read_engagement/);
 });
 
 test('WhatsApp history and contact webhooks fill the inbox', async () => {
-  const ctx = setup({ env: { META_APP_SECRET: 'appsecret' } });
+  const ctx = await setup({ env: { META_APP_SECRET: 'appsecret' } });
   const { server } = createApp(ctx.db, ctx.config);
   await new Promise((resolve) => server.listen(0, resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -177,20 +184,19 @@ test('WhatsApp history and contact webhooks fill the inbox', async () => {
   const wrap = (field, value) => ({ object: 'whatsapp_business_account',
     entry: [{ id: 'W', changes: [{ field, value: { metadata: { display_phone_number: '8801700000000', phone_number_id: 'WA1' }, ...value } }] }] });
   try {
-    ctx.db.prepare("UPDATE channels SET import_status = 'running' WHERE platform = 'whatsapp'").run();
+    await ctx.db.channels.updateOne({ platform: 'whatsapp' }, { $set: { import_status: 'running' } });
     assert.equal((await post(wrap('smb_app_state_sync', { state_sync: [{ action: 'add', contact: { full_name: 'Sumi Apu', phone_number: '8801711111111' } }] }))).status, 200);
     assert.equal((await post(wrap('history', { history: [{ metadata: { progress: 100 }, threads: [{ id: '8801711111111', messages: [
       { from: '8801711111111', id: 'wamid.h1', timestamp: String(Math.floor(Date.now() / 1000) - 3600), type: 'text', text: { body: 'order dibo' } },
     ] }] }] }))).status, 200);
     await new Promise((r) => setTimeout(r, 50));
-    const row = ctx.db.prepare(`SELECT ct.name, c.status FROM conversations c JOIN contacts ct ON ct.id = c.contact_id
-      WHERE ct.external_id = '8801711111111'`).get();
-    assert.deepEqual({ ...row }, { name: 'Sumi Apu', status: 'open' });
-    assert.equal(ctx.db.prepare("SELECT import_status FROM channels WHERE platform = 'whatsapp'").get().import_status, 'done');
+    const row = (await conversationsWithContacts(ctx.db)).find((c) => c.external_id === '8801711111111');
+    assert.deepEqual({ name: row.name, status: row.status }, { name: 'Sumi Apu', status: 'open' });
+    assert.equal((await ctx.db.channels.findOne({ platform: 'whatsapp' }).lean()).import_status, 'done');
 
     await post(wrap('history', { history: [{ errors: [{ message: 'History sync is turned off by the business' }] }] }));
     await new Promise((r) => setTimeout(r, 50));
-    assert.equal(ctx.db.prepare("SELECT import_status FROM channels WHERE platform = 'whatsapp'").get().import_status, 'declined');
+    assert.equal((await ctx.db.channels.findOne({ platform: 'whatsapp' }).lean()).import_status, 'declined');
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

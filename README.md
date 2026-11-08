@@ -2,6 +2,8 @@
 
 One inbox for Facebook Page, Instagram and WhatsApp orders, built for social-commerce sellers in Bangladesh.
 
+Built on the MERN stack: **MongoDB** (Mongoose), **Express**, **React** (Vite) and **Node.js**, with Socket.IO for live updates. All shop data stays in a MongoDB database you run yourself.
+
 - **One dashboard for every channel.** Messages from Messenger, Instagram DMs and the WhatsApp Business number arrive in one list. A reply goes back to the app the customer wrote from.
 - **One moderator per customer.** The first message from a new customer goes to the on-duty moderator with the fewest open chats. From then on that customer always comes back to the same moderator, even if they reply hours or days later. Other moderators can't see or reply to that customer, so two people never answer the same person.
 - **Owner oversight.** The owner sees every conversation, can reply to any of them, and can move a customer to another moderator.
@@ -35,13 +37,19 @@ One inbox for Facebook Page, Instagram and WhatsApp orders, built for social-com
 
 ## Run it locally
 
-Needs Node.js 22.13 or newer. The database is the built-in `node:sqlite`, so there is nothing else to install.
+Needs Node.js 22.13 or newer and a MongoDB server. If you don't have MongoDB installed, `npm run dev:mongo` starts one for you (data kept in `data/mongo`). Leave it running in its own terminal.
 
 ```bash
 npm install
+npm run dev:mongo     # local MongoDB on mongodb://127.0.0.1:27017 (skip if you run your own)
 npm run seed          # demo shop: owner@demo.test, nadia@demo.test, karim@demo.test / password123
+npm run build         # builds the React dashboard into client/dist
 DRY_RUN=1 npm start   # http://localhost:3000
 ```
+
+`MONGODB_URI` picks the database (default `mongodb://127.0.0.1:27017/quicky`).
+
+While working on the dashboard, run `npm run dev:client` next to `npm run dev`. It serves the React app at http://localhost:5173/app/ with hot reload and forwards API calls to the server on port 3000.
 
 Sign in as the owner in one browser window and as the moderators in two private windows. Under **Settings → Test a customer message** you can play a customer writing in, and watch the message reach a moderator live.
 
@@ -72,15 +80,16 @@ cp .env.example .env && nano .env      # fill in the secrets
 docker compose up -d --build
 ```
 
-Caddy gets the HTTPS certificate for you. The database is stored in the `quicky-data` volume. To update later, run `git pull && docker compose up -d --build`.
+Caddy gets the HTTPS certificate for you. MongoDB runs in its own container, with its data in the `mongo-data` volume; it publishes no ports. To update later, run `git pull && docker compose up -d --build`.
 
 ### Option A2: Hostinger VPS that already runs another site
 
 Use `deploy/hostinger/docker-compose.yml` when another project's web server already uses ports 80 and 443.
 
 1. Create a project in hPanel → VPS → **Docker Manager** from that file. Name it `quicky`, and put the `.env` values in its environment.
-   - It runs as its own project, with its own data volume and network, and uses no public ports.
-   - It downloads the branch from GitHub on every start, so **restarting the project deploys the latest code**.
+   - It runs as its own project (the app and its MongoDB), with its own data volumes and network, and uses no public ports.
+   - It downloads the branch from GitHub and builds the dashboard on every start, so **restarting the project deploys the latest code**. Starting takes a minute or two.
+   - **Moving from the SQLite version:** the old database file in the `quicky_data` volume is copied into MongoDB automatically on the first start, keeping every ID, so signed-in users, chats and order numbers carry on. It only runs while MongoDB is empty, and the SQLite file is never changed. You can also run it by hand with `npm run migrate:sqlite -- /path/to/quicky.db`.
 2. Let the existing web server forward the domain to Quicky. If that server is Caddy, run this in the VPS terminal (change the folder and container names to match yours):
 
 ```bash
@@ -107,8 +116,8 @@ docker network disconnect quicky_edge bwg-portal-caddy-1
    - **Application root:** the folder you uploaded the code to.
    - **Application URL:** your domain.
    - **Startup file:** `src/server.js`.
-2. Add every line from `.env.example` as an environment variable. Leave out `PORT`; cPanel sets it.
-3. Click **Run NPM Install**, then **Restart**.
+2. Add every line from `.env.example` as an environment variable. Leave out `PORT`; cPanel sets it. Set `MONGODB_URI` to a MongoDB you control (shared hosting usually can't run MongoDB itself).
+3. Click **Run NPM Install**, run `npm run build` from the cPanel terminal, then **Restart**.
 4. Turn on HTTPS for the domain with cPanel's SSL/TLS tool or AutoSSL.
 
 ### Check it
@@ -195,7 +204,8 @@ The manual form (ID plus access token) is still under **Connect manually (advanc
 | `PUBLIC_URL` | Your public https address, e.g. `https://inbox.example.com`. Used to build the login redirect. Set it when running behind a proxy or load balancer. |
 | `TOKEN_ENCRYPTION_KEY` | 32 random bytes as hex. Access tokens are stored encrypted with AES-256-GCM. Required in production; the server won't start without it. Create one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Keep it safe: if it's lost, every channel has to be connected again. |
 | `META_GRAPH_VERSION` | Graph API version. Defaults to `v23.0`. |
-| `DATABASE_PATH` | SQLite file location. Defaults to `data/quicky.db`. |
+| `MONGODB_URI` | MongoDB connection string. Defaults to `mongodb://127.0.0.1:27017/quicky`. |
+| `SQLITE_IMPORT_PATH` | Optional. A SQLite database from before the move to MongoDB, copied in once on the first start with an empty MongoDB. |
 | `DRY_RUN` | `1` stores replies without sending them to Meta. |
 | `PORT`, `NODE_ENV` | Standard. |
 
@@ -216,10 +226,11 @@ If a channel has no access token, it runs in test mode: replies are stored but n
 ## Project layout
 
 ```
-src/
+src/                   Express API (Node.js)
   server.js            entry point
   app.js               Express + Socket.IO wiring
-  db.js                schema (SQLite)
+  db.js                MongoDB models (Mongoose) and numeric ID counters
+  migrateSqlite.js     one-time copy of a pre-MongoDB SQLite database
   auth.js              password hashing, sessions
   assignment.js        moderator routing
   inbox.js             storing messages, replies, permissions
@@ -228,8 +239,12 @@ src/
   platforms/metaConnect.js  Facebook login, Page listing, WhatsApp Embedded Signup
   secrets.js           access token encryption
   routes/              REST API and the webhook endpoint
-public/                landing page (index.html), app and onboarding (app.html), plain HTML/JS, no build step
-test/                  node:test suites
+client/                React dashboard (Vite): sign-in, onboarding, inbox, orders, settings
+  src/App.jsx          session, live updates, routing between screens
+  src/components/      Inbox, Onboarding, Settings, order dialogs
+public/                landing pages (English and Bangla), plain HTML
+scripts/               seed data, local MongoDB, SQLite migration
+test/                  node:test suites, run against an in-memory MongoDB
 ```
 
 ## Roadmap
@@ -240,4 +255,4 @@ test/                  node:test suites
 4. **One customer across apps:** Link a customer who writes on both Messenger and WhatsApp, so the same moderator gets both.
 5. **Facebook post comments:** Handle "price?" comments under posts (`feed` webhook) and reply privately.
 6. **Reports and billing:** Response time and orders per moderator. Plans billed per seat or per channel, with bKash/SSLCommerz payments.
-7. **Scaling:** Postgres and a job queue for webhook processing once a single SQLite file is no longer enough.
+7. **Scaling:** A MongoDB replica set (for transactions and failover) and a job queue for webhook processing.

@@ -1,4 +1,4 @@
-import { nowIso } from './db.js';
+import { row } from './db.js';
 import { InboxError } from './inbox.js';
 
 export const ORDER_STATUSES = ['confirmed', 'shipped', 'delivered', 'cancelled', 'returned'];
@@ -101,27 +101,41 @@ export function ordersCsv(orders) {
   const header = ['order_id', 'created_at', 'status', 'customer_name', 'phone', 'address', 'area', 'items',
     'subtotal', 'delivery_charge', 'discount', 'advance_paid', 'cod_amount', 'payment_method', 'note'];
   const rows = orders.map((o) => [
-    o.id, o.created_at, o.status, o.customer_name, o.phone, o.address, o.area,
+    o.id, new Date(o.created_at).toISOString(), o.status, o.customer_name, o.phone, o.address, o.area,
     o.items.map((i) => `${i.qty} x ${i.name}`).join('; '),
     o.subtotal, o.delivery_charge, o.discount, o.advance_paid, o.cod_amount, o.payment_method, o.note,
   ]);
   return [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
 }
 
-const orderRow = (row) => row && { ...row, items: JSON.parse(row.items) };
+// Adds the name of the team member who took each order.
+async function withCreator(db, docs) {
+  const ids = [...new Set(docs.map((d) => d.created_by_user_id).filter((v) => v != null))];
+  const users = new Map((await db.users.find({ _id: { $in: ids } }, { name: 1 }).lean()).map((u) => [u._id, u.name]));
+  return docs.map((d) => ({ ...row(d), created_by_name: users.get(d.created_by_user_id) ?? null }));
+}
+
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function createOrders(db, inbox, { emit = () => {} } = {}) {
-  const getOrder = (id) => orderRow(db.prepare(`
-    SELECT o.*, u.name AS created_by_name FROM orders o LEFT JOIN users u ON u.id = o.created_by_user_id WHERE o.id = ?
-  `).get(id));
+  async function getOrder(id) {
+    const doc = Number.isInteger(id) ? await db.orders.findById(id).lean() : null;
+    return doc ? (await withCreator(db, [doc]))[0] : null;
+  }
 
   // Owners see every order; moderators see the ones they took and the ones on
   // customers they handle.
-  function visibleTo(user, order) {
+  async function visibleTo(user, order) {
     if (!order || order.workspace_id !== user.workspace_id) return false;
     if (user.role === 'owner' || order.created_by_user_id === user.id) return true;
-    const conversation = order.conversation_id && inbox.getConversation(order.conversation_id);
+    const conversation = order.conversation_id && await inbox.getConversation(order.conversation_id);
     return Boolean(conversation && conversation.assigned_user_id === user.id);
+  }
+
+  async function accessibleConversation(user, conversationId) {
+    const conversation = Number.isInteger(conversationId) ? await inbox.getConversation(conversationId) : null;
+    if (!inbox.canAccess(user, conversation)) throw new InboxError(404, 'Conversation not found');
+    return conversation;
   }
 
   function publish(order) {
@@ -131,11 +145,10 @@ export function createOrders(db, inbox, { emit = () => {} } = {}) {
 
   return {
     // Fills the order form from what we already know about the customer.
-    draftFor(user, conversationId) {
-      const conversation = inbox.getConversation(conversationId);
-      if (!inbox.canAccess(user, conversation)) throw new InboxError(404, 'Conversation not found');
-      const last = db.prepare('SELECT customer_name, phone, address, area FROM orders WHERE conversation_id = ? ORDER BY id DESC LIMIT 1')
-        .get(conversationId);
+    async draftFor(user, conversationId) {
+      const conversation = await accessibleConversation(user, conversationId);
+      const [last] = await db.orders.find({ conversation_id: conversationId }, { customer_name: 1, phone: 1, address: 1, area: 1 })
+        .sort({ _id: -1 }).limit(1).lean();
       if (last) return { customerName: last.customer_name, phone: last.phone, address: last.address, area: last.area };
       return {
         customerName: conversation.contact_name ?? '',
@@ -146,20 +159,19 @@ export function createOrders(db, inbox, { emit = () => {} } = {}) {
     },
 
     async create(user, conversationId, input, { sendSummary = false } = {}) {
-      const conversation = inbox.getConversation(conversationId);
-      if (!inbox.canAccess(user, conversation)) throw new InboxError(404, 'Conversation not found');
+      const conversation = await accessibleConversation(user, conversationId);
       if (conversation.assigned_user_id && conversation.assigned_user_id !== user.id && user.role !== 'owner') {
         throw new InboxError(403, `This customer is handled by ${conversation.assigned_user_name}`);
       }
-      const workspace = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(user.workspace_id);
+      const workspace = await db.workspaces.findById(user.workspace_id).lean();
       const o = buildOrder(input ?? {}, workspace);
-      const { lastInsertRowid } = db.prepare(`
-        INSERT INTO orders (workspace_id, conversation_id, created_by_user_id, customer_name, phone, address, area, items,
-          subtotal, delivery_charge, discount, advance_paid, cod_amount, payment_method, note)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(user.workspace_id, conversationId, user.id, o.customerName, o.phone, o.address, o.area, JSON.stringify(o.items),
-        o.subtotal, o.deliveryCharge, o.discount, o.advancePaid, o.codAmount, o.paymentMethod, o.note);
-      const order = publish(getOrder(Number(lastInsertRowid)));
+      const inserted = await db.insert(db.orders, {
+        workspace_id: user.workspace_id, conversation_id: conversationId, created_by_user_id: user.id,
+        customer_name: o.customerName, phone: o.phone, address: o.address, area: o.area, items: o.items,
+        subtotal: o.subtotal, delivery_charge: o.deliveryCharge, discount: o.discount, advance_paid: o.advancePaid,
+        cod_amount: o.codAmount, payment_method: o.paymentMethod, note: o.note,
+      });
+      const order = publish(await getOrder(inserted.id));
 
       // The order is saved even if Meta won't take the message (e.g. outside the 24h window).
       let summaryError = null;
@@ -174,41 +186,40 @@ export function createOrders(db, inbox, { emit = () => {} } = {}) {
       return { order, summaryError };
     },
 
-    list(user, { status, q } = {}) {
-      const where = ['o.workspace_id = ?'];
-      const params = [user.workspace_id];
-      if (ORDER_STATUSES.includes(status)) { where.push('o.status = ?'); params.push(status); }
-      if (q) {
-        where.push("(o.customer_name LIKE ? ESCAPE '\\' OR o.phone LIKE ? ESCAPE '\\' OR CAST(o.id AS TEXT) = ?)");
-        const like = `%${String(q).trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-        params.push(like, like, String(q).trim().replace(/^#/, ''));
+    async list(user, { status, q } = {}) {
+      const where = { workspace_id: user.workspace_id };
+      if (ORDER_STATUSES.includes(status)) where.status = status;
+      const and = [];
+      const query = typeof q === 'string' ? q.trim() : '';
+      if (query) {
+        const like = new RegExp(escapeRegex(query), 'i');
+        const or = [{ customer_name: like }, { phone: like }];
+        const number = query.replace(/^#/, '');
+        if (/^\d+$/.test(number)) or.push({ _id: Number(number) });
+        and.push({ $or: or });
       }
       if (user.role !== 'owner') {
-        where.push('(o.created_by_user_id = ? OR o.conversation_id IN (SELECT id FROM conversations WHERE assigned_user_id = ?))');
-        params.push(user.id, user.id);
+        const mine = await db.conversations.find({ assigned_user_id: user.id }, { _id: 1 }).lean();
+        and.push({ $or: [{ created_by_user_id: user.id }, { conversation_id: { $in: mine.map((c) => c._id) } }] });
       }
-      return db.prepare(`
-        SELECT o.*, u.name AS created_by_name FROM orders o LEFT JOIN users u ON u.id = o.created_by_user_id
-        WHERE ${where.join(' AND ')} ORDER BY o.id DESC LIMIT 500
-      `).all(...params).map(orderRow);
+      if (and.length) where.$and = and;
+      return withCreator(db, await db.orders.find(where).sort({ _id: -1 }).limit(500).lean());
     },
 
-    forConversation(user, conversationId) {
-      const conversation = inbox.getConversation(conversationId);
-      if (!inbox.canAccess(user, conversation)) throw new InboxError(404, 'Conversation not found');
-      return db.prepare(`
-        SELECT o.*, u.name AS created_by_name FROM orders o LEFT JOIN users u ON u.id = o.created_by_user_id
-        WHERE o.conversation_id = ? ORDER BY o.id DESC
-      `).all(conversationId).map(orderRow);
+    async forConversation(user, conversationId) {
+      await accessibleConversation(user, conversationId);
+      return withCreator(db, await db.orders.find({ conversation_id: conversationId }).sort({ _id: -1 }).lean());
     },
 
-    update(user, orderId, { status, note } = {}) {
-      const order = getOrder(orderId);
-      if (!visibleTo(user, order)) throw new InboxError(404, 'Order not found');
+    async update(user, orderId, { status, note } = {}) {
+      const order = await getOrder(orderId);
+      if (!(await visibleTo(user, order))) throw new InboxError(404, 'Order not found');
       if (status !== undefined && !ORDER_STATUSES.includes(status)) throw new InboxError(400, 'Unknown order status');
-      db.prepare('UPDATE orders SET status = COALESCE(?, status), note = COALESCE(?, note), updated_at = ? WHERE id = ?')
-        .run(status ?? null, note === undefined ? null : text(note, 'Note', { required: false }), nowIso(), orderId);
-      return publish(getOrder(orderId));
+      const set = { updated_at: new Date() };
+      if (status !== undefined) set.status = status;
+      if (note !== undefined) set.note = text(note, 'Note', { required: false });
+      await db.orders.updateOne({ _id: orderId }, { $set: set });
+      return publish(await getOrder(orderId));
     },
   };
 }

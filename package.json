@@ -1,7 +1,7 @@
 {
   "name": "quicky",
   "version": "0.1.0",
-  "description": "Unified Messenger, Instagram and WhatsApp inbox with sticky moderator assignment for social-commerce sellers.",
+  "description": "Quicky (heyquicky.com): unified Messenger, Instagram and WhatsApp inbox for social-commerce sellers. MongoDB, Express, React, Node.",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,11 +10,24 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning src/server.js",
     "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "dev:client": "vite --config client/vite.config.js",
+    "dev:mongo": "node scripts/dev-mongo.js",
+    "build": "vite build --config client/vite.config.js",
     "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
+    "migrate:sqlite": "node --disable-warning=ExperimentalWarning scripts/migrate-from-sqlite.js",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "express": "^5.2.1",
+    "mongoose": "^8.24.8",
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.2.0",
+    "mongodb-memory-server-core": "^10.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "socket.io-client": "^4.8.4",
+    "vite": "^7.3.7"
   }
 }

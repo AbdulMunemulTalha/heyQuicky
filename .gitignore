@@ -4,3 +4,6 @@ data/
 *.db
 *.db-shm
 *.db-wal
+
+# Built React dashboard (npm run build)
+client/dist/

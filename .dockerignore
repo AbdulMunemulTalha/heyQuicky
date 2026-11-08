@@ -4,3 +4,5 @@ data
 .git
 test
 *.db*
+client/dist
+.claude

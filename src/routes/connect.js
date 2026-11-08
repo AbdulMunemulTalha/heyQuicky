@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { randomBytes, randomInt } from 'node:crypto';
 import { requireAuth, requireOwner } from '../auth.js';
-import { nowIso, transaction } from '../db.js';
+import { isDuplicateKey } from '../db.js';
 import { InboxError } from '../inbox.js';
 import { createMetaClient } from '../platforms/metaConnect.js';
 import { encryptSecret, decryptSecret } from '../secrets.js';
@@ -9,21 +9,29 @@ import { encryptSecret, decryptSecret } from '../secrets.js';
 const STATE_MINUTES = 15;
 const PENDING_MINUTES = 30;
 
-const minutesFromNow = (m) => new Date(Date.now() + m * 60_000).toISOString();
+const minutesFromNow = (m) => new Date(Date.now() + m * 60_000);
 
 // Adds a channel, or refreshes its token if this workspace already has it.
-function upsertChannel(db, workspaceId, { platform, externalId, name, token, wabaId = null, pageId = null }) {
-  const existing = db.prepare('SELECT * FROM channels WHERE platform = ? AND external_id = ?').get(platform, externalId);
-  if (existing && existing.workspace_id !== workspaceId) {
-    throw new InboxError(409, `${name} is already connected to another Quicky account`);
-  }
+async function upsertChannel(db, workspaceId, { platform, externalId, name, token, wabaId = null, pageId = null }) {
+  const taken = () => new InboxError(409, `${name} is already connected to another Quicky account`);
+  const existing = await db.channels.findOne({ platform, external_id: externalId }).lean();
+  if (existing && existing.workspace_id !== workspaceId) throw taken();
   if (existing) {
-    db.prepare(`UPDATE channels SET name = ?, access_token = ?, waba_id = COALESCE(?, waba_id), page_id = COALESCE(?, page_id),
-      needs_reconnect = 0 WHERE id = ?`).run(name, token, wabaId, pageId, existing.id);
-    return existing.id;
+    const set = { name, access_token: token, needs_reconnect: false };
+    if (wabaId) set.waba_id = wabaId;
+    if (pageId) set.page_id = pageId;
+    await db.channels.updateOne({ _id: existing._id }, { $set: set });
+    return existing._id;
   }
-  return Number(db.prepare(`INSERT INTO channels (workspace_id, platform, external_id, name, access_token, waba_id, page_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(workspaceId, platform, externalId, name, token, wabaId, pageId).lastInsertRowid);
+  try {
+    return (await db.insert(db.channels, {
+      workspace_id: workspaceId, platform, external_id: externalId, name, access_token: token, waba_id: wabaId, page_id: pageId,
+    })).id;
+  } catch (err) {
+    // Connected by someone else at the same moment.
+    if (isDuplicateKey(err)) throw taken();
+    throw err;
+  }
 }
 
 export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer = null } = {}) {
@@ -38,26 +46,21 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
     next();
   }
 
-  function cleanupExpired() {
-    const now = nowIso();
-    db.prepare('DELETE FROM oauth_states WHERE expires_at <= ?').run(now);
-    db.prepare('DELETE FROM pending_connections WHERE expires_at <= ?').run(now);
+  // Expired rows are also removed by MongoDB's TTL index, but that runs only once a minute.
+  async function loadPending(req) {
+    const pending = await db.pendingConnections.findOne({
+      _id: String(req.params.id), workspace_id: req.user.workspace_id, expires_at: { $gt: new Date() },
+    }).lean();
+    if (!pending) throw new InboxError(404, 'This connection has expired. Please connect again.');
+    return { pending, pages: JSON.parse(decryptSecret(pending.payload, config.tokenKey)) };
   }
 
-  function loadPending(req) {
-    cleanupExpired();
-    const row = db.prepare('SELECT * FROM pending_connections WHERE id = ? AND workspace_id = ?')
-      .get(String(req.params.id), req.user.workspace_id);
-    if (!row) throw new InboxError(404, 'This connection has expired. Please connect again.');
-    return { row, pages: JSON.parse(decryptSecret(row.payload, config.tokenKey)) };
-  }
-
-  router.get('/api/connect/facebook/start', auth, requireOwner, requireMetaApp, (req, res) => {
-    cleanupExpired();
+  router.get('/api/connect/facebook/start', auth, requireOwner, requireMetaApp, async (req, res) => {
     const redirectUri = `${config.publicUrl || `${req.protocol}://${req.get('host')}`}/auth/facebook/callback`;
     const state = randomBytes(24).toString('base64url');
-    db.prepare('INSERT INTO oauth_states (state, workspace_id, user_id, redirect_uri, expires_at) VALUES (?, ?, ?, ?, ?)')
-      .run(state, req.user.workspace_id, req.user.id, redirectUri, minutesFromNow(STATE_MINUTES));
+    await db.oauthStates.create({
+      _id: state, workspace_id: req.user.workspace_id, user_id: req.user.id, redirect_uri: redirectUri, expires_at: minutesFromNow(STATE_MINUTES),
+    });
     res.json({ url: meta.loginUrl({ redirectUri, state, configId: config.meta.loginConfigId }) });
   });
 
@@ -65,9 +68,9 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
   // a token on this request, only by the one-time state created above.
   router.get('/auth/facebook/callback', async (req, res) => {
     const fail = (message) => res.redirect(`/app?connect_error=${encodeURIComponent(message)}`);
-    const state = db.prepare('SELECT * FROM oauth_states WHERE state = ? AND expires_at > ?').get(String(req.query.state ?? ''), nowIso());
+    // Deleted as it is read, so each login link works once.
+    const state = await db.oauthStates.findOneAndDelete({ _id: String(req.query.state ?? ''), expires_at: { $gt: new Date() } }).lean();
     if (!state) return fail('This Facebook login link has expired. Please try again.');
-    db.prepare('DELETE FROM oauth_states WHERE state = ?').run(state.state);
     if (req.query.error || !req.query.code) {
       return fail(req.query.error_reason === 'user_denied'
         ? 'Facebook connection was cancelled.'
@@ -86,15 +89,16 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
     }
 
     const id = randomBytes(18).toString('base64url');
-    db.prepare('INSERT INTO pending_connections (id, workspace_id, payload, expires_at) VALUES (?, ?, ?, ?)')
-      .run(id, state.workspace_id, encryptSecret(JSON.stringify(pages), config.tokenKey), minutesFromNow(PENDING_MINUTES));
+    await db.pendingConnections.create({
+      _id: id, workspace_id: state.workspace_id, payload: encryptSecret(JSON.stringify(pages), config.tokenKey), expires_at: minutesFromNow(PENDING_MINUTES),
+    });
     res.redirect(`/app?connect=${id}`);
   });
 
-  router.get('/api/connect/facebook/:id', auth, requireOwner, (req, res) => {
-    const { pages } = loadPending(req);
-    const connected = new Set(db.prepare('SELECT platform, external_id FROM channels WHERE workspace_id = ?')
-      .all(req.user.workspace_id).map((c) => `${c.platform}:${c.external_id}`));
+  router.get('/api/connect/facebook/:id', auth, requireOwner, async (req, res) => {
+    const { pages } = await loadPending(req);
+    const channels = await db.channels.find({ workspace_id: req.user.workspace_id }, { platform: 1, external_id: 1 }).lean();
+    const connected = new Set(channels.map((c) => `${c.platform}:${c.external_id}`));
     res.json(pages.map((p) => ({
       id: p.id,
       name: p.name,
@@ -104,7 +108,7 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
   });
 
   router.post('/api/connect/facebook/:id', auth, requireOwner, requireMetaApp, async (req, res) => {
-    const { row, pages } = loadPending(req);
+    const { pending, pages } = await loadPending(req);
     const messenger = new Set((req.body?.messenger ?? []).map(String));
     const instagram = new Set((req.body?.instagram ?? []).map(String));
     const chosen = pages.filter((p) => messenger.has(p.id) || (p.instagram && instagram.has(p.instagram.id)));
@@ -122,27 +126,27 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
       }
       const token = encryptSecret(page.accessToken, config.tokenKey);
       try {
-        transaction(db, () => {
+        {
           if (messenger.has(page.id)) {
-            channelIds.push(upsertChannel(db, req.user.workspace_id,
+            channelIds.push(await upsertChannel(db, req.user.workspace_id,
               { platform: 'messenger', externalId: page.id, name: page.name, token, pageId: page.id }));
             connected.push(page.name);
           }
           if (page.instagram && instagram.has(page.instagram.id)) {
             const name = page.instagram.username ? `@${page.instagram.username}` : `${page.name} (Instagram)`;
-            channelIds.push(upsertChannel(db, req.user.workspace_id,
+            channelIds.push(await upsertChannel(db, req.user.workspace_id,
               { platform: 'instagram', externalId: page.instagram.id, name, token, pageId: page.id }));
             connected.push(name);
           }
-        });
+        }
       } catch (err) {
         if (!(err instanceof InboxError)) throw err;
         problems.push(err.message);
       }
     }
-    db.prepare('DELETE FROM pending_connections WHERE id = ?').run(row.id);
+    await db.pendingConnections.deleteOne({ _id: pending._id });
     // Bring in the conversations these accounts already have, in the background.
-    for (const channelId of channelIds) importer?.start(channelId);
+    for (const channelId of channelIds) await importer?.start(channelId);
     emit(req.user.workspace_id, 'channels', null);
     res.json({ connected, problems, importing: channelIds.length > 0 });
   });
@@ -196,7 +200,7 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
       name = [info.verified_name, info.display_phone_number].filter(Boolean).join(' · ') || name;
     } catch { /* keep the fallback name */ }
 
-    const channelId = upsertChannel(db, req.user.workspace_id, {
+    const channelId = await upsertChannel(db, req.user.workspace_id, {
       platform: 'whatsapp', externalId: phoneNumberId, name, token: encryptSecret(token, config.tokenKey), wabaId,
     });
 
@@ -210,7 +214,7 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
       }
       try {
         await meta.requestAppDataSync(phoneNumberId, token, 'history');
-        db.prepare("UPDATE channels SET import_status = 'running', import_count = 0, import_error = NULL WHERE id = ?").run(channelId);
+        await db.channels.updateOne({ _id: channelId }, { $set: { import_status: 'running', import_count: 0, import_error: null } });
         importing = true;
       } catch (err) {
         problems.push(`Could not start chat history sync: ${err.message}`);

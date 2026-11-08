@@ -1,191 +1,230 @@
-import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import mongoose from 'mongoose';
 
-const NOW = "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";
+const { Schema } = mongoose;
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS workspaces (
-  id INTEGER PRIMARY KEY,
-  name TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT ${NOW}
-);
+// Records keep short numeric IDs (shown to shops as "Order #12" and used in
+// URLs). They come from a per-collection counter instead of ObjectIds, which
+// also lets data move over from the old SQLite database with the same IDs.
+const numericId = { type: Number };
+const createdAt = { type: Date, default: () => new Date() };
+const opts = { versionKey: false };
 
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('owner', 'moderator')),
-  is_active INTEGER NOT NULL DEFAULT 1,
-  is_online INTEGER NOT NULL DEFAULT 0,
-  last_assigned_at TEXT,
-  created_at TEXT NOT NULL DEFAULT ${NOW}
-);
+const PLATFORMS = ['messenger', 'instagram', 'whatsapp'];
 
-CREATE TABLE IF NOT EXISTS sessions (
-  token TEXT PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires_at TEXT NOT NULL
-);
+function defineModels(conn) {
+  const counter = new Schema({ _id: String, seq: { type: Number, default: 0 } }, opts);
 
--- A connected Facebook Page, Instagram professional account or WhatsApp number.
-CREATE TABLE IF NOT EXISTS channels (
-  id INTEGER PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  platform TEXT NOT NULL CHECK (platform IN ('messenger', 'instagram', 'whatsapp')),
-  external_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  access_token TEXT NOT NULL DEFAULT '',
-  created_at TEXT NOT NULL DEFAULT ${NOW},
-  UNIQUE (platform, external_id)
-);
+  const workspace = new Schema({
+    _id: numericId,
+    name: { type: String, required: true },
+    phone: { type: String, default: '' },
+    category: { type: String, default: '' },
+    // Shops created before onboarding existed count as set up.
+    onboarding_step: { type: String, enum: ['business', 'channels', 'team', 'done'], default: 'done' },
+    delivery_inside_dhaka: { type: Number, default: 70 },
+    delivery_outside_dhaka: { type: Number, default: 130 },
+    created_at: createdAt,
+  }, opts);
 
--- A customer as seen by one channel (PSID, IGSID or WhatsApp wa_id).
-CREATE TABLE IF NOT EXISTS contacts (
-  id INTEGER PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-  external_id TEXT NOT NULL,
-  name TEXT,
-  created_at TEXT NOT NULL DEFAULT ${NOW},
-  UNIQUE (channel_id, external_id)
-);
+  const user = new Schema({
+    _id: numericId,
+    workspace_id: { type: Number, required: true, index: true },
+    name: { type: String, required: true },
+    // Stored lowercased so sign-in ignores case; see normalizeEmail.
+    email: { type: String, required: true, unique: true },
+    password_hash: { type: String, required: true },
+    role: { type: String, enum: ['owner', 'moderator'], required: true },
+    is_active: { type: Boolean, default: true },
+    is_online: { type: Boolean, default: false },
+    last_assigned_at: { type: Date, default: null },
+    created_at: createdAt,
+  }, opts);
 
--- One long-lived thread per contact. The assignee sticks across sessions.
-CREATE TABLE IF NOT EXISTS conversations (
-  id INTEGER PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-  contact_id INTEGER NOT NULL UNIQUE REFERENCES contacts(id) ON DELETE CASCADE,
-  assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
-  unread_count INTEGER NOT NULL DEFAULT 0,
-  last_message_at TEXT,
-  last_message_preview TEXT NOT NULL DEFAULT '',
-  last_inbound_at TEXT,
-  created_at TEXT NOT NULL DEFAULT ${NOW}
-);
-CREATE INDEX IF NOT EXISTS conversations_by_workspace ON conversations(workspace_id, status, last_message_at);
-CREATE INDEX IF NOT EXISTS conversations_by_assignee ON conversations(assigned_user_id, status);
+  const session = new Schema({
+    _id: String, // the token
+    user_id: { type: Number, required: true, index: true },
+    // MongoDB deletes expired sessions on its own (TTL index).
+    expires_at: { type: Date, required: true, expires: 0 },
+  }, opts);
 
-CREATE TABLE IF NOT EXISTS messages (
-  id INTEGER PRIMARY KEY,
-  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  direction TEXT NOT NULL CHECK (direction IN ('in', 'out')),
-  sender_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  text TEXT NOT NULL DEFAULT '',
-  attachments TEXT NOT NULL DEFAULT '[]',
-  external_id TEXT,
-  status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('pending', 'sent', 'delivered', 'read', 'failed', 'received')),
-  error TEXT,
-  created_at TEXT NOT NULL DEFAULT ${NOW}
-);
-CREATE UNIQUE INDEX IF NOT EXISTS messages_by_external_id ON messages(external_id) WHERE external_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS messages_by_conversation ON messages(conversation_id, id);
+  // A connected Facebook Page, Instagram professional account or WhatsApp number.
+  const channel = new Schema({
+    _id: numericId,
+    workspace_id: { type: Number, required: true, index: true },
+    platform: { type: String, enum: PLATFORMS, required: true },
+    external_id: { type: String, required: true },
+    name: { type: String, required: true },
+    access_token: { type: String, default: '' },
+    // Set when Meta rejects the stored token, so the owner knows to reconnect.
+    needs_reconnect: { type: Boolean, default: false },
+    waba_id: { type: String, default: null },
+    // The Facebook Page an Instagram account is reached through (needed to read its history).
+    page_id: { type: String, default: null },
+    // Import of conversations that existed before the channel was connected.
+    import_status: { type: String, default: '' },
+    import_count: { type: Number, default: 0 },
+    import_error: { type: String, default: null },
+    created_at: createdAt,
+  }, opts);
+  channel.index({ platform: 1, external_id: 1 }, { unique: true });
 
--- Amounts are whole taka. items is JSON: [{ "name", "qty", "price" }].
-CREATE TABLE IF NOT EXISTS orders (
-  id INTEGER PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
-  created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  customer_name TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  address TEXT NOT NULL,
-  area TEXT NOT NULL CHECK (area IN ('inside_dhaka', 'outside_dhaka')),
-  items TEXT NOT NULL,
-  subtotal INTEGER NOT NULL,
-  delivery_charge INTEGER NOT NULL,
-  discount INTEGER NOT NULL DEFAULT 0,
-  advance_paid INTEGER NOT NULL DEFAULT 0,
-  cod_amount INTEGER NOT NULL,
-  payment_method TEXT NOT NULL DEFAULT 'cod' CHECK (payment_method IN ('cod', 'bkash', 'nagad', 'rocket', 'bank')),
-  status TEXT NOT NULL DEFAULT 'confirmed'
-    CHECK (status IN ('confirmed', 'shipped', 'delivered', 'cancelled', 'returned')),
-  note TEXT NOT NULL DEFAULT '',
-  created_at TEXT NOT NULL DEFAULT ${NOW},
-  updated_at TEXT NOT NULL DEFAULT ${NOW}
-);
-CREATE INDEX IF NOT EXISTS orders_by_workspace ON orders(workspace_id, status, id);
-CREATE INDEX IF NOT EXISTS orders_by_conversation ON orders(conversation_id);
+  // A customer as seen by one channel (PSID, IGSID or WhatsApp wa_id).
+  const contact = new Schema({
+    _id: numericId,
+    workspace_id: { type: Number, required: true },
+    channel_id: { type: Number, required: true },
+    external_id: { type: String, required: true },
+    name: { type: String, default: null },
+    created_at: createdAt,
+  }, opts);
+  contact.index({ channel_id: 1, external_id: 1 }, { unique: true });
 
--- Ties a Facebook login redirect back to the owner who started it.
-CREATE TABLE IF NOT EXISTS oauth_states (
-  state TEXT PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  redirect_uri TEXT NOT NULL,
-  expires_at TEXT NOT NULL
-);
+  // One long-lived thread per contact. The assignee sticks across sessions.
+  const conversation = new Schema({
+    _id: numericId,
+    workspace_id: { type: Number, required: true },
+    channel_id: { type: Number, required: true, index: true },
+    contact_id: { type: Number, required: true, unique: true },
+    assigned_user_id: { type: Number, default: null },
+    status: { type: String, enum: ['open', 'closed'], default: 'open' },
+    unread_count: { type: Number, default: 0 },
+    last_message_at: { type: Date, default: null },
+    last_message_preview: { type: String, default: '' },
+    last_inbound_at: { type: Date, default: null },
+    created_at: createdAt,
+  }, opts);
+  conversation.index({ workspace_id: 1, status: 1, last_message_at: -1 });
+  conversation.index({ assigned_user_id: 1, status: 1 });
 
--- Pages found after a Facebook login, waiting for the owner to pick which to
--- connect. payload holds page tokens, so it is encrypted like channel tokens.
-CREATE TABLE IF NOT EXISTS pending_connections (
-  id TEXT PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  payload TEXT NOT NULL,
-  expires_at TEXT NOT NULL
-);
+  const message = new Schema({
+    _id: numericId,
+    conversation_id: { type: Number, required: true },
+    direction: { type: String, enum: ['in', 'out'], required: true },
+    sender_user_id: { type: Number, default: null },
+    text: { type: String, default: '' },
+    attachments: { type: [Schema.Types.Mixed], default: [] },
+    external_id: { type: String, default: null },
+    status: { type: String, enum: ['pending', 'sent', 'delivered', 'read', 'failed', 'received'], default: 'sent' },
+    error: { type: String, default: null },
+    created_at: createdAt,
+  }, opts);
+  // Meta retries webhooks; the unique ID is what makes storing them idempotent.
+  message.index({ external_id: 1 }, { unique: true, partialFilterExpression: { external_id: { $type: 'string' } } });
+  message.index({ conversation_id: 1, _id: 1 });
 
-CREATE TABLE IF NOT EXISTS saved_replies (
-  id INTEGER PRIMARY KEY,
-  workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  shortcut TEXT NOT NULL,
-  text TEXT NOT NULL,
-  UNIQUE (workspace_id, shortcut)
-);
-`;
+  // Amounts are whole taka.
+  const order = new Schema({
+    _id: numericId,
+    workspace_id: { type: Number, required: true },
+    conversation_id: { type: Number, default: null, index: true },
+    created_by_user_id: { type: Number, default: null },
+    customer_name: { type: String, required: true },
+    phone: { type: String, required: true },
+    address: { type: String, required: true },
+    area: { type: String, enum: ['inside_dhaka', 'outside_dhaka'], required: true },
+    items: { type: [{ _id: false, name: String, qty: Number, price: Number }], required: true },
+    subtotal: { type: Number, required: true },
+    delivery_charge: { type: Number, required: true },
+    discount: { type: Number, default: 0 },
+    advance_paid: { type: Number, default: 0 },
+    cod_amount: { type: Number, required: true },
+    payment_method: { type: String, enum: ['cod', 'bkash', 'nagad', 'rocket', 'bank'], default: 'cod' },
+    status: { type: String, enum: ['confirmed', 'shipped', 'delivered', 'cancelled', 'returned'], default: 'confirmed' },
+    note: { type: String, default: '' },
+    created_at: createdAt,
+    updated_at: createdAt,
+  }, opts);
+  order.index({ workspace_id: 1, status: 1, _id: -1 });
 
-// Columns added after the first release. CREATE TABLE IF NOT EXISTS does not
-// touch existing tables, so older databases get them here.
-const ADDED_COLUMNS = [
-  ['workspaces', 'delivery_inside_dhaka', 'INTEGER NOT NULL DEFAULT 70'],
-  ['workspaces', 'delivery_outside_dhaka', 'INTEGER NOT NULL DEFAULT 130'],
-  // Set when Meta rejects the stored token, so the owner knows to reconnect.
-  ['channels', 'needs_reconnect', 'INTEGER NOT NULL DEFAULT 0'],
-  ['channels', 'waba_id', 'TEXT'],
-  // Onboarding. Shops that existed before onboarding are treated as set up.
-  ['workspaces', 'phone', "TEXT NOT NULL DEFAULT ''"],
-  ['workspaces', 'category', "TEXT NOT NULL DEFAULT ''"],
-  ['workspaces', 'onboarding_step', "TEXT NOT NULL DEFAULT 'done'"],
-  // The Facebook Page an Instagram account is reached through (needed to read its history).
-  ['channels', 'page_id', 'TEXT'],
-  // Import of conversations that existed before the channel was connected.
-  ['channels', 'import_status', "TEXT NOT NULL DEFAULT ''"],
-  ['channels', 'import_count', 'INTEGER NOT NULL DEFAULT 0'],
-  ['channels', 'import_error', 'TEXT'],
-];
+  // Ties a Facebook login redirect back to the owner who started it.
+  const oauthState = new Schema({
+    _id: String, // the state value
+    workspace_id: { type: Number, required: true },
+    user_id: { type: Number, required: true },
+    redirect_uri: { type: String, required: true },
+    expires_at: { type: Date, required: true, expires: 0 },
+  }, opts);
 
-function addMissingColumns(db) {
-  for (const [table, column, definition] of ADDED_COLUMNS) {
-    const exists = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
-    if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
-  }
+  // Pages found after a Facebook login, waiting for the owner to pick which to
+  // connect. payload holds page tokens, so it is encrypted like channel tokens.
+  const pendingConnection = new Schema({
+    _id: String,
+    workspace_id: { type: Number, required: true },
+    payload: { type: String, required: true },
+    expires_at: { type: Date, required: true, expires: 0 },
+  }, opts);
+
+  const savedReply = new Schema({
+    _id: numericId,
+    workspace_id: { type: Number, required: true },
+    shortcut: { type: String, required: true },
+    text: { type: String, required: true },
+  }, opts);
+  savedReply.index({ workspace_id: 1, shortcut: 1 }, { unique: true });
+
+  return {
+    counters: conn.model('Counter', counter, 'counters'),
+    workspaces: conn.model('Workspace', workspace, 'workspaces'),
+    users: conn.model('User', user, 'users'),
+    sessions: conn.model('Session', session, 'sessions'),
+    channels: conn.model('Channel', channel, 'channels'),
+    contacts: conn.model('Contact', contact, 'contacts'),
+    conversations: conn.model('Conversation', conversation, 'conversations'),
+    messages: conn.model('Message', message, 'messages'),
+    orders: conn.model('Order', order, 'orders'),
+    oauthStates: conn.model('OAuthState', oauthState, 'oauth_states'),
+    pendingConnections: conn.model('PendingConnection', pendingConnection, 'pending_connections'),
+    savedReplies: conn.model('SavedReply', savedReply, 'saved_replies'),
+  };
 }
 
-export function openDb(path) {
-  if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
-  db.exec(SCHEMA);
-  addMissingColumns(db);
+// Turns a lean MongoDB document into the shape the API returns: `id` instead of `_id`.
+export function row(doc) {
+  if (!doc) return null;
+  const { _id, ...rest } = doc;
+  return { id: _id, ...rest };
+}
+
+export const rows = (docs) => docs.map(row);
+
+export const isDuplicateKey = (err) => err?.code === 11000;
+
+export const normalizeEmail = (email) => String(email ?? '').trim().toLowerCase();
+
+export async function openDb(uri, { dbName } = {}) {
+  const conn = await mongoose.createConnection(uri, { dbName }).asPromise();
+  const models = defineModels(conn);
+  // Unique indexes must exist before the first write: duplicate checks rely on them.
+  await Promise.all(Object.values(models).map((m) => m.init()));
+
+  async function nextId(collection) {
+    const { seq } = await models.counters.findOneAndUpdate(
+      { _id: collection }, { $inc: { seq: 1 } }, { upsert: true, new: true, lean: true });
+    return seq;
+  }
+
+  const db = {
+    ...models,
+    conn,
+    nextId,
+    // Inserts a document with the next numeric ID and returns it as a plain row.
+    async insert(model, fields) {
+      const doc = await model.create({ _id: await nextId(model.collection.collectionName), ...fields });
+      return row(doc.toObject());
+    },
+    // Finds a document by filter, creating it when missing. Safe when two
+    // requests race: the loser of the unique index reads the winner's document.
+    async findOrCreate(model, filter, fields = {}) {
+      const existing = await model.findOne(filter).lean();
+      if (existing) return { doc: row(existing), created: false };
+      try {
+        return { doc: await db.insert(model, { ...filter, ...fields }), created: true };
+      } catch (err) {
+        if (!isDuplicateKey(err)) throw err;
+        return { doc: row(await model.findOne(filter).lean()), created: false };
+      }
+    },
+    close: () => conn.close(),
+  };
   return db;
-}
-
-export function transaction(db, fn) {
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    const result = fn();
-    db.exec('COMMIT');
-    return result;
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
-}
-
-export function nowIso() {
-  return new Date().toISOString();
 }
