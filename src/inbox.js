@@ -43,6 +43,9 @@ async function hydrateConversations(db, docs) {
     channel_id: c.channel_id,
     platform: ch.get(c.channel_id)?.platform ?? null,
     channel_name: ch.get(c.channel_id)?.name ?? null,
+    ai_handoff: Boolean(c.ai_handoff),
+    ai_handoff_reason: c.ai_handoff_reason || '',
+    ai_draft: c.ai_draft ?? null,
   }));
 }
 
@@ -52,6 +55,9 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
     return doc ? (await hydrateConversations(db, [doc]))[0] : null;
   }
   const getMessage = async (id) => row(await db.messages.findById(id).lean());
+
+  // Called with (conversationId, messageId) after a live customer message is stored.
+  let onInbound = () => {};
 
   async function publish(conversationId, messageId) {
     const conversation = await getConversation(conversationId);
@@ -114,6 +120,36 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       if (isDuplicateKey(err)) return null;
       throw err;
     }
+  }
+
+  // Stores an outgoing message, sends it to Meta and records the outcome.
+  async function deliver(conversation, { text, tag, sender_user_id = null, sent_by_ai = false }) {
+    const channel = await db.channels.findById(conversation.channel_id).lean();
+    const contact = row(await db.contacts.findById(conversation.contact_id).lean());
+    const now = new Date();
+    const message = await db.insert(db.messages, {
+      conversation_id: conversation.id, direction: 'out', sender_user_id, sent_by_ai, text, status: 'pending', created_at: now,
+    });
+    await db.conversations.updateOne({ _id: conversation.id },
+      { $set: { last_message_at: now, last_message_preview: preview(text, []), unread_count: 0 } });
+    await publish(conversation.id, message.id);
+
+    try {
+      const { externalId } = await sendText({
+        channel: { ...row(channel), access_token: decryptSecret(channel.access_token, config.tokenKey) },
+        contact, text, tag,
+        graphVersion: config.meta.graphVersion, dryRun: config.dryRun, fetchImpl,
+      });
+      await db.messages.updateOne({ _id: message.id }, { $set: { status: 'sent', external_id: externalId } });
+    } catch (err) {
+      await db.messages.updateOne({ _id: message.id }, { $set: { status: 'failed', error: err.message } });
+      if (err.code === INVALID_TOKEN) {
+        await db.channels.updateOne({ _id: channel._id }, { $set: { needs_reconnect: true } });
+        emit(conversation.workspace_id, 'channels', null);
+      }
+    }
+    await publish(conversation.id, message.id);
+    return getMessage(message.id);
   }
 
   // How recent an unanswered customer message must be for an imported chat to
@@ -228,6 +264,11 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       }
 
       const published = await publish(conversation.id, message.id);
+      if (inbound) {
+        Promise.resolve()
+          .then(() => onInbound(conversation.id, message.id))
+          .catch((err) => console.error('AI agent failed', err));
+      }
       // Look the name up in the background so the webhook is answered quickly.
       const nameLookup = published.contact_name ? Promise.resolve(null) : lookupName(contact.id);
       return { conversation: published, message: await getMessage(message.id), nameLookup };
@@ -288,35 +329,32 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
       if (!window.ok) throw new InboxError(422, window.reason);
 
-      const channel = await db.channels.findById(conversation.channel_id).lean();
-      const contact = row(await db.contacts.findById(conversation.contact_id).lean());
-
       // Whoever answers an unassigned customer keeps them from now on.
       if (!conversation.assigned_user_id) await assignConversation(db, conversationId, user.id);
-      const now = new Date();
-      const message = await db.insert(db.messages, {
-        conversation_id: conversationId, direction: 'out', sender_user_id: user.id, text, status: 'pending', created_at: now,
+      // A person has stepped in, so the AI stops auto-replying here for a while
+      // and its draft (if any) is no longer needed.
+      await db.conversations.updateOne({ _id: conversationId }, {
+        $set: { ai_handoff: true, ai_handoff_reason: 'A team member replied', ai_handoff_at: new Date(), ai_draft: null },
       });
-      await db.conversations.updateOne({ _id: conversationId },
-        { $set: { last_message_at: now, last_message_preview: preview(text, []), unread_count: 0 } });
-      await publish(conversationId, message.id);
+      return deliver(conversation, { text, tag: window.tag, sender_user_id: user.id });
+    },
 
-      try {
-        const { externalId } = await sendText({
-          channel: { ...row(channel), access_token: decryptSecret(channel.access_token, config.tokenKey) },
-          contact, text, tag: window.tag,
-          graphVersion: config.meta.graphVersion, dryRun: config.dryRun, fetchImpl,
-        });
-        await db.messages.updateOne({ _id: message.id }, { $set: { status: 'sent', external_id: externalId } });
-      } catch (err) {
-        await db.messages.updateOne({ _id: message.id }, { $set: { status: 'failed', error: err.message } });
-        if (err.code === INVALID_TOKEN) {
-          await db.channels.updateOne({ _id: channel._id }, { $set: { needs_reconnect: true } });
-          emit(conversation.workspace_id, 'channels', null);
-        }
-      }
-      await publish(conversationId, message.id);
-      return getMessage(message.id);
+    // Sends a reply written by the AI agent. Returns null if Meta's messaging
+    // window has closed (the agent then hands the customer to a person).
+    async sendAiReply(conversationId, text) {
+      text = String(text ?? '').trim();
+      const conversation = await getConversation(conversationId);
+      if (!text || !conversation) return null;
+      const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
+      if (!window.ok) return null;
+      return deliver(conversation, { text, tag: window.tag, sent_by_ai: true });
+    },
+
+    // Pushes the latest state of a conversation to the dashboard.
+    refresh: (conversationId) => publish(conversationId),
+
+    setInboundHandler(fn) {
+      onInbound = fn;
     },
 
     async reassign(user, conversationId, assigneeId) {

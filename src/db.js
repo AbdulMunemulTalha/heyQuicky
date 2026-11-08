@@ -23,6 +23,10 @@ function defineModels(conn) {
     onboarding_step: { type: String, enum: ['business', 'channels', 'team', 'done'], default: 'done' },
     delivery_inside_dhaka: { type: Number, default: 70 },
     delivery_outside_dhaka: { type: Number, default: 130 },
+    // AI chat agent: off, suggest (drafts for moderators) or auto (replies itself).
+    ai_mode: { type: String, enum: ['off', 'suggest', 'auto'], default: 'suggest' },
+    // Policies, FAQs and anything else the owner wants the AI to know.
+    shop_notes: { type: String, default: '' },
     created_at: createdAt,
   }, opts);
 
@@ -91,6 +95,23 @@ function defineModels(conn) {
     last_message_at: { type: Date, default: null },
     last_message_preview: { type: String, default: '' },
     last_inbound_at: { type: Date, default: null },
+    // Set when the AI hands the customer to a person, or a person replies.
+    // In auto mode the AI stays quiet while this is set (it lapses after a while).
+    ai_handoff: { type: Boolean, default: false },
+    ai_handoff_reason: { type: String, default: '' },
+    ai_handoff_at: { type: Date, default: null },
+    // The AI's suggested reply to the latest customer message (suggest mode).
+    ai_draft: {
+      type: new Schema({
+        text: String,
+        intent: String,
+        handoff: Boolean,
+        handoff_reason: String,
+        for_message_id: Number,
+        created_at: Date,
+      }, { _id: false }),
+      default: null,
+    },
     created_at: createdAt,
   }, opts);
   conversation.index({ workspace_id: 1, status: 1, last_message_at: -1 });
@@ -101,6 +122,8 @@ function defineModels(conn) {
     conversation_id: { type: Number, required: true },
     direction: { type: String, enum: ['in', 'out'], required: true },
     sender_user_id: { type: Number, default: null },
+    // Written and sent by the AI chat agent rather than a person.
+    sent_by_ai: { type: Boolean, default: false },
     text: { type: String, default: '' },
     attachments: { type: [Schema.Types.Mixed], default: [] },
     external_id: { type: String, default: null },
@@ -154,6 +177,19 @@ function defineModels(conn) {
     expires_at: { type: Date, required: true, expires: 0 },
   }, opts);
 
+  // The shop's products, which the AI quotes prices and stock from. Prices in whole taka.
+  const product = new Schema({
+    _id: numericId,
+    workspace_id: { type: Number, required: true, index: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    // Free text, e.g. "S, M, L, XL / Red, Black".
+    variants: { type: String, default: '' },
+    description: { type: String, default: '' },
+    in_stock: { type: Boolean, default: true },
+    created_at: createdAt,
+  }, opts);
+
   const savedReply = new Schema({
     _id: numericId,
     workspace_id: { type: Number, required: true },
@@ -175,6 +211,7 @@ function defineModels(conn) {
     oauthStates: conn.model('OAuthState', oauthState, 'oauth_states'),
     pendingConnections: conn.model('PendingConnection', pendingConnection, 'pending_connections'),
     savedReplies: conn.model('SavedReply', savedReply, 'saved_replies'),
+    products: conn.model('Product', product, 'products'),
   };
 }
 

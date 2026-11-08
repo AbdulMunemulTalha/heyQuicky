@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { PLATFORM_LABEL } from '../format.js';
+import { AiSettings } from './AiSettings.jsx';
 import { FacebookButton, ImportStatus, Modal, WhatsAppButton, useConnect, useSocketEvent } from './common.jsx';
 
 // The owner's settings: team, connected channels, delivery charges and saved replies.
@@ -84,6 +85,8 @@ export function Settings({ open, onClose, me, setMe, team, reloadTeam, savedRepl
 
   return (
     <Modal open={open} onClose={onClose}>
+      <AiSettings me={me} setMe={setMe} open={open} />
+
       <h2>Team</h2>
       <table className="table">
         <tbody>

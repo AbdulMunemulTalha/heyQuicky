@@ -271,6 +271,38 @@ function Chat({ me, conversation: c, team, messages, orders, savedReplies, onNew
   const w = windowNotice(c);
   if (w) notices.push(w);
 
+  // Text the AI draft puts into the reply box; the nonce makes the same text insertable twice.
+  const [insert, setInsert] = useState(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const aiOn = me.ai.available && me.workspace.aiMode !== 'off';
+
+  async function suggest() {
+    setSuggesting(true);
+    try {
+      await api(`/conversations/${c.id}/ai/suggest`, { method: 'POST' });
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  async function aiAction(action) {
+    try {
+      await api(`/conversations/${c.id}/ai/${action}`, { method: 'POST' });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function sendDraft(text) {
+    try {
+      await api(`/conversations/${c.id}/messages`, { method: 'POST', body: { text } });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
   async function assign(e) {
     const userId = e.target.value ? Number(e.target.value) : null;
     try {
@@ -299,8 +331,19 @@ function Chat({ me, conversation: c, team, messages, orders, savedReplies, onNew
             ))}
           </select>
         )}
+        {canReply && aiOn && (
+          <button className="ghost" onClick={suggest} disabled={suggesting} title="Ask the AI to draft a reply to the latest message">
+            {suggesting ? 'Thinking…' : 'Suggest reply'}
+          </button>
+        )}
         {canReply && <button onClick={onNewOrder}>New order</button>}
       </header>
+      {c.ai_handoff && me.workspace.aiMode === 'auto' && (
+        <div className="ai-banner">
+          <span><strong>AI paused for this customer.</strong> {c.ai_handoff_reason}</span>
+          {canReply && <button className="ghost" onClick={() => aiAction('resume')}>Let AI answer again</button>}
+        </div>
+      )}
       {orders.length > 0 && (
         <div className="order-strip">
           <span className="muted">Orders:</span>
@@ -313,7 +356,21 @@ function Chat({ me, conversation: c, team, messages, orders, savedReplies, onNew
       )}
       <Messages messages={messages} team={team} />
       {notices.length > 0 && <p className="notice">{notices.join(' ')}</p>}
-      {canReply && <Composer conversationId={c.id} savedReplies={savedReplies} />}
+      {canReply && c.ai_draft?.text && (
+        <div className="ai-draft">
+          <div className="ai-draft-head">
+            <strong>AI suggestion</strong>
+            {c.ai_draft.handoff && <span className="warn small">Needs a person: {c.ai_draft.handoff_reason}</span>}
+          </div>
+          <p>{c.ai_draft.text}</p>
+          <div className="ai-draft-actions">
+            <button onClick={() => sendDraft(c.ai_draft.text)}>Send</button>
+            <button className="ghost" onClick={() => setInsert({ text: c.ai_draft.text, nonce: Date.now() })}>Edit</button>
+            <button className="ghost" onClick={() => aiAction('dismiss')}>Dismiss</button>
+          </div>
+        </div>
+      )}
+      {canReply && <Composer conversationId={c.id} savedReplies={savedReplies} insert={insert} />}
     </div>
   );
 }
@@ -335,7 +392,7 @@ function Messages({ messages, team }) {
       atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     }}>
       {messages.map((m) => {
-        const sender = m.direction === 'out' && m.sender_user_id ? names.get(m.sender_user_id) : null;
+        const sender = m.sent_by_ai ? 'AI' : m.direction === 'out' && m.sender_user_id ? names.get(m.sender_user_id) : null;
         const status = m.direction === 'out' ? ` · ${m.status}${m.error ? `: ${m.error}` : ''}` : '';
         return (
           <div key={m.id} className={`bubble ${m.direction} ${m.status === 'failed' ? 'failed' : ''}`}>
@@ -352,11 +409,17 @@ function Messages({ messages, team }) {
 }
 
 // The reply box. Typing "/" opens the saved replies picker.
-function Composer({ conversationId, savedReplies }) {
+function Composer({ conversationId, savedReplies, insert }) {
   const [text, setText] = useState('');
   const [pickIndex, setPickIndex] = useState(0);
   const [pickerClosed, setPickerClosed] = useState(false);
   const input = useRef(null);
+
+  useEffect(() => {
+    if (!insert) return;
+    setText(insert.text);
+    input.current.focus();
+  }, [insert]);
 
   const shortcut = /^\/(\S*)$/.exec(text);
   const matches = shortcut && !pickerClosed

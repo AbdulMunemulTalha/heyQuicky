@@ -9,6 +9,7 @@ Built on the MERN stack: **MongoDB** (Mongoose), **Express**, **React** (Vite) a
 - **Owner oversight.** The owner sees every conversation, can reply to any of them, and can move a customer to another moderator.
 - **Orders from the chat.** **New order** opens a form filled in from what's already known about the customer. It adds the delivery charge for inside or outside Dhaka, works out the cash-on-delivery amount, and can send the customer an order summary on the app they wrote from.
 - **Orders page.** A list of all orders, with search, status tracking (confirmed, shipped, delivered, cancelled, returned) and CSV export for courier bulk upload.
+- **AI chat agent (Bangla, Banglish, English).** Each shop picks a mode in **Settings → AI chat agent**: *Suggest replies* (the AI drafts a reply to each new customer message for a moderator to send, edit or dismiss) or *Auto-reply* (the AI answers by itself and hands orders, payments, complaints and anything it isn't sure about to a moderator). It answers only from the shop's product list, delivery charges, saved replies and "About your shop" notes.
 - **Saved replies.** Answers to common questions like price, delivery charge and bKash steps. A moderator types `/` and a shortcut (e.g. `/bkash`) in the reply box.
 - **Landing page and guided setup.** `/` is the public landing page and the inbox lives at `/app`. A new shop is walked through four steps: business details and delivery charges, connecting Facebook Page & Instagram and WhatsApp, adding moderators, then the inbox. The wizard resumes where the owner left off, including after the Facebook login redirect.
 
@@ -22,6 +23,25 @@ Built on the MERN stack: **MongoDB** (Mongoose), **Express**, **React** (Vite) a
 | Moderator replies to an unassigned customer | That moderator keeps the customer from then on. |
 | Owner replies | The message is sent, but the customer stays with their moderator. |
 | Owner removes a moderator | That moderator's open customers go back to the queue, and the moderator is signed out. |
+
+## AI chat agent
+
+| Situation | What happens |
+| --- | --- |
+| Customer writes, mode **Suggest** | After a short pause (customers often send several messages in a row), the AI drafts a reply to the latest message. The moderator clicks **Send**, **Edit** or **Dismiss**. **Suggest reply** in the chat header drafts one on demand. |
+| Customer writes, mode **Auto-reply** | The AI answers in the customer's language and script, on the app they wrote from. Replies are labelled **AI** in the chat. |
+| Order details, payment, complaint, refund, order status, a question the shop info doesn't cover, a photo, or "I want a person" | The AI tells the customer someone will reply shortly and hands the chat to its moderator, with a note saying why. |
+| A moderator replies | The AI stops auto-replying to that customer for 12 hours (drafts continue). **Let AI answer again** turns it back on sooner. |
+| Meta's reply window has closed | The AI doesn't send; it hands off and leaves its draft. |
+| More than 20 AI replies to one customer in a day | The AI hands off. |
+
+**Setup:** set `ANTHROPIC_API_KEY` on the server, then add products and "About your shop" notes in Settings. New shops start on *Suggest replies*. The model is Claude (`AI_MODEL`, default `claude-opus-5-5`, at low reasoning effort to keep replies quick and cheap); the agent talks to it through `src/ai/provider.js`, so another provider can be added without changing the agent. Customer messages are treated as untrusted: the agent is told to ignore instructions inside them.
+
+To see how the agent answers real Bangla, Banglish and English messages with your key (costs a few cents):
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... npm run ai:try
+```
 
 ## Orders
 
@@ -204,6 +224,10 @@ The manual form (ID plus access token) is still under **Connect manually (advanc
 | `PUBLIC_URL` | Your public https address, e.g. `https://inbox.example.com`. Used to build the login redirect. Set it when running behind a proxy or load balancer. |
 | `TOKEN_ENCRYPTION_KEY` | 32 random bytes as hex. Access tokens are stored encrypted with AES-256-GCM. Required in production; the server won't start without it. Create one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Keep it safe: if it's lost, every channel has to be connected again. |
 | `META_GRAPH_VERSION` | Graph API version. Defaults to `v23.0`. |
+| `ANTHROPIC_API_KEY` | Turns on the AI chat agent. Without it the AI is off. |
+| `AI_MODEL`, `AI_EFFORT` | Model and reasoning effort for AI replies. Default `claude-opus-5-5` and `low`. |
+| `AI_PROVIDER` | Which model provider the agent uses. Default `claude`. |
+| `AI_REPLY_DELAY_MS` | How long the AI waits for a customer to finish typing before answering. Default `4000`. |
 | `MONGODB_URI` | MongoDB connection string. Defaults to `mongodb://127.0.0.1:27017/quicky`. |
 | `SQLITE_IMPORT_PATH` | Optional. A SQLite database from before the move to MongoDB, copied in once on the first start with an empty MongoDB. |
 | `DRY_RUN` | `1` stores replies without sending them to Meta. |
@@ -231,6 +255,9 @@ src/                   Express API (Node.js)
   app.js               Express + Socket.IO wiring
   db.js                MongoDB models (Mongoose) and numeric ID counters
   migrateSqlite.js     one-time copy of a pre-MongoDB SQLite database
+  ai/agent.js          AI chat agent: when to draft, reply or hand off
+  ai/prompt.js         what the AI is told (shop facts, language, handoff rules) and its answer schema
+  ai/provider.js       model provider interface; ai/providers/claude.js is the Claude implementation
   auth.js              password hashing, sessions
   assignment.js        moderator routing
   inbox.js             storing messages, replies, permissions

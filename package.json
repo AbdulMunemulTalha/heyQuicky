@@ -15,9 +15,11 @@
     "build": "vite build --config client/vite.config.js",
     "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
     "migrate:sqlite": "node --disable-warning=ExperimentalWarning scripts/migrate-from-sqlite.js",
-    "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\""
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\"",
+    "ai:try": "node scripts/ai-try.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "express": "^5.2.1",
     "mongoose": "^8.24.8",
     "socket.io": "^4.8.1"

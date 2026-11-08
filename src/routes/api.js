@@ -32,7 +32,39 @@ const publicWorkspace = (w) => ({
   onboardingStep: w.onboarding_step,
   deliveryInsideDhaka: w.delivery_inside_dhaka,
   deliveryOutsideDhaka: w.delivery_outside_dhaka,
+  aiMode: w.ai_mode ?? 'suggest',
+  shopNotes: w.shop_notes ?? '',
 });
+
+const publicProduct = (p) => ({
+  id: p._id ?? p.id, name: p.name, price: p.price, variants: p.variants ?? '', description: p.description ?? '', inStock: p.in_stock !== false,
+});
+
+const AI_MODES = ['off', 'suggest', 'auto'];
+
+// Validates product form input; `partial` allows updating only some fields.
+function productFields(body, { partial = false } = {}) {
+  const out = {};
+  const has = (k) => body?.[k] !== undefined;
+  if (!partial || has('name')) {
+    const name = String(body?.name ?? '').trim();
+    if (!name || name.length > 120) throw new InboxError(400, 'Product name is required');
+    out.name = name;
+  }
+  if (!partial || has('price')) {
+    const price = Number(body?.price);
+    if (!Number.isInteger(price) || price < 0) throw new InboxError(400, 'Price must be a whole number of taka');
+    out.price = price;
+  }
+  for (const [key, field, max] of [['variants', 'variants', 300], ['description', 'description', 1000]]) {
+    if (!has(key)) continue;
+    const value = String(body[key]).trim();
+    if (value.length > max) throw new InboxError(400, `${key} is too long`);
+    out[field] = value;
+  }
+  if (has('inStock')) out.in_stock = Boolean(body.inStock);
+  return out;
+}
 
 const publicReply = (r) => ({ id: r._id, shortcut: r.shortcut, text: r.text });
 
@@ -49,7 +81,7 @@ function id(req) {
   return n;
 }
 
-export function apiRoutes(db, config, inbox, orders, importer) {
+export function apiRoutes(db, config, inbox, orders, importer, agent) {
   const router = Router();
   const auth = requireAuth(db);
   const getWorkspace = async (wsId) => row(await db.workspaces.findById(wsId).lean());
@@ -100,6 +132,7 @@ export function apiRoutes(db, config, inbox, orders, importer) {
       user: publicUser(req.user),
       workspace: publicWorkspace(await getWorkspace(req.user.workspace_id)),
       devTools: !config.isProduction,
+      ai: agent ? { available: agent.status().available, model: agent.status().model } : { available: false, model: null },
       connect: {
         facebook: Boolean(config.meta.appId && config.meta.appSecret),
         whatsapp: Boolean(config.meta.appId && config.meta.appSecret && config.meta.whatsappConfigId),
@@ -167,6 +200,15 @@ export function apiRoutes(db, config, inbox, orders, importer) {
       if (!CATEGORIES.includes(body.category)) throw new InboxError(400, 'Choose what you sell');
       updates.category = body.category;
     }
+    if (body.aiMode !== undefined) {
+      if (!AI_MODES.includes(body.aiMode)) throw new InboxError(400, 'Unknown AI mode');
+      updates.ai_mode = body.aiMode;
+    }
+    if (body.shopNotes !== undefined) {
+      const notes = String(body.shopNotes);
+      if (notes.length > 5000) throw new InboxError(400, 'Shop notes are too long (5,000 characters at most)');
+      updates.shop_notes = notes;
+    }
     if (body.onboardingStep !== undefined) {
       if (!ONBOARDING_STEPS.includes(body.onboardingStep)) throw new InboxError(400, 'Unknown onboarding step');
       updates.onboarding_step = body.onboardingStep;
@@ -200,6 +242,48 @@ export function apiRoutes(db, config, inbox, orders, importer) {
 
   router.patch('/orders/:id', auth, async (req, res) => {
     res.json(await orders.update(req.user, id(req), { status: req.body?.status, note: req.body?.note }));
+  });
+
+  // ---- AI chat agent ----
+
+  router.get('/ai/status', auth, requireOwner, (req, res) => {
+    res.json(agent?.status() ?? { available: false });
+  });
+
+  router.post('/conversations/:id/ai/suggest', auth, async (req, res) => {
+    res.json(await agent.suggest(req.user, id(req)));
+  });
+
+  router.post('/conversations/:id/ai/dismiss', auth, async (req, res) => {
+    res.json(await agent.dismissDraft(req.user, id(req)));
+  });
+
+  router.post('/conversations/:id/ai/resume', auth, async (req, res) => {
+    res.json(await agent.resume(req.user, id(req)));
+  });
+
+  // ---- Products (what the AI quotes prices and stock from) ----
+
+  router.get('/products', auth, async (req, res) => {
+    const products = await db.products.find({ workspace_id: req.user.workspace_id }).sort({ name: 1 }).lean();
+    res.json(products.map(publicProduct));
+  });
+
+  router.post('/products', auth, requireOwner, async (req, res) => {
+    const product = await db.insert(db.products, { workspace_id: req.user.workspace_id, ...productFields(req.body) });
+    res.status(201).json(publicProduct(product));
+  });
+
+  router.patch('/products/:id', auth, requireOwner, async (req, res) => {
+    const product = await db.products.findOneAndUpdate({ _id: id(req), workspace_id: req.user.workspace_id },
+      { $set: productFields(req.body, { partial: true }) }, { new: true, lean: true });
+    if (!product) throw new InboxError(404, 'Product not found');
+    res.json(publicProduct(product));
+  });
+
+  router.delete('/products/:id', auth, requireOwner, async (req, res) => {
+    await db.products.deleteOne({ _id: id(req), workspace_id: req.user.workspace_id });
+    res.sendStatus(204);
   });
 
   router.get('/saved-replies', auth, async (req, res) => {

@@ -8,6 +8,8 @@ import { userForToken } from './auth.js';
 import { createInbox } from './inbox.js';
 import { createOrders } from './orders.js';
 import { createImporter } from './importer.js';
+import { createAiProvider } from './ai/provider.js';
+import { createAgent } from './ai/agent.js';
 import { apiRoutes } from './routes/api.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { connectRoutes } from './routes/connect.js';
@@ -17,7 +19,8 @@ const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 // The React dashboard, built by `npm run build`.
 const CLIENT_DIR = fileURLToPath(new URL('../client/dist', import.meta.url));
 
-export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR } = {}) {
+// aiProvider: optional stand-in for the model provider (tests); by default it comes from config.
+export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiProvider } = {}) {
   const app = express();
   const server = createServer(app);
   const io = new Server(server);
@@ -26,6 +29,9 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR } = {}
   const inbox = createInbox(db, config, { emit, fetchImpl });
   const orders = createOrders(db, inbox, { emit });
   const importer = createImporter(db, config, inbox, { fetchImpl, emit });
+  const provider = aiProvider === undefined ? createAiProvider(config.ai) : aiProvider;
+  const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs });
+  inbox.setInboundHandler(agent.onInbound);
 
   io.use(async (socket, next) => {
     try {
@@ -45,7 +51,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR } = {}
   app.use(webhookRoutes(config, inbox, { db, emit }));
   app.use(connectRoutes(db, config, { fetchImpl, emit, importer }));
   app.use(legalRoutes(config));
-  app.use('/api', apiRoutes(db, config, inbox, orders, importer));
+  app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent));
   // The dashboard is a single page; its assets live under /app/assets.
   app.use('/app', express.static(clientDir, { index: false }));
   app.get(['/app', '/app/'], (_req, res) => {
@@ -57,5 +63,5 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR } = {}
   app.get('/bn', (_req, res) => res.sendFile('bn.html', { root: PUBLIC_DIR }));
   app.use(express.static(PUBLIC_DIR));
 
-  return { app, server, io, inbox, orders, importer };
+  return { app, server, io, inbox, orders, importer, agent };
 }

@@ -238,3 +238,18 @@ button:disabled { opacity: .6; cursor: progress; }
   .channel-cards, .onb-two { grid-template-columns: 1fr; }
   .onb-card { padding: 18px; }
 }
+
+/* ---- AI chat agent ---- */
+.ai-modes { display: grid; gap: 8px; margin: 8px 0 4px; }
+.ai-mode { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.ai-mode.selected { border-color: var(--accent); background: rgba(79, 140, 255, 0.08); }
+.ai-mode input { margin-top: 3px; }
+.ai-mode > span { display: grid; gap: 2px; }
+.ai-subhead { margin: 18px 0 4px; font-size: 15px; }
+.ai-notes { display: grid; gap: 8px; }
+.ai-notes textarea { width: 100%; box-sizing: border-box; }
+.ai-draft { margin: 0 16px 8px; padding: 10px 12px; border: 1px dashed var(--accent); border-radius: 10px; background: rgba(79, 140, 255, 0.06); }
+.ai-draft p { margin: 6px 0 8px; white-space: pre-wrap; }
+.ai-draft-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.ai-draft-actions { display: flex; gap: 8px; }
+.ai-banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin: 0; padding: 8px 16px; background: rgba(178, 106, 0, 0.12); border-bottom: 1px solid rgba(178, 106, 0, 0.35); font-size: 13px; }

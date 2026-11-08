@@ -25,6 +25,16 @@ export function loadConfig(env = process.env) {
       supportEmail: env.SUPPORT_EMAIL || 'info@heyquicky.com',
       updated: env.LEGAL_UPDATED || '2 October 2026',
     },
+    // AI chat agent. Off unless an API key is set for the chosen provider.
+    ai: {
+      provider: env.AI_PROVIDER || 'claude',
+      apiKey: cleanSecret(env.ANTHROPIC_API_KEY),
+      model: env.AI_MODEL || 'claude-opus-5-5',
+      // Reasoning effort for chat replies: low keeps them quick and inexpensive.
+      effort: env.AI_EFFORT || 'low',
+      // How long to wait for a customer to finish typing before answering.
+      replyDelayMs: Number(env.AI_REPLY_DELAY_MS ?? 4000),
+    },
     meta: {
       appId: env.META_APP_ID || '',
       appSecret: cleanSecret(env.META_APP_SECRET),
