@@ -18,7 +18,7 @@ services:
         set -e;
         rm -rf /srv/quicky && mkdir -p /srv/quicky && cd /srv/quicky;
         wget -qO- "https://codeload.github.com/AbdulMunemulTalha/heyQuicky/tar.gz/refs/heads/$${QUICKY_BRANCH}" | tar xz --strip-components=1;
-        npm ci --no-audit --no-fund;
+        npm ci --include=dev --no-audit --no-fund;
         npm run build;
         npm prune --omit=dev --no-audit --no-fund;
         exec node --disable-warning=ExperimentalWarning src/server.js
