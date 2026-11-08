@@ -67,7 +67,7 @@ You need any Linux server with Docker installed.
 2. Run:
 
 ```bash
-git clone https://github.com/AbdulMunemulTalha/omnitext.git && cd omnitext
+git clone https://github.com/AbdulMunemulTalha/heyQuicky.git && cd heyQuicky
 cp .env.example .env && nano .env      # fill in the secrets
 docker compose up -d --build
 ```
