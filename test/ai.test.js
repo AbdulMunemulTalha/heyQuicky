@@ -161,7 +161,8 @@ test('when a person replies, the AI stops auto-replying to that customer', async
 
 test('several quick messages get one reply that reads all of them', async () => {
   const s = await shop({ mode: 'auto' });
-  const slow = createAgent(s.db, s.inbox, s.provider, { replyDelayMs: 30, log: { warn() {} } });
+  // The pause must outlast storing a message even on a busy machine, or the first reply starts early (and goes stale).
+  const slow = createAgent(s.db, s.inbox, s.provider, { replyDelayMs: 400, log: { warn() {} } });
   const results = [];
   s.inbox.setInboundHandler((c, m) => { const p = slow.onInbound(c, m); results.push(p); return p; });
   await s.inbox.ingestMessage(inbound({ text: 'assalamu alaikum' }));

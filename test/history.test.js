@@ -58,6 +58,17 @@ test('parses WhatsApp Business app history, contacts and echoes', async () => {
   assert.deepEqual(contacts, [{ platform: 'whatsapp', channelExternalId: 'WA1', contactExternalId: '8801711111111', name: 'Sumi Apu' }]);
 });
 
+// Waits (up to 5 s) for background webhook processing to set the WhatsApp channel's import status.
+async function waitForImportStatus(db, expected) {
+  let status;
+  for (const started = Date.now(); Date.now() - started < 5000;) {
+    status = (await db.channels.findOne({ platform: 'whatsapp' }, { import_status: 1 }).lean()).import_status;
+    if (status === expected) return;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  assert.equal(status, expected, 'import status after waiting 5 s');
+}
+
 async function conversationsWithContacts(db) {
   const convs = await db.conversations.find().lean();
   const contacts = new Map((await db.contacts.find().lean()).map((c) => [c._id, c]));
@@ -189,14 +200,13 @@ test('WhatsApp history and contact webhooks fill the inbox', async () => {
     assert.equal((await post(wrap('history', { history: [{ metadata: { progress: 100 }, threads: [{ id: '8801711111111', messages: [
       { from: '8801711111111', id: 'wamid.h1', timestamp: String(Math.floor(Date.now() / 1000) - 3600), type: 'text', text: { body: 'order dibo' } },
     ] }] }] }))).status, 200);
-    await new Promise((r) => setTimeout(r, 50));
+    // The webhook answers Meta first and stores history afterwards; import_status is set once a chunk is stored.
+    await waitForImportStatus(ctx.db, 'done');
     const row = (await conversationsWithContacts(ctx.db)).find((c) => c.external_id === '8801711111111');
     assert.deepEqual({ name: row.name, status: row.status }, { name: 'Sumi Apu', status: 'open' });
-    assert.equal((await ctx.db.channels.findOne({ platform: 'whatsapp' }).lean()).import_status, 'done');
 
     await post(wrap('history', { history: [{ errors: [{ message: 'History sync is turned off by the business' }] }] }));
-    await new Promise((r) => setTimeout(r, 50));
-    assert.equal((await ctx.db.channels.findOne({ platform: 'whatsapp' }).lean()).import_status, 'declined');
+    await waitForImportStatus(ctx.db, 'declined');
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
