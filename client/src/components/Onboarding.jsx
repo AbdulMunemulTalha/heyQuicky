@@ -48,7 +48,7 @@ export function Onboarding({ me, setWorkspace, onFinish, onSignOut }) {
   return (
     <section className="onboarding">
       <header className="onb-header">
-        <strong>Quicky</strong>
+        <a href="/" className="brand-link brand">heyquicky</a>
         <span className="spacer" />
         <button type="button" className="ghost" onClick={onSignOut}>Sign out</button>
       </header>

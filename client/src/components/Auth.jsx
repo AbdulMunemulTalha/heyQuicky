@@ -34,7 +34,7 @@ export function Auth({ onSignedIn }) {
   return (
     <section className="auth">
       <form className="card" onSubmit={submit}>
-        <h1><a href="/" className="brand-link">Quicky</a></h1>
+        <h1><a href="/" className="brand-link brand">heyquicky</a></h1>
         <p className="muted">Messenger, Instagram and WhatsApp orders in one inbox.</p>
         {signup && (
           <div>

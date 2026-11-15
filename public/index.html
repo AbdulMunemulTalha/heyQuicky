@@ -1,124 +1,587 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quicky · One inbox for Facebook, Instagram and WhatsApp orders</title>
-  <meta name="description" content="Answer Messenger, Instagram and WhatsApp customers from one inbox. Every customer stays with one moderator, and orders are taken right in the chat.">
-  <link rel="alternate" hreflang="en" href="/">
-  <link rel="alternate" hreflang="bn" href="/bn">
-  <link rel="stylesheet" href="/landing.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HeyQuicky — AI sales inbox for online shops</title>
+<meta name="description" content="Every DM answered. Every order captured. Quicky puts Messenger, Instagram, WhatsApp and comments in one inbox with an AI teammate that replies in Bangla, takes COD orders and books the courier.">
+<link rel="alternate" hreflang="en" href="/">
+<link rel="alternate" hreflang="bn" href="/bn">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232B4BFF'/%3E%3Cpath d='M17.5 5 8 18h7.5l-1 9L24 14h-7.5z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=Hind+Siliguri:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F6F3}
+a{color:#2B4BFF}a:hover{color:#1A33C9}
+.bn{font-family:'Hind Siliguri','Inter',sans-serif}
+input[type=range]{accent-color:#2B4BFF;width:100%}
+@media (max-width:720px){.hide-sm{display:none !important}.h1{font-size:40px !important}.h2{font-size:30px !important}}
+</style>
+<style>html{scroll-behavior:smooth}summary::-webkit-details-marker{display:none}</style>
 </head>
 <body>
-  <header class="nav">
-    <a class="logo" href="/">Quicky</a>
-    <nav>
-      <a href="#features">Features</a>
-      <a href="#how">How it works</a>
-      <a href="#faq">FAQ</a>
-    </nav>
-    <span class="spacer"></span>
-    <a class="lang" href="/bn" lang="bn" hreflang="bn">বাংলা</a>
-    <a class="btn ghost" href="/app">Log in</a>
-    <a class="btn" href="/app?signup=1">Get started</a>
-  </header>
+<div style="font-family: Inter, system-ui, sans-serif; color: #101217; background: #F6F6F3; width: 100%; overflow-x: hidden">
 
-  <main>
-    <section class="hero">
-      <div class="hero-text">
-        <p class="eyebrow">For Facebook, Instagram &amp; WhatsApp sellers</p>
-        <h1>Every customer message. One inbox. One moderator per customer.</h1>
-        <p class="lead">Stop juggling Messenger, Instagram and WhatsApp on different phones. Quicky brings every order message
-          into one place, gives each new customer to one moderator, and keeps them together, so no customer is answered twice
-          or forgotten.</p>
-        <div class="cta">
-          <a class="btn big" href="/app?signup=1">Create your shop's inbox</a>
-          <a class="btn big ghost" href="#how">See how it works</a>
-        </div>
-        <p class="small muted">Set up in about 5 minutes. No app to install.</p>
-      </div>
+<!-- NAV -->
+<header style="position: sticky; top: 0; z-index: 20; background: rgba(246,246,243,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+<a href="/" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: #101217">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2B4BFF; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"></path></svg>
+</span>
+<span style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em">heyquicky</span>
+</a>
+<nav class="hide-sm" style="display: flex; gap: 28px; font-size: 15px; font-weight: 500">
+<a href="#how" style="color: #3A3F49; text-decoration: none">How it works</a>
+<a href="#features" style="color: #3A3F49; text-decoration: none">Features</a>
+<a href="#pricing" style="color: #3A3F49; text-decoration: none">Pricing</a>
+<a href="#faq" style="color: #3A3F49; text-decoration: none">FAQ</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 10px">
+<a href="/bn" lang="bn" hreflang="bn" aria-label="বাংলায় দেখুন" style="height: 40px; display: flex; align-items: center; padding: 0 12px; border-radius: 10px; border: 1px solid #D9D9D2; background: #FFFFFF; font: 600 13px 'Hind Siliguri', Inter, sans-serif; color: #101217; text-decoration: none">বাংলা</a>
+<a href="/app" class="hide-sm" style="height: 44px; display: flex; align-items: center; padding: 0 14px; font-weight: 600; font-size: 15px; color: #101217; text-decoration: none">Log in</a>
+<a href="/app?signup=1" style="height: 44px; display: flex; align-items: center; padding: 0 18px; border-radius: 12px; background: #101217; color: #FFFFFF; font-weight: 600; font-size: 15px; text-decoration: none">Start free</a>
+</div>
+</div>
+</header>
 
-      <div class="mock" aria-hidden="true">
-        <div class="mock-bar"><span></span><span></span><span></span></div>
-        <div class="mock-body">
-          <ul class="mock-list">
-            <li class="active"><i class="b fb">Messenger</i><b>Rahim Uddin</b><em>Ei dress ta koto taka?</em><small>Nadia</small></li>
-            <li><i class="b ig">Instagram</i><b>@tania.shop</b><em>Size L ache?</em><small>Karim</small></li>
-            <li><i class="b wa">WhatsApp</i><b>+880 1712-345678</b><em>Order dite chai</em><small>Nadia</small></li>
-            <li><i class="b fb">Messenger</i><b>Sumaiya Akter</b><em>Delivery charge koto?</em><small>Karim</small></li>
-          </ul>
-          <div class="mock-chat">
-            <p class="in">Ei dress ta koto taka?</p>
-            <p class="out">Assalamu alaikum! Dam 1,200 taka. Size M ar L available.</p>
-            <p class="in">M size ta nibo. Mirpur 10 e delivery hobe?</p>
-            <p class="out order">Order #128 confirmed ✅<br>Cash on delivery: ৳1,270</p>
-          </div>
-        </div>
-      </div>
-    </section>
+<!-- HERO -->
+<section id="top" style="max-width: 1200px; margin: 0 auto; padding: 72px 24px 56px; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
+<div style="flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+<span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E4E4DE; font-size: 13px; font-weight: 600; color: #3A3F49">
+<span style="width: 8px; height: 8px; border-radius: 99px; background: #18A957"></span>AI sales inbox for online shops in Bangladesh</span>
+<h1 class="h1" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 64px; line-height: 1.02; letter-spacing: -0.035em; font-weight: 700">Every DM answered. Every order captured. <span style="background: #FFD233; padding: 0 8px; border-radius: 8px">Even at 3 AM.</span></h1>
+<p style="margin: 0; font-size: 19px; line-height: 1.55; color: #4A4F5A; max-width: 560px">Quicky puts Messenger, Instagram, WhatsApp and your post comments in one inbox — with an AI teammate that replies in Bangla, shows the right product, takes the COD order and books the courier. Your team steps in only when it matters.</p>
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+<a href="/app?signup=1" style="height: 54px; display: flex; align-items: center; gap: 10px; padding: 0 26px; border-radius: 14px; background: #2B4BFF; color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none">Start free
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+<a href="#how" style="height: 54px; display: flex; align-items: center; gap: 10px; padding: 0 22px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D9D9D2; color: #101217; font-weight: 600; font-size: 17px; text-decoration: none">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m10 8 6 4-6 4V8z"></path></svg>Watch it take an order</a>
+</div>
+<div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: #4A4F5A; font-weight: 500">
+<span style="display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18A957" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>No card needed</span>
+<span style="display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18A957" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Live in about 10 minutes</span>
+<span style="display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18A957" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Unlimited teammates</span>
+</div>
+</div>
 
-    <section class="problem">
-      <h2>Sound familiar?</h2>
-      <div class="grid3">
-        <div><strong>Three apps, three phones</strong><p>Orders come on Messenger, Instagram and WhatsApp, and someone has to check all of them all day.</p></div>
-        <div><strong>Two moderators, one customer</strong><p>A customer replies 30 minutes later and a different moderator answers, without knowing what was promised.</p></div>
-        <div><strong>Orders lost in chat</strong><p>Names, phone numbers and addresses are buried in old messages when it's time to send the parcel.</p></div>
-      </div>
-    </section>
+<!-- hero phone -->
+<div style="flex: 1 1 400px; min-width: 0; display: flex; justify-content: center; position: relative; padding: 24px 0">
+<div style="width: 340px; border-radius: 44px; background: #101217; padding: 10px; box-shadow: 0 30px 80px rgba(16,18,23,0.22)">
+<div style="border-radius: 36px; background: #FFFFFF; overflow: hidden; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 10px; padding: 18px 16px 12px; border-bottom: 1px solid #EEEEEA">
+<span style="width: 36px; height: 36px; border-radius: 99px; background: #F1D9C9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #7A3E1B">NT</span>
+<div style="display: flex; flex-direction: column"><span style="font-weight: 600; font-size: 14px">Nokshi Threads</span><span style="font-size: 12px; color: #5B606B">Replies instantly</span></div>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 8px; background: #FFFFFF">
+<div style="align-self: flex-end; width: 150px; height: 96px; border-radius: 16px; background: #E9E6F2; display: flex; align-items: flex-end; padding: 8px; box-sizing: border-box; font-size: 11px; color: #4A4F5A; font-weight: 600">Screenshot from Live</div>
+<div class="bn" style="align-self: flex-end; max-width: 78%; background: #2B4BFF; color: #FFFFFF; padding: 8px 12px; border-radius: 18px 18px 4px 18px; font-size: 14px">এটা আছে? দাম কত?</div>
+<div class="bn" style="align-self: flex-start; max-width: 84%; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px; line-height: 1.45">জি আপু, আছে! এটা আমাদের Nokshi Cotton Three-Piece।</div>
+<div style="align-self: flex-start; width: 210px; border: 1px solid #E4E4DE; border-radius: 16px; overflow: hidden">
+<div style="height: 92px; background: #EADFD3"></div>
+<div style="padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600; font-size: 13px">Nokshi Cotton Three-Piece</span><span style="font-size: 13px; color: #3A3F49">৳2,150 · <span style="text-decoration: line-through; color: #8A8F99">৳2,550</span></span></div>
+<div class="bn" style="border-top: 1px solid #E4E4DE; padding: 9px; text-align: center; font-size: 13px; font-weight: 600; color: #2B4BFF">এটি নিতে চাই</div>
+</div>
+<div style="display: flex; gap: 6px; align-self: flex-start">
+<span style="padding: 6px 12px; border-radius: 99px; border: 1px solid #2B4BFF; color: #2B4BFF; font-size: 12px; font-weight: 600">M</span>
+<span style="padding: 6px 12px; border-radius: 99px; background: #2B4BFF; color: #FFFFFF; font-size: 12px; font-weight: 600">L</span>
+<span style="padding: 6px 12px; border-radius: 99px; border: 1px solid #2B4BFF; color: #2B4BFF; font-size: 12px; font-weight: 600">XL</span>
+</div>
+<div class="bn" style="align-self: flex-start; max-width: 88%; background: #F0F0EC; padding: 10px 12px; border-radius: 18px 18px 18px 4px; font-size: 13px; line-height: 1.55">অর্ডার #1042<br>থ্রি-পিস (L) ৳২,১৫০<br>ডেলিভারি (ঢাকার ভিতরে) ৳৭০<br><b>মোট ৳২,২২০ · ক্যাশ অন ডেলিভারি</b><br>কনফার্ম করবো আপু?</div>
+</div>
+</div>
+</div>
+<div class="hide-sm" style="position: absolute; left: -8px; top: 80px; background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 10px 14px; box-shadow: 0 12px 30px rgba(16,18,23,0.10); display: flex; align-items: center; gap: 10px">
+<span style="width: 30px; height: 30px; border-radius: 9px; background: #E3F6EC; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#11864A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 600">New order #1042</span><span style="font-size: 12px; color: #5B606B">৳2,220 · COD · taken by AI</span></div>
+</div>
+<div class="hide-sm" style="position: absolute; right: -4px; bottom: 90px; background: #101217; color: #FFFFFF; border-radius: 14px; padding: 10px 14px; box-shadow: 0 12px 30px rgba(16,18,23,0.18); display: flex; align-items: center; gap: 10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD233" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"></path><circle cx="7" cy="18" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>
+<div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 600">Parcel booked</span><span style="font-size: 12px; color: #A2A7B1">Steadfast · tracking sent</span></div>
+</div>
+</div>
+</section>
 
-    <section id="features" class="features">
-      <h2>Everything your team needs to sell from chat</h2>
-      <div class="grid3">
-        <div class="feature"><span class="icon">💬</span><h3>One inbox for every app</h3>
-          <p>Messenger, Instagram and WhatsApp messages land in one list. Replies go back on the app the customer used.</p></div>
-        <div class="feature"><span class="icon">🧑‍💼</span><h3>One moderator per customer</h3>
-          <p>New customers are shared out between on-duty moderators. When they write again, they go to the same moderator, every time.</p></div>
-        <div class="feature"><span class="icon">🧾</span><h3>Orders in the chat</h3>
-          <p>Take an order without leaving the conversation: delivery charge and cash-on-delivery worked out, summary sent to the customer.</p></div>
-        <div class="feature"><span class="icon">⚡</span><h3>Saved replies</h3>
-          <p>Price, delivery charge and bKash steps in one keystroke: type <code>/</code> and pick a reply, in Bangla or English.</p></div>
-        <div class="feature"><span class="icon">📦</span><h3>Ready for the courier</h3>
-          <p>Track every order from confirmed to delivered, and export the day's orders as a spreadsheet for bulk upload.</p></div>
-        <div class="feature"><span class="icon">👀</span><h3>Owner sees everything</h3>
-          <p>See every conversation, step in when needed, and move a customer to another moderator in one click.</p></div>
-      </div>
-    </section>
+<!-- CHANNEL STRIP -->
+<section style="border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE; background: #FFFFFF">
+<div style="max-width: 1200px; margin: 0 auto; padding: 22px 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; justify-content: center">
+<span style="font-size: 13px; font-weight: 600; color: #5B606B; text-transform: uppercase; letter-spacing: 0.08em">Works with</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Messenger</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Instagram</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">WhatsApp</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Facebook comments</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Website chat</span>
+<span style="width: 1px; height: 20px; background: #D9D9D2"></span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Steadfast</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Pathao</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">bKash</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Nagad</span>
+</div>
+</section>
 
-    <section id="how" class="how">
-      <h2>Up and running in three steps</h2>
-      <ol class="steps">
-        <li><span>1</span><h3>Create your shop</h3><p>Tell us your business name and delivery charges.</p></li>
-        <li><span>2</span><h3>Connect your pages</h3><p>Log in with Facebook to connect your Page and Instagram, and connect your WhatsApp Business number.</p></li>
-        <li><span>3</span><h3>Add your moderators</h3><p>Give each moderator a login. They switch On duty and customers start coming in.</p></li>
-      </ol>
-      <a class="btn big" href="/app?signup=1">Get started</a>
-    </section>
+<!-- PAIN -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">Sound familiar?</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">Running an F-commerce shop shouldn't mean living inside your inbox.</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700">1:12 AM</span>
+<span style="font-weight: 600; font-size: 17px">A buyer was ready to order.</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">You saw the message at 9. By then she'd bought from the page that replied first.</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span class="bn" style="font-size: 30px; font-weight: 600">"দাম কত?"</span>
+<span style="font-weight: 600; font-size: 17px">The same question, all day.</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">Price, delivery charge, sizes — typed again and again while real buyers wait in line.</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700">4 apps</span>
+<span style="font-weight: 600; font-size: 17px">Orders scattered everywhere.</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">Messenger, Instagram, WhatsApp, a notebook. Addresses in screenshots, parcels typed into the courier site one by one.</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700">Returned</span>
+<span style="font-weight: 600; font-size: 17px">The COD parcel came back.</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">Another fake order, another courier fee — and no way to know before you shipped.</span>
+</div>
+</div>
+</section>
 
-    <section id="faq" class="faq">
-      <h2>Questions</h2>
-      <details><summary>Do my customers need to install anything?</summary>
-        <p>No. Customers keep messaging your Page, Instagram or WhatsApp as they do today. Your replies from Quicky arrive in the same chat.</p></details>
-      <details><summary>Can I still use the Facebook Page app on my phone?</summary>
-        <p>Yes. Replies you send from Meta Business Suite also show up in Quicky, so the conversation history stays complete.</p></details>
-      <details><summary>What happens if a moderator is off duty?</summary>
-        <p>Their customers stay with them, and you can move any customer to someone else. New customers go only to moderators who are on duty; if nobody is, they wait in "Unassigned" until someone starts.</p></details>
-      <details><summary>Is my data safe?</summary>
-        <p>Connections are encrypted, Facebook and WhatsApp access is stored encrypted, and moderators only see their own customers. Read the <a href="/privacy">privacy policy</a>.</p></details>
-    </section>
+<!-- HOW IT WORKS: INTERACTIVE -->
+<section id="how" style="max-width: 1200px; margin: 0 auto; padding: 80px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">How an order happens</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">From "is this available?" to "delivered" — without you typing a word.</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">Tap each step to see what the customer sees.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: stretch">
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<button type="button" class="step" data-step="0" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">1</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">Customer asks — any way they like</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">A screenshot from your Live, a voice note, or "eta ache?" in Banglish.</span></span></button><button type="button" class="step" data-step="1" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">2</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">Quicky finds the product</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">Matches the photo to your catalog and sends product cards with real prices.</span></span></button><button type="button" class="step" data-step="2" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">3</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">Size, stock and a smart add-on</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">Options become buttons; stock is live; a matching item is suggested.</span></span></button><button type="button" class="step" data-step="3" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">4</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">The order is captured</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">Name, phone, address, coupon, delivery charge and COD total — confirmed in chat.</span></span></button><button type="button" class="step" data-step="4" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">5</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">Checked and shipped</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">Delivery record checked, then Steadfast or Pathao booked automatically.</span></span></button><button type="button" class="step" data-step="5" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">6</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">Updates until delivered</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">Tracking messages, "where is my parcel?" answered, review requested.</span></span></button>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; background: #101217; border-radius: 28px; padding: 32px; display: flex; align-items: center; justify-content: center; min-height: 520px; box-sizing: border-box">
+<div style="width: 100%; max-width: 380px; background: #FFFFFF; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 12px; font-weight: 600; color: #5B606B; text-transform: uppercase; letter-spacing: 0.06em"><span id="stepLabel"></span></span>
+<div class="panel" data-panel="0">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="align-self: flex-end; width: 160px; height: 100px; border-radius: 16px; background: #E9E6F2; display: flex; align-items: flex-end; padding: 8px; box-sizing: border-box; font-size: 11px; color: #4A4F5A; font-weight: 600">Screenshot from a Facebook Live</div>
+<div style="align-self: flex-end; display: flex; align-items: center; gap: 8px; background: #2B4BFF; color: #FFFFFF; padding: 10px 14px; border-radius: 18px 18px 4px 18px; font-size: 13px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+<span style="letter-spacing: 2px">▮▮▯▮▮▮▯▮▮</span><span>0:06</span></div>
+<span class="bn" style="align-self: flex-end; font-size: 12px; color: #5B606B">"এমব্রয়ডারি ওয়ালা, ঈদের জন্য"</span>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">Customers send blurry screenshots, voice notes and Banglish. Quicky understands all of it — no product code needed.</span>
+</div>
+</div>
+<div class="panel" data-panel="1">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">জি আপু, ঈদের জন্য এই ৩টা এমব্রয়ডারি ড্রেস আছে:</div>
+<div style="display: flex; gap: 8px; overflow: hidden">
+<div style="flex: 0 0 118px; border: 1px solid #E4E4DE; border-radius: 14px; overflow: hidden"><div style="height: 80px; background: #EADFD3"></div><div style="padding: 8px; font-size: 12px"><b>Nokshi Three-Piece</b><br>৳2,150</div></div>
+<div style="flex: 0 0 118px; border: 1px solid #E4E4DE; border-radius: 14px; overflow: hidden"><div style="height: 80px; background: #D8E3DC"></div><div style="padding: 8px; font-size: 12px"><b>Jamdani Kurti</b><br>৳1,450</div></div>
+<div style="flex: 0 0 118px; border: 1px solid #E4E4DE; border-radius: 14px; overflow: hidden"><div style="height: 80px; background: #DCDDEB"></div><div style="padding: 8px; font-size: 12px"><b>Eid Silk Set</b><br>৳2,950</div></div>
+</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">It matches the photo against your whole catalog and replies with product cards — photo, price and an "I want this" button. Never a made-up price.</span>
+</div>
+</div>
+<div class="panel" data-panel="2">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">কোন সাইজ নেবেন আপু?</div>
+<div style="display: flex; gap: 6px">
+<span style="padding: 8px 14px; border-radius: 99px; border: 1px solid #2B4BFF; color: #2B4BFF; font-size: 13px; font-weight: 600">M</span>
+<span style="padding: 8px 14px; border-radius: 99px; background: #2B4BFF; color: #FFFFFF; font-size: 13px; font-weight: 600">L · 6 left</span>
+<span style="padding: 8px 14px; border-radius: 99px; border: 1px solid #D9D9D2; color: #8A8F99; font-size: 13px; font-weight: 600; text-decoration: line-through">XL</span>
+</div>
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">এর সাথে এই ওড়নাটা খুব সুন্দর মানাবে — ৳450</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">Choices become tap-able buttons. Stock comes live from your catalog, and it suggests a matching item to grow the order.</span>
+</div>
+</div>
+<div class="panel" data-panel="3">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="border: 1px solid #E4E4DE; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+<div style="display: flex; justify-content: space-between"><b>Order #1042</b><span style="color: #11864A; font-weight: 600">Confirmed</span></div>
+<div style="display: flex; justify-content: space-between; color: #3A3F49"><span>Nokshi Three-Piece (L)</span><span>৳2,150</span></div>
+<div style="display: flex; justify-content: space-between; color: #3A3F49"><span>Delivery · inside Dhaka</span><span>৳70</span></div>
+<div style="display: flex; justify-content: space-between; color: #3A3F49"><span>Coupon EID10</span><span>−৳215</span></div>
+<div style="border-top: 1px dashed #D9D9D2; padding-top: 6px; display: flex; justify-content: space-between"><b>Total · Cash on delivery</b><b>৳2,005</b></div>
+<span style="color: #5B606B">Mirpur 10, Dhaka · 01712-345678 · arrives in 1–2 days</span>
+</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">Name, phone and address collected in chat. Coupons applied, delivery charge by zone, a clean bill — and changes handled before it ships.</span>
+</div>
+</div>
+<div class="panel" data-panel="4">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="border: 1px solid #E4E4DE; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px">
+<div style="display: flex; justify-content: space-between; align-items: center"><b>Before you ship</b><span style="padding: 3px 10px; border-radius: 99px; background: #E3F6EC; color: #11864A; font-weight: 600">Low risk</span></div>
+<span style="color: #3A3F49">Courier record: 14 of 16 parcels delivered (88%)</span>
+<span style="color: #3A3F49">With your shop: 3 orders, 0 returns</span>
+<div style="height: 1px; background: #EEEEEA"></div>
+<div style="display: flex; justify-content: space-between"><span>Steadfast · booked automatically</span><b>SF-29384</b></div>
+</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">See a customer's delivery history before you ship, then book Steadfast or Pathao in one click — or let Quicky book it the moment the order is confirmed.</span>
+</div>
+</div>
+<div class="panel" data-panel="5">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="border: 1px solid #E4E4DE; border-radius: 16px; padding: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 13px"><span class="bn">পার্সেল আজ আপনার এলাকায় পৌঁছাবে</span><span style="padding: 6px 10px; border-radius: 10px; background: #2B4BFF; color: #FFFFFF; font-weight: 600">Track</span></div>
+<div class="bn" style="align-self: flex-end; background: #2B4BFF; color: #FFFFFF; padding: 8px 12px; border-radius: 18px 18px 4px 18px; font-size: 14px">আমার পার্সেল কই?</div>
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">আপু, পার্সেল এখন ডেলিভারির জন্য বের হয়েছে। আজ সন্ধ্যার মধ্যে পাবেন।</div>
+<div style="display: flex; gap: 4px; color: #E8A400; font-size: 20px" aria-label="Five star review request">★★★★★</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">Tracking updates go out by themselves, "where's my parcel?" gets a live answer, and a review request follows delivery. Fewer failed deliveries, zero typing.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
 
-    <section class="final">
-      <h2>Give every customer a fast, personal answer</h2>
-      <a class="btn big" href="/app?signup=1">Create your shop's inbox</a>
-    </section>
-  </main>
+<!-- INBOX -->
+<section id="features" style="background: #FFFFFF; border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 640px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">One inbox for the whole team</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">Every channel, every customer, one screen.</h2>
+</div>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55; max-width: 420px">Messenger, Instagram, WhatsApp on your existing number, comments and website chat — answered from one place, by AI and your team together.</p>
+</div>
+<div style="border: 1px solid #E4E4DE; border-radius: 24px; overflow: hidden; display: flex; flex-wrap: wrap; background: #FBFBF9">
+<div style="flex: 1 1 300px; min-width: 0; border-right: 1px solid #E4E4DE; background: #FFFFFF">
+<div style="display: flex; gap: 6px; padding: 14px; border-bottom: 1px solid #EEEEEA; font-size: 13px; font-weight: 600">
+<span style="padding: 6px 10px; border-radius: 9px; background: #101217; color: #FFFFFF">Waiting 3</span>
+<span style="padding: 6px 10px; border-radius: 9px; color: #4A4F5A">Unread 8</span>
+<span style="padding: 6px 10px; border-radius: 9px; color: #4A4F5A">Open 24</span>
+<span style="padding: 6px 10px; border-radius: 9px; color: #4A4F5A">Done</span>
+</div>
+<div style="display: flex; flex-direction: column">
+<div style="padding: 14px; border-bottom: 1px solid #EEEEEA; background: #F2F4FF; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Sadia Rahman</b><span style="color: #B4540A; font-weight: 600; font-size: 12px">waiting 4m</span></div>
+<span style="font-size: 13px; color: #4A4F5A">Wants to return — colour doesn't match</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #FFE9D6; color: #8A3D00">Needs a person</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">Messenger</span></div>
+</div>
+<div style="padding: 14px; border-bottom: 1px solid #EEEEEA; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Tanvir Ahmed</b><span style="color: #5B606B; font-size: 12px">2m</span></div>
+<span style="font-size: 13px; color: #4A4F5A">Order #1043 confirmed · ৳1,450</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #E6EAFF; color: #1A33C9">AI</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">Instagram</span></div>
+</div>
+<div style="padding: 14px; border-bottom: 1px solid #EEEEEA; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Mitu Akter</b><span style="color: #5B606B; font-size: 12px">6m</span></div>
+<span style="font-size: 13px; color: #4A4F5A">Asked for a discount</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #E6EAFF; color: #1A33C9">AI</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">WhatsApp</span></div>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Rakib Hasan</b><span style="color: #5B606B; font-size: 12px">11m</span></div>
+<span style="font-size: 13px; color: #4A4F5A">Rafi is replying…</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #FFF3C4; color: #6B5200">Person · Rafi</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">Comment</span></div>
+</div>
+</div>
+</div>
+<div style="flex: 999 1 420px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px">
+<div style="display: flex; flex-direction: column"><span style="font-weight: 700; font-size: 18px">Sadia Rahman</span><span style="font-size: 13px; color: #5B606B">Customer since March · 4 orders</span></div>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #D9D9D2; background: #FFFFFF; font: 600 13px Inter, sans-serif; cursor: pointer">Assign</button>
+<button type="button" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: #101217; color: #FFFFFF; font: 600 13px Inter, sans-serif; cursor: pointer">Take over</button>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px">
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #5B606B; font-weight: 600">AI summary</span><span style="font-size: 14px; line-height: 1.45">Regular buyer. Got order #1031 yesterday; says the colour is darker than the photo and wants an exchange.</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #5B606B; font-weight: 600">Delivery record</span><span style="font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700">92%</span><span style="font-size: 13px; color: #11864A; font-weight: 600">Low return risk</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #5B606B; font-weight: 600">Team note</span><span style="font-size: 14px; line-height: 1.45">VIP — call before 6 pm. Prefers bKash.</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 24px; padding-top: 8px">
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Waiting, Unread, Open, Done — inbox zero by evening</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Search by name, phone, order or any word in a chat</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Assign chats, leave notes, see who's typing</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Snooze a chat — it comes back on time</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Orders, notes and history beside every chat</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Unlimited teammates — no per-seat fee</span>
+</div>
+</div>
+</div>
+</div>
+</section>
 
-  <footer class="footer">
-    <span>© Quicky</span>
-    <span class="spacer"></span>
-    <a href="/privacy">Privacy</a>
-    <a href="/terms">Terms</a>
-    <a href="/data-deletion">Data deletion</a>
-    <a href="/app">Log in</a>
-  </footer>
+<!-- CONTROL / HANDOFF -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">You stay in control</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">The AI sells. Your team handles what only people should.</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">Complaints, refunds, angry customers and special requests go straight to your team — with the reason written down and a push alert. The AI never argues.</p>
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; gap: 14px; align-items: flex-start"><span style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: #101217; color: #FFD233; font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; line-height: 1">.</span><div style="display: flex; flex-direction: column; gap: 2px"><b style="font-size: 16px">Type a dot to take over</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">From Quicky, Messenger or Business Suite. The AI goes quiet; type another dot to hand it back. Forget? It returns on its own and remembers what you said.</span></div></div>
+<div style="display: flex; gap: 14px; align-items: flex-start"><span style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: #E6EAFF; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A33C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"></path></svg></span><div style="display: flex; flex-direction: column; gap: 2px"><b style="font-size: 16px">Practice mode before going live</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">The AI only answers your test chats until you flip it live. Your free trial starts then, not at signup.</span></div></div>
+<div style="display: flex; gap: 14px; align-items: flex-start"><span style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: #E6EAFF; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A33C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"></path></svg></span><div style="display: flex; flex-direction: column; gap: 2px"><b style="font-size: 16px">AI on or off, per channel</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">Let it answer Messenger and comments but not WhatsApp — or switch it off for one spammy customer.</span></div></div>
+</div>
+</div>
+<div style="flex: 1 1 440px; min-width: 0; background: #101217; border-radius: 28px; padding: 28px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box">
+<div style="background: #1C1F27; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; color: #EDEDEA; font-size: 14px"><span>Sadia · wants a refund</span><span style="padding: 4px 10px; border-radius: 99px; background: #FFD233; color: #101217; font-weight: 700; font-size: 12px">ACT NOW</span></div>
+<div style="background: #1C1F27; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; color: #EDEDEA; font-size: 14px"><span>Rakib · asked for 42 size (arrives tomorrow)</span><span style="color: #A2A7B1; font-size: 12px">waiting 2m</span></div>
+<div style="background: #1C1F27; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; color: #EDEDEA; font-size: 14px"><span>Mitu · cancel after shipping</span><span style="color: #A2A7B1; font-size: 12px">alert sent</span></div>
+<div style="margin-top: 8px; background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<div class="bn" style="align-self: flex-end; background: #2B4BFF; color: #FFFFFF; padding: 8px 14px; border-radius: 18px 18px 4px 18px; font-size: 22px; font-weight: 700; line-height: 1">.</div>
+<span style="align-self: center; font-size: 12px; font-weight: 600; color: #5B606B; background: #F0F0EC; padding: 4px 10px; border-radius: 99px">Rafi took over · AI paused</span>
+<div class="bn" style="align-self: flex-end; background: #2B4BFF; color: #FFFFFF; padding: 8px 12px; border-radius: 18px 18px 4px 18px; font-size: 14px">আপু, আমি রাফি। কালার এক্সচেঞ্জ করে দিচ্ছি, কোনো চার্জ লাগবে না।</div>
+</div>
+</div>
+</section>
+
+<!-- TEACH -->
+<section style="background: #101217; color: #EDEDEA">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #FFD233; text-transform: uppercase; letter-spacing: 0.08em">Teach it like a new hire</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em; color: #FFFFFF">No prompts. No developers. Just tell it, in Bangla.</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px">
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">01</span>
+<b style="font-size: 18px; color: #FFFFFF">Thumbs up or down</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">On any AI reply in your inbox. Thumbs down asks what it should have said — type it or say it.</span>
+</div>
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">02</span>
+<b style="font-size: 18px; color: #FFFFFF">See the fix first</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">Quicky shows the new answer exactly as the customer will see it. It goes live only when you say yes.</span>
+</div>
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">03</span>
+<b style="font-size: 18px; color: #FFFFFF">Fill the gaps</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">A list of questions it couldn't answer, with how often each came up. Teach once, answered forever.</span>
+</div>
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">04</span>
+<b style="font-size: 18px; color: #FFFFFF">Undo in one click</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">Every change is saved as a version. Didn't like it? Roll back instantly.</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- BUILT FOR BD -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">Built for how Bangladesh sells</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">COD, couriers, bKash and Banglish — handled.</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">Fake-order check</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">See every customer's delivery record — with you and across couriers — before you ship a COD parcel.</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">Steadfast &amp; Pathao</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">Book in one click or automatically. Tracking updates reach the customer's inbox by themselves.</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">bKash &amp; Nagad advances</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">The AI collects the TrxID and your team approves it in one tap. Ask for an advance on risky orders.</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">Bangla, Banglish, voice</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">"vaiya L size ase?" or a 20-second voice note — it understands, and calls customers Apu or Bhaiya correctly.</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">Comments to orders</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">"price?" under a post gets a public reply and a DM with the product card — then a nudge if they go quiet.</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">Delivery zones</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">Inside and outside Dhaka charges and delivery days, quoted correctly in every order.</span></div>
+</div>
+</section>
+
+<!-- GROWTH -->
+<section style="background: #FFFFFF; border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">Win back the "I'll think about it"</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">Follow-ups that know when to speak — and when to stop.</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">Everyone who showed interest becomes a lead. Quicky reminds the hot ones at the right time, inside Meta's 24-hour window, and never chases someone your team is already talking to.</p>
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 15px">
+<span style="display: flex; gap: 10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Leads list with product, number and callback time</span>
+<span style="display: flex; gap: 10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Broadcast an offer to everyone who messaged in 24 hours</span>
+<span style="display: flex; gap: 10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>The AI honours the offer only for people who got it, only until it ends</span>
+</div>
+</div>
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="border: 1px solid #E4E4DE; border-radius: 18px; padding: 18px; display: flex; gap: 14px; align-items: center"><span style="padding: 4px 10px; border-radius: 99px; background: #FFE9D6; color: #8A3D00; font-size: 12px; font-weight: 700">HOT</span><div style="display: flex; flex-direction: column; flex: 1"><b style="font-size: 15px">Farhan asked about delivery to Sylhet</b><span style="font-size: 13px; color: #5B606B">Reminder at 3 h, again at 20 h</span></div></div>
+<div style="border: 1px solid #E4E4DE; border-radius: 18px; padding: 18px; display: flex; gap: 14px; align-items: center"><span style="padding: 4px 10px; border-radius: 99px; background: #FFF3C4; color: #6B5200; font-size: 12px; font-weight: 700">WARM</span><div style="display: flex; flex-direction: column; flex: 1"><b style="font-size: 15px">Nusrat only asked the price</b><span style="font-size: 13px; color: #5B606B">One gentle reminder at 20 h</span></div></div>
+<div style="border: 1px solid #E4E4DE; border-radius: 18px; padding: 18px; display: flex; gap: 14px; align-items: center"><span style="padding: 4px 10px; border-radius: 99px; background: #EEEEEA; color: #3A3F49; font-size: 12px; font-weight: 700">SKIP</span><div style="display: flex; flex-direction: column; flex: 1"><b class="bn" style="font-size: 15px">Rupa said "লাগবে না, ধন্যবাদ"</b><span style="font-size: 13px; color: #5B606B">No follow-up — respect the no</span></div></div>
+<div style="background: #101217; color: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap"><div style="display: flex; flex-direction: column"><b style="font-size: 15px">Free delivery until midnight</b><span style="font-size: 13px; color: #A2A7B1">Broadcast to 47 people who messaged today</span></div><span style="padding: 8px 14px; border-radius: 10px; background: #FFD233; color: #101217; font-weight: 700; font-size: 13px">Send offer</span></div>
+</div>
+</div>
+</section>
+
+<!-- SAVED REPLIES -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 440px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: center"><b style="font-size: 16px">Delivery charge</b><span style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: #E3F6EC; color: #11864A">Answers instantly</span></div>
+<div class="bn" style="background: #F6F6F3; border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.5">ঢাকার ভিতরে ৳৭০, ঢাকার বাইরে ৳১৩০। ১–৩ দিনে ডেলিভারি।</div>
+<span style="font-size: 12px; font-weight: 600; color: #5B606B; text-transform: uppercase; letter-spacing: 0.06em">When a customer writes</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span class="bn" style="font-size: 13px; padding: 6px 10px; border-radius: 99px; background: #F0F0EC">ডেলিভারি চার্জ কত?</span>
+<span style="font-size: 13px; padding: 6px 10px; border-radius: 99px; background: #F0F0EC">delivery charge koto</span>
+<span style="font-size: 13px; padding: 6px 10px; border-radius: 99px; background: #F0F0EC">dhakar baire charge?</span>
+<span style="font-size: 13px; padding: 6px 10px; border-radius: 99px; border: 1px dashed #2B4BFF; color: #2B4BFF; font-weight: 600">+ 6 found in your chats</span>
+</div>
+<div style="background: #F2F4FF; border-radius: 12px; padding: 12px; font-size: 14px; color: #1A33C9; font-weight: 600">Would have answered 214 messages in the last 14 days</div>
+</div>
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">Saved replies</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">Same question? Free answer.</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">The delivery charge doesn't change, so why make anyone answer it 200 times? Write it once. Quicky matches every way customers ask — emojis, salam, Bangla or English digits — and replies instantly.</p>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">Add photos, product cards or a voice note in your own voice. Prices always come live from your catalog, so an old price never goes out.</p>
+</div>
+</section>
+
+<!-- COMPARISON -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 40px 24px 96px; display: flex; flex-direction: column; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">Why not just a moderator or a chatbot?</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">Quicky does what both do — and what neither can.</h2>
+</div>
+<div style="overflow-x: auto; border: 1px solid #E4E4DE; border-radius: 20px; background: #FFFFFF">
+<table style="width: 100%; min-width: 720px; border-collapse: collapse; font-size: 15px">
+<thead>
+<tr style="text-align: left; background: #FBFBF9">
+<th style="padding: 16px 20px; font-weight: 600; color: #5B606B; border-bottom: 1px solid #E4E4DE">&#160;</th>
+<th style="padding: 16px 20px; font-weight: 700; border-bottom: 1px solid #E4E4DE">Moderator</th>
+<th style="padding: 16px 20px; font-weight: 700; border-bottom: 1px solid #E4E4DE">Typical chatbot</th>
+<th style="padding: 16px 20px; font-weight: 700; border-bottom: 1px solid #E4E4DE; color: #2B4BFF">Quicky</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Reply at 2 AM</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">Next morning</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">Instant, scripted</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">In seconds, like a person</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Banglish &amp; voice notes</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">Yes</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">Keywords only</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Yes</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Product from a screenshot</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">If they remember it</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">No</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Matches your whole catalog</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Takes the order &amp; books the courier</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">By hand</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">Form link</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">In chat, then automatic</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Remembers the customer</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">Sometimes</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">No</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Across every channel</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Knows when to call a human</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">—</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">No</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">Hands over with the reason</td></tr>
+<tr><td style="padding: 14px 20px; font-weight: 600">Works on Eid, holidays, 24/7</td><td style="padding: 14px 20px; color: #4A4F5A">No</td><td style="padding: 14px 20px; color: #4A4F5A">Yes</td><td style="padding: 14px 20px; font-weight: 600">Yes</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ROI CALCULATOR -->
+<section style="background: #FFD233">
+<div style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<span style="font-size: 14px; font-weight: 700; color: #101217; text-transform: uppercase; letter-spacing: 0.08em">Do the math</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">How much time does your inbox eat?</h2>
+<label style="display: flex; flex-direction: column; gap: 8px; font-weight: 600; font-size: 15px">Messages per day: <span id="msgsOut">200</span>
+<input id="msgs" type="range" min="20" max="1000" step="10" value="200" aria-label="Messages per day">
+</label>
+<label style="display: flex; flex-direction: column; gap: 8px; font-weight: 600; font-size: 15px">Moderator salary per month: ৳<span id="salOut">15,000</span>
+<input id="sal" type="range" min="8000" max="30000" step="500" value="15000" aria-label="Moderator salary per month">
+</label>
+<span style="font-size: 13px; color: #3A3F49; line-height: 1.5">Assumes about 1 minute of typing per message and 200 working hours per moderator a month.</span>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px">
+<div style="background: #101217; color: #FFFFFF; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Space Grotesk', sans-serif; font-size: 44px; font-weight: 700"><span id="hours">100</span></span><span style="font-size: 14px; color: #B7BCC6">hours of typing a month</span></div>
+<div style="background: #101217; color: #FFFFFF; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Space Grotesk', sans-serif; font-size: 44px; font-weight: 700"><span id="mods">0.5</span></span><span style="font-size: 14px; color: #B7BCC6">full-time moderators' worth</span></div>
+<div style="background: #FFFFFF; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 6px; grid-column: 1 / -1"><span style="font-family: 'Space Grotesk', sans-serif; font-size: 44px; font-weight: 700">৳<span id="cost">7,500</span></span><span style="font-size: 14px; color: #3A3F49">a month in moderator time spent on typing — that Quicky can take off your team</span></div>
+</div>
+</div>
+</section>
+
+<!-- SETUP -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">Live in about 10 minutes</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">Sign up today. Take your first AI order tonight.</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+<div style="border-top: 3px solid #101217; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #5B606B">STEP 1 · 1 MIN</span><b style="font-size: 18px">Connect your page</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">Official Facebook login — Instagram and WhatsApp in the same step. No password shared.</span></div>
+<div style="border-top: 3px solid #101217; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #5B606B">STEP 2 · 3 MIN</span><b style="font-size: 18px">Pick your business type</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">Clothing, cosmetics, gadgets, food, salon… Quicky sets up the right sizes, fields and questions.</span></div>
+<div style="border-top: 3px solid #101217; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #5B606B">STEP 3 · 3 MIN</span><b style="font-size: 18px">Add products &amp; delivery</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">Import from a sheet or CSV, set delivery charges, add courier keys.</span></div>
+<div style="border-top: 3px solid #2B4BFF; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #2B4BFF">STEP 4 · 3 MIN</span><b style="font-size: 18px">Practise, then go live</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">Chat with your AI as a customer. Happy? One switch and it's answering real buyers.</span></div>
+</div>
+<span style="font-size: 15px; color: #4A4F5A">Moving from another tool, or rather not set it up yourself? We'll do it for you, free.</span>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="background: #FFFFFF; border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">Pricing in taka</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em">Your team is free. The AI is one flat monthly price.</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">Inbox, unlimited teammates and saved replies cost nothing. The AI agent is a simple monthly subscription, paid with bKash, Nagad or card. No credits to top up, no per-reply surprises.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px">
+<div style="border: 1px solid #E4E4DE; border-radius: 24px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+<b style="font-size: 18px">Free</b>
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 44px; font-weight: 700">৳0</span>
+<span style="font-size: 15px; color: #4A4F5A">For small pages getting organised.</span>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 15px"><span>Unified inbox, all channels</span><span>Unlimited teammates</span><span>Saved replies that answer free</span><span>Try the AI in practice mode</span></div>
+<a href="/app?signup=1" style="margin-top: auto; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #101217; color: #101217; font-weight: 600; text-decoration: none">Start free</a>
+</div>
+<div style="border: 2px solid #2B4BFF; border-radius: 24px; padding: 28px; display: flex; flex-direction: column; gap: 14px; position: relative">
+<span style="position: absolute; top: -13px; left: 24px; background: #2B4BFF; color: #FFFFFF; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px">Most shops</span>
+<b style="font-size: 18px">Growth</b>
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 44px; font-weight: 700">Free trial<span style="display: block; margin-top: 6px; font-family: Inter, sans-serif; font-size: 14px; color: #5B606B; font-weight: 500">Monthly price announced soon</span></span>
+<span style="font-size: 15px; color: #4A4F5A">AI sales agent for one growing brand.</span>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 15px"><span>Everything in Free</span><span>AI agent: orders, photos, voice</span><span>Steadfast &amp; Pathao booking</span><span>Follow-ups &amp; broadcasts</span></div>
+<a href="/app?signup=1" style="margin-top: auto; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #2B4BFF; color: #FFFFFF; font-weight: 600; text-decoration: none">Start free trial</a>
+</div>
+<div style="border: 1px solid #E4E4DE; border-radius: 24px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+<b style="font-size: 18px">Pro</b>
+<span style="font-family: 'Space Grotesk', sans-serif; font-size: 44px; font-weight: 700">Free trial<span style="display: block; margin-top: 6px; font-family: Inter, sans-serif; font-size: 14px; color: #5B606B; font-weight: 500">Monthly price announced soon</span></span>
+<span style="font-size: 15px; color: #4A4F5A">For multi-page brands and busy teams.</span>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 15px"><span>Everything in Growth</span><span>Multiple pages &amp; brands</span><span>Fake-order check &amp; tickets</span><span>Analytics &amp; Meta Conversions API</span></div>
+<a href="/app?signup=1" style="margin-top: auto; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #101217; color: #101217; font-weight: 600; text-decoration: none">Start free trial</a>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="max-width: 860px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 32px">
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em; text-align: center">Questions sellers ask us</h2>
+<div style="display: flex; flex-direction: column; border-top: 1px solid #E4E4DE">
+<details style="border-bottom:1px solid #E4E4DE" open><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">Will the AI say something wrong to my customers?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">It only answers from your catalog, prices and knowledge book — never made-up prices, stock or discounts. When it isn’t sure, it asks or hands the chat to your team. And it starts in practice mode, so you test it before any real customer sees it.</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">Do I have to share my Facebook password?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">No. You connect through Facebook’s own official login, the same way you would connect any Meta-approved app.</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">Can my team still reply themselves?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">Always. Tap Take over, or type a single dot from Messenger or Business Suite, and the AI goes quiet. Type another dot to hand it back.</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">Which languages does it understand?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">Bangla, Banglish and English, including voice notes and mixed spelling like "vaiya L size ase?". You choose how it addresses customers — Apu, Bhaiya, Sir or Madam.</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">Which couriers and payments work?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">Steadfast and Pathao for booking and tracking, and bKash or Nagad transaction IDs for advances. More couriers are on the way.</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">What happens if my subscription ends?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">The AI pauses and your team gets a heads-up. Your inbox, saved replies and orders keep working, and the AI comes back as soon as you renew.</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">How long does setup take?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">About 10 minutes for most shops. If you’d rather not do it yourself, or you’re moving from another tool, we’ll set it up for you free.</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px Inter,sans-serif;color:#101217;list-style:none">Who can see my chats and data?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">Only you and the teammates you invite, with the role you give them. You can export or delete your data whenever you want.</p></details>
+</div>
+</section>
+
+<!-- FINAL CTA -->
+<section id="start" style="padding: 0 24px 96px">
+<div style="max-width: 1200px; margin: 0 auto; background: #101217; border-radius: 32px; padding: 72px 32px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center">
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 52px; line-height: 1.05; letter-spacing: -0.03em; color: #FFFFFF; max-width: 760px">Let Quicky answer tonight's messages.</h2>
+<p style="margin: 0; font-size: 18px; color: #B7BCC6; max-width: 560px; line-height: 1.55">Connect your page, add your products, and wake up to orders instead of an inbox.</p>
+<div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center">
+<a href="/app?signup=1" style="height: 56px; display: flex; align-items: center; padding: 0 28px; border-radius: 14px; background: #FFD233; color: #101217; font-weight: 700; font-size: 17px; text-decoration: none">Start free — no card</a>
+<a href="/app" style="height: 56px; display: flex; align-items: center; padding: 0 24px; border-radius: 14px; border: 1px solid #3A3F49; color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none">Log in</a>
+</div>
+<span style="font-size: 14px; color: #A2A7B1">No contract · Cancel anytime · Built in Bangladesh</span>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer style="border-top: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 48px 24px; display: flex; flex-wrap: wrap; gap: 40px; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 10px; max-width: 320px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px">heyquicky</span>
+<span style="font-size: 14px; color: #5B606B; line-height: 1.5">The AI sales inbox for online shops. Every DM answered, every order captured.</span>
+</div>
+<div style="display: flex; gap: 56px; flex-wrap: wrap; font-size: 14px">
+<div style="display: flex; flex-direction: column; gap: 10px"><b>Product</b><a href="#features" style="color: #4A4F5A; text-decoration: none">Features</a><a href="#how" style="color: #4A4F5A; text-decoration: none">How it works</a><a href="#pricing" style="color: #4A4F5A; text-decoration: none">Pricing</a></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><b>Account</b><a href="/app?signup=1" style="color: #4A4F5A; text-decoration: none">Start free</a><a href="/app" style="color: #4A4F5A; text-decoration: none">Log in</a><a href="/bn" lang="bn" style="color: #4A4F5A; text-decoration: none; font-family: 'Hind Siliguri', Inter, sans-serif">বাংলা</a></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><b>Legal</b><a href="/privacy" style="color: #4A4F5A; text-decoration: none">Privacy</a><a href="/terms" style="color: #4A4F5A; text-decoration: none">Terms</a><a href="/data-deletion" style="color: #4A4F5A; text-decoration: none">Data deletion</a></div>
+</div>
+</div>
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px 32px; font-size: 13px; color: #5B606B">© 2026 HeyQuicky</div>
+</footer>
+
+</div>
+<script>
+(function(){
+var labels=["Customer asks \u2014 any way they like", "Quicky finds the product", "Size, stock and a smart add-on", "The order is captured", "Checked and shipped", "Updates until delivered"];
+function pick(i){document.querySelectorAll('.step').forEach(function(b,j){var on=i===j;b.style.background=on?'#FFFFFF':'transparent';b.style.border='1.5px solid '+(on?'#2B4BFF':'#E4E4DE');var n=b.querySelector('.num');n.style.background=on?'#2B4BFF':'#EEEEEA';n.style.color=on?'#FFFFFF':'#3A3F49';});
+document.querySelectorAll('.panel').forEach(function(p){p.style.display=(+p.dataset.panel===i)?'block':'none';});
+document.getElementById('stepLabel').textContent='Step '+(i+1)+' of 6 · '+labels[i];}
+document.querySelectorAll('.step').forEach(function(b){b.addEventListener('click',function(){pick(+b.dataset.step);});});pick(0);
+document.querySelectorAll('details').forEach(function(d){var s=d.querySelector('.sign');function u(){s.textContent=d.open?'−':'+';}d.addEventListener('toggle',u);u();});
+var m=document.getElementById('msgs'),s=document.getElementById('sal');
+function calc(){var msgs=+m.value,sal=+s.value,h=Math.round(msgs*30/60),mods=h/200;document.getElementById('msgsOut').textContent=msgs;document.getElementById('salOut').textContent=sal.toLocaleString('en-US');document.getElementById('hours').textContent=h.toLocaleString('en-US');document.getElementById('mods').textContent=mods.toFixed(1);document.getElementById('cost').textContent=Math.round(mods*sal).toLocaleString('en-US');}
+m.addEventListener('input',calc);s.addEventListener('input',calc);calc();
+})();
+</script>
 </body>
 </html>

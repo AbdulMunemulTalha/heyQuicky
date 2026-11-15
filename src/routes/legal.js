@@ -12,19 +12,28 @@ function page(title, body, { operator, supportEmail }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)} · ${escapeHtml(operator)}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232B4BFF'/%3E%3Cpath d='M17.5 5 8 18h7.5l-1 9L24 14h-7.5z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #ffffff; --text: #1c1f24; --muted: #6b7280; --accent: #1f6feb; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #0f1115; --text: #e7e9ee; --muted: #9aa1ad; --accent: #4c8dff; } }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
-  h1 { margin-bottom: 4px; }
-  h2 { margin-top: 32px; font-size: 20px; }
+  :root { --bg: #F6F6F3; --panel: #FFFFFF; --text: #101217; --muted: #5B606B; --border: #E4E4DE; --accent: #2B4BFF; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { border-bottom: 1px solid var(--border); background: rgba(246, 246, 243, 0.92); }
+  header div { max-width: 760px; margin: 0 auto; padding: 14px 16px; }
+  .logo { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font: 700 20px/1 "Space Grotesk", Inter, sans-serif; letter-spacing: -0.02em; }
+  .logo span { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); display: inline-grid; place-items: center; }
+  main { max-width: 760px; margin: 32px auto 64px; padding: 40px; background: var(--panel); border: 1px solid var(--border); border-radius: 24px; box-sizing: border-box; }
+  h1, h2 { font-family: "Space Grotesk", Inter, sans-serif; letter-spacing: -0.02em; }
+  h1 { margin: 0 0 4px; font-size: 36px; line-height: 1.1; }
+  h2 { margin-top: 32px; font-size: 21px; }
   a { color: var(--accent); }
   .muted { color: var(--muted); }
-  nav { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 40px; font-size: 14px; }
+  nav { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 14px; }
+  @media (max-width: 640px) { main { margin: 16px; padding: 24px; } h1 { font-size: 28px; } }
 </style>
 </head>
 <body>
+<header><div><a class="logo" href="/"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>heyquicky</a></div></header>
 <main>
 <h1>${escapeHtml(title)}</h1>
 ${body}

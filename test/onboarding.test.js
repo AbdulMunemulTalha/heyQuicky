@@ -31,7 +31,9 @@ async function call(path, { method = 'GET', body, token } = {}) {
 test('serves the landing page at / and the app at /app', async () => {
   const landing = await call('/');
   assert.equal(landing.status, 200);
-  assert.match(landing.data, /Get started/);
+  assert.match(landing.data, /Start free/);
+  assert.match(landing.data, /href="\/app\?signup=1"/, 'sign-up buttons open the dashboard');
+  assert.match(landing.data, /href="\/app"/, 'log in opens the dashboard');
   assert.match(landing.data, /href="\/bn"/, 'English page links to the Bangla one');
   const bangla = await call('/bn');
   assert.equal(bangla.status, 200);
