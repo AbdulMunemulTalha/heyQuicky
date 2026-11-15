@@ -1,133 +1,590 @@
 <!doctype html>
 <html lang="bn">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Quicky · ফেসবুক, ইনস্টাগ্রাম ও হোয়াটসঅ্যাপের সব অর্ডার এক ইনবক্সে</title>
-  <meta name="description" content="মেসেঞ্জার, ইনস্টাগ্রাম আর হোয়াটসঅ্যাপের কাস্টমারদের এক ইনবক্স থেকে উত্তর দিন। প্রতিটি কাস্টমার থাকবেন একজন মডারেটরের কাছে, আর অর্ডার নেওয়া যাবে চ্যাটেই।">
-  <link rel="alternate" hreflang="en" href="/">
-  <link rel="alternate" hreflang="bn" href="/bn">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700;800&display=swap">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232B4BFF'/%3E%3Cpath d='M17.5 5 8 18h7.5l-1 9L24 14h-7.5z' fill='%23fff'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=Hind+Siliguri:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/landing.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HeyQuicky — অনলাইন শপের জন্য AI সেলস ইনবক্স</title>
+<meta name="description" content="প্রতিটা মেসেজের উত্তর, প্রতিটা অর্ডার হাতে। Messenger, Instagram, WhatsApp আর কমেন্ট এক ইনবক্সে — সাথে একজন AI টিমমেট, যে বাংলায় উত্তর দেয়, COD অর্ডার নেয় আর কুরিয়ার বুক করে।">
+<link rel="alternate" hreflang="en" href="/">
+<link rel="alternate" hreflang="bn" href="/bn">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232B4BFF'/%3E%3Cpath d='M17.5 5 8 18h7.5l-1 9L24 14h-7.5z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=Hind+Siliguri:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F6F3}
+a{color:#2B4BFF}a:hover{color:#1A33C9}
+.bn{font-family:'Hind Siliguri','Inter',sans-serif}
+input[type=range]{accent-color:#2B4BFF;width:100%}
+@media (max-width:720px){.hide-sm{display:none !important}.h1{font-size:40px !important}.h2{font-size:30px !important}}
+
+h1,h2{font-weight:700}
+</style>
+<style>html{scroll-behavior:smooth}summary::-webkit-details-marker{display:none}</style>
 </head>
-<body class="bn">
-  <header class="nav">
-    <a class="logo" href="/bn" lang="en">heyquicky</a>
-    <nav>
-      <a href="#features">ফিচার</a>
-      <a href="#how">কীভাবে কাজ করে</a>
-      <a href="#faq">প্রশ্নোত্তর</a>
-    </nav>
-    <span class="spacer"></span>
-    <a class="lang" href="/" lang="en" hreflang="en">English</a>
-    <a class="btn ghost" href="/app">লগ ইন</a>
-    <a class="btn" href="/app?signup=1">শুরু করুন</a>
-  </header>
+<body>
+<div style="font-family: 'Hind Siliguri', Inter, system-ui, sans-serif; color: #101217; background: #F6F6F3; width: 100%; overflow-x: hidden">
 
-  <main>
-    <section class="hero">
-      <div class="hero-text">
-        <p class="eyebrow">ফেসবুক, ইনস্টাগ্রাম ও হোয়াটসঅ্যাপ সেলারদের জন্য</p>
-        <h1>সব কাস্টমারের মেসেজ এক ইনবক্সে। প্রতিটি কাস্টমারের জন্য একজন মডারেটর।</h1>
-        <p class="lead">মেসেঞ্জার, ইনস্টাগ্রাম আর হোয়াটসঅ্যাপ আলাদা আলাদা ফোনে সামলানোর ঝামেলা আর নয়। Quicky সব অর্ডারের মেসেজ
-          এক জায়গায় নিয়ে আসে, প্রতিটি নতুন কাস্টমারকে একজন মডারেটরের দায়িত্বে দেয় এবং পরেও তাঁর কাছেই রাখে। ফলে কোনো কাস্টমারকে
-          দুইবার উত্তর দেওয়া হয় না, কেউ বাদও পড়েন না।</p>
-        <div class="cta">
-          <a class="btn big" href="/app?signup=1">আপনার শপের ইনবক্স তৈরি করুন</a>
-          <a class="btn big ghost" href="#how">কীভাবে কাজ করে দেখুন</a>
-        </div>
-        <p class="small muted">মাত্র ৫ মিনিটে সেটআপ। কোনো অ্যাপ ইনস্টল করতে হবে না।</p>
-      </div>
+<!-- NAV -->
+<header style="position: sticky; top: 0; z-index: 20; background: rgba(246,246,243,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+<a href="/bn" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: #101217">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2B4BFF; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"></path></svg>
+</span>
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em">heyquicky</span>
+</a>
+<nav class="hide-sm" style="display: flex; gap: 28px; font-size: 15px; font-weight: 500">
+<a href="#how" style="color: #3A3F49; text-decoration: none">কীভাবে কাজ করে</a>
+<a href="#features" style="color: #3A3F49; text-decoration: none">ফিচার</a>
+<a href="#pricing" style="color: #3A3F49; text-decoration: none">প্রাইসিং</a>
+<a href="#faq" style="color: #3A3F49; text-decoration: none">প্রশ্নোত্তর</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 10px">
+<a href="/" lang="en" hreflang="en" aria-label="View in English" style="height: 40px; display: flex; align-items: center; padding: 0 12px; border-radius: 10px; border: 1px solid #D9D9D2; background: #FFFFFF; font: 600 13px Inter, sans-serif; color: #101217; text-decoration: none">English</a>
+<a href="/app" class="hide-sm" style="height: 44px; display: flex; align-items: center; padding: 0 14px; font-weight: 600; font-size: 15px; color: #101217; text-decoration: none">লগইন</a>
+<a href="/app?signup=1" style="height: 44px; display: flex; align-items: center; padding: 0 18px; border-radius: 12px; background: #101217; color: #FFFFFF; font-weight: 600; font-size: 15px; text-decoration: none">ফ্রি শুরু করুন</a>
+</div>
+</div>
+</header>
 
-      <div class="mock" aria-hidden="true">
-        <div class="mock-bar"><span></span><span></span><span></span></div>
-        <div class="mock-body">
-          <ul class="mock-list">
-            <li class="active"><i class="b fb">Messenger</i><b>রহিম উদ্দিন</b><em>এই ড্রেসটার দাম কত?</em><small>নাদিয়া</small></li>
-            <li><i class="b ig">Instagram</i><b>@tania.shop</b><em>L সাইজ আছে?</em><small>করিম</small></li>
-            <li><i class="b wa">WhatsApp</i><b>+880 1712-345678</b><em>অর্ডার দিতে চাই</em><small>নাদিয়া</small></li>
-            <li><i class="b fb">Messenger</i><b>সুমাইয়া আক্তার</b><em>ডেলিভারি চার্জ কত?</em><small>করিম</small></li>
-          </ul>
-          <div class="mock-chat">
-            <p class="in">এই ড্রেসটার দাম কত?</p>
-            <p class="out">আসসালামু আলাইকুম! দাম ১,২০০ টাকা। M আর L সাইজ আছে।</p>
-            <p class="in">M সাইজটা নেব। মিরপুর ১০-এ ডেলিভারি হবে?</p>
-            <p class="out order">অর্ডার #১২৮ কনফার্ম ✅<br>ক্যাশ অন ডেলিভারি: ৳১,২৭০</p>
-          </div>
-        </div>
-      </div>
-    </section>
+<!-- HERO -->
+<section id="top" style="max-width: 1200px; margin: 0 auto; padding: 72px 24px 56px; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
+<div style="flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+<span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E4E4DE; font-size: 13px; font-weight: 600; color: #3A3F49">
+<span style="width: 8px; height: 8px; border-radius: 99px; background: #18A957"></span>বাংলাদেশের অনলাইন শপের জন্য AI সেলস ইনবক্স</span>
+<h1 class="h1" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 64px; line-height: 1.2; letter-spacing: -0.035em; font-weight: 700">প্রতিটা মেসেজের উত্তর। প্রতিটা অর্ডার হাতে। <span style="background: #FFD233; padding: 0 8px; border-radius: 8px">রাত ৩টায়ও।</span></h1>
+<p style="margin: 0; font-size: 19px; line-height: 1.55; color: #4A4F5A; max-width: 560px">Messenger, Instagram, WhatsApp আর পোস্টের কমেন্ট — সব এক ইনবক্সে। সাথে একজন AI টিমমেট, যে বাংলায় উত্তর দেয়, ঠিক প্রোডাক্টটা দেখায়, COD অর্ডার নেয় আর কুরিয়ার বুক করে। আপনার টিম আসে শুধু যখন সত্যিই দরকার।</p>
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+<a href="/app?signup=1" style="height: 54px; display: flex; align-items: center; gap: 10px; padding: 0 26px; border-radius: 14px; background: #2B4BFF; color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none">ফ্রি শুরু করুন
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+<a href="#how" style="height: 54px; display: flex; align-items: center; gap: 10px; padding: 0 22px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D9D9D2; color: #101217; font-weight: 600; font-size: 17px; text-decoration: none">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m10 8 6 4-6 4V8z"></path></svg>দেখুন কীভাবে অর্ডার নেয়</a>
+</div>
+<div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: #4A4F5A; font-weight: 500">
+<span style="display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18A957" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>কার্ড লাগবে না</span>
+<span style="display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18A957" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>মাত্র ১০ মিনিটে লাইভ</span>
+<span style="display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#18A957" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>আনলিমিটেড টিমমেট</span>
+</div>
+</div>
 
-    <section class="problem">
-      <h2>চেনা চেনা লাগছে?</h2>
-      <div class="grid3">
-        <div><strong>তিনটা অ্যাপ, তিনটা ফোন</strong><p>মেসেঞ্জার, ইনস্টাগ্রাম আর হোয়াটসঅ্যাপে অর্ডার আসে, আর সারাদিন কাউকে না কাউকে সবগুলো চেক করতে হয়।</p></div>
-        <div><strong>এক কাস্টমার, দুই মডারেটর</strong><p>কাস্টমার ৩০ মিনিট পর রিপ্লাই দিলেন, আর আগে কী কথা হয়েছিল না জেনেই অন্য একজন মডারেটর উত্তর দিয়ে বসলেন।</p></div>
-        <div><strong>চ্যাটে হারিয়ে যাওয়া অর্ডার</strong><p>পার্সেল পাঠানোর সময় নাম, ফোন নম্বর আর ঠিকানা খুঁজতে হয় পুরোনো মেসেজ ঘেঁটে।</p></div>
-      </div>
-    </section>
+<!-- hero phone -->
+<div style="flex: 1 1 400px; min-width: 0; display: flex; justify-content: center; position: relative; padding: 24px 0">
+<div style="width: 340px; border-radius: 44px; background: #101217; padding: 10px; box-shadow: 0 30px 80px rgba(16,18,23,0.22)">
+<div style="border-radius: 36px; background: #FFFFFF; overflow: hidden; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 10px; padding: 18px 16px 12px; border-bottom: 1px solid #EEEEEA">
+<span style="width: 36px; height: 36px; border-radius: 99px; background: #F1D9C9; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #7A3E1B">NT</span>
+<div style="display: flex; flex-direction: column"><span style="font-weight: 600; font-size: 14px">Nokshi Threads</span><span style="font-size: 12px; color: #5B606B">সাথে সাথে উত্তর দেয়</span></div>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 8px; background: #FFFFFF">
+<div style="align-self: flex-end; width: 150px; height: 96px; border-radius: 16px; background: #E9E6F2; display: flex; align-items: flex-end; padding: 8px; box-sizing: border-box; font-size: 11px; color: #4A4F5A; font-weight: 600">লাইভের স্ক্রিনশট</div>
+<div class="bn" style="align-self: flex-end; max-width: 78%; background: #2B4BFF; color: #FFFFFF; padding: 8px 12px; border-radius: 18px 18px 4px 18px; font-size: 14px">এটা আছে? দাম কত?</div>
+<div class="bn" style="align-self: flex-start; max-width: 84%; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px; line-height: 1.45">জি আপু, আছে! এটা আমাদের Nokshi Cotton Three-Piece।</div>
+<div style="align-self: flex-start; width: 210px; border: 1px solid #E4E4DE; border-radius: 16px; overflow: hidden">
+<div style="height: 92px; background: #EADFD3"></div>
+<div style="padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600; font-size: 13px">Nokshi Cotton Three-Piece</span><span style="font-size: 13px; color: #3A3F49">৳2,150 · <span style="text-decoration: line-through; color: #8A8F99">৳2,550</span></span></div>
+<div class="bn" style="border-top: 1px solid #E4E4DE; padding: 9px; text-align: center; font-size: 13px; font-weight: 600; color: #2B4BFF">এটি নিতে চাই</div>
+</div>
+<div style="display: flex; gap: 6px; align-self: flex-start">
+<span style="padding: 6px 12px; border-radius: 99px; border: 1px solid #2B4BFF; color: #2B4BFF; font-size: 12px; font-weight: 600">M</span>
+<span style="padding: 6px 12px; border-radius: 99px; background: #2B4BFF; color: #FFFFFF; font-size: 12px; font-weight: 600">L</span>
+<span style="padding: 6px 12px; border-radius: 99px; border: 1px solid #2B4BFF; color: #2B4BFF; font-size: 12px; font-weight: 600">XL</span>
+</div>
+<div class="bn" style="align-self: flex-start; max-width: 88%; background: #F0F0EC; padding: 10px 12px; border-radius: 18px 18px 18px 4px; font-size: 13px; line-height: 1.55">অর্ডার #1042<br>থ্রি-পিস (L) ৳২,১৫০<br>ডেলিভারি (ঢাকার ভিতরে) ৳৭০<br><b>মোট ৳২,২২০ · ক্যাশ অন ডেলিভারি</b><br>কনফার্ম করবো আপু?</div>
+</div>
+</div>
+</div>
+<div class="hide-sm" style="position: absolute; left: -8px; top: 80px; background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 10px 14px; box-shadow: 0 12px 30px rgba(16,18,23,0.10); display: flex; align-items: center; gap: 10px">
+<span style="width: 30px; height: 30px; border-radius: 9px; background: #E3F6EC; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#11864A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+<div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 600">নতুন অর্ডার #১০৪২</span><span style="font-size: 12px; color: #5B606B">৳২,২২০ · COD · AI নিয়েছে</span></div>
+</div>
+<div class="hide-sm" style="position: absolute; right: -4px; bottom: 90px; background: #101217; color: #FFFFFF; border-radius: 14px; padding: 10px 14px; box-shadow: 0 12px 30px rgba(16,18,23,0.18); display: flex; align-items: center; gap: 10px">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD233" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"></path><circle cx="7" cy="18" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>
+<div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 600">পার্সেল বুক হয়েছে</span><span style="font-size: 12px; color: #A2A7B1">Steadfast · ট্র্যাকিং পাঠানো হয়েছে</span></div>
+</div>
+</div>
+</section>
 
-    <section id="features" class="features">
-      <h2>চ্যাট থেকে বিক্রির জন্য আপনার টিমের যা যা দরকার</h2>
-      <div class="grid3">
-        <div class="feature"><span class="icon">💬</span><h3>সব অ্যাপের জন্য এক ইনবক্স</h3>
-          <p>মেসেঞ্জার, ইনস্টাগ্রাম আর হোয়াটসঅ্যাপের মেসেজ আসে একটি তালিকায়। উত্তর যায় সেই অ্যাপেই, যেখান থেকে কাস্টমার লিখেছেন।</p></div>
-        <div class="feature"><span class="icon">🧑‍💼</span><h3>প্রতিটি কাস্টমারের জন্য একজন মডারেটর</h3>
-          <p>নতুন কাস্টমাররা অন-ডিউটি মডারেটরদের মধ্যে ভাগ হয়ে যান। পরে আবার লিখলে প্রতিবার একই মডারেটরের কাছেই যান।</p></div>
-        <div class="feature"><span class="icon">🧾</span><h3>চ্যাটেই অর্ডার</h3>
-          <p>কথোপকথন ছেড়ে না গিয়েই অর্ডার নিন। ডেলিভারি চার্জ আর ক্যাশ অন ডেলিভারির হিসাব হয়ে যায়, কাস্টমারকে অর্ডারের সারাংশও পাঠানো যায়।</p></div>
-        <div class="feature"><span class="icon">⚡</span><h3>সেভ করা রিপ্লাই</h3>
-          <p>দাম, ডেলিভারি চার্জ আর বিকাশে পেমেন্টের নিয়ম পাঠান এক চাপে: <code>/</code> লিখে একটি রিপ্লাই বেছে নিন, বাংলায় বা ইংরেজিতে।</p></div>
-        <div class="feature"><span class="icon">📦</span><h3>কুরিয়ারের জন্য তৈরি</h3>
-          <p>কনফার্ম থেকে ডেলিভারি পর্যন্ত প্রতিটি অর্ডার ট্র্যাক করুন, আর বাল্ক আপলোডের জন্য দিনের অর্ডারগুলো স্প্রেডশিট হিসেবে নামিয়ে নিন।</p></div>
-        <div class="feature"><span class="icon">👀</span><h3>মালিক সব দেখতে পান</h3>
-          <p>প্রতিটি কথোপকথন দেখুন, দরকার হলে নিজেই উত্তর দিন, আর এক ক্লিকে কাস্টমারকে অন্য মডারেটরের কাছে দিন।</p></div>
-      </div>
-    </section>
+<!-- CHANNEL STRIP -->
+<section style="border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE; background: #FFFFFF">
+<div style="max-width: 1200px; margin: 0 auto; padding: 22px 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; justify-content: center">
+<span style="font-size: 13px; font-weight: 600; color: #5B606B; text-transform: uppercase; letter-spacing: 0.08em">যেগুলোর সাথে কাজ করে</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Messenger</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Instagram</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">WhatsApp</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">ফেসবুক কমেন্ট</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">ওয়েবসাইট চ্যাট</span>
+<span style="width: 1px; height: 20px; background: #D9D9D2"></span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Steadfast</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Pathao</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">bKash</span>
+<span style="font-weight: 600; font-size: 15px; color: #3A3F49">Nagad</span>
+</div>
+</section>
 
-    <section id="how" class="how">
-      <h2>মাত্র তিন ধাপে শুরু করুন</h2>
-      <ol class="steps">
-        <li><span>১</span><h3>শপ তৈরি করুন</h3><p>আপনার ব্যবসার নাম আর ডেলিভারি চার্জ দিন।</p></li>
-        <li><span>২</span><h3>পেজ কানেক্ট করুন</h3><p>ফেসবুকে লগ ইন করে আপনার পেজ আর ইনস্টাগ্রাম কানেক্ট করুন, সাথে হোয়াটসঅ্যাপ বিজনেস নম্বরও।</p></li>
-        <li><span>৩</span><h3>মডারেটর যোগ করুন</h3><p>প্রত্যেক মডারেটরকে আলাদা লগইন দিন। তাঁরা “On duty” চালু করলেই কাস্টমার আসা শুরু হবে।</p></li>
-      </ol>
-      <a class="btn big" href="/app?signup=1">শুরু করুন</a>
-    </section>
+<!-- PAIN -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">চেনা গল্প?</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">এফ-কমার্স চালানো মানে সারাদিন ইনবক্সে বসে থাকা না।</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 32px; font-weight: 700">রাত ১:১২</span>
+<span style="font-weight: 600; font-size: 17px">একজন কাস্টমার অর্ডার দিতে রেডি ছিলেন।</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">আপনি মেসেজটা দেখলেন সকাল ৯টায়। ততক্ষণে তিনি কিনে ফেলেছেন সেই পেজ থেকে, যারা আগে উত্তর দিয়েছে।</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span class="bn" style="font-size: 30px; font-weight: 600">"দাম কত?"</span>
+<span style="font-weight: 600; font-size: 17px">সারাদিন একই প্রশ্ন।</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">দাম, ডেলিভারি চার্জ, সাইজ — বারবার টাইপ করতে করতে আসল ক্রেতারা লাইনে অপেক্ষা করেন।</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 32px; font-weight: 700">৪টা অ্যাপ</span>
+<span style="font-weight: 600; font-size: 17px">অর্ডার ছড়িয়ে-ছিটিয়ে।</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">Messenger, Instagram, WhatsApp, খাতা। ঠিকানা স্ক্রিনশটে, কুরিয়ার সাইটে একটা একটা করে পার্সেল টাইপ।</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 32px; font-weight: 700">রিটার্ন</span>
+<span style="font-weight: 600; font-size: 17px">COD পার্সেল ফেরত এলো।</span>
+<span style="color: #4A4F5A; font-size: 15px; line-height: 1.5">আরেকটা ফেক অর্ডার, আরেকবার কুরিয়ার চার্জ — আর পাঠানোর আগে জানার কোনো উপায় ছিল না।</span>
+</div>
+</div>
+</section>
 
-    <section id="faq" class="faq">
-      <h2>প্রশ্নোত্তর</h2>
-      <details><summary>কাস্টমারদের কি কিছু ইনস্টল করতে হবে?</summary>
-        <p>না। কাস্টমাররা আগের মতোই আপনার পেজ, ইনস্টাগ্রাম বা হোয়াটসঅ্যাপে মেসেজ দেবেন। Quicky থেকে পাঠানো আপনার উত্তর একই চ্যাটে পৌঁছে যাবে।</p></details>
-      <details><summary>ফোনে কি ফেসবুক পেজের অ্যাপ ব্যবহার করতে পারব?</summary>
-        <p>হ্যাঁ। Meta Business Suite থেকে পাঠানো উত্তরও Quicky-এ দেখা যায়, তাই কথোপকথনের পুরো ইতিহাস ঠিক থাকে।</p></details>
-      <details><summary>মডারেটর ডিউটিতে না থাকলে কী হবে?</summary>
-        <p>তাঁর কাস্টমাররা তাঁর কাছেই থাকেন, আর আপনি চাইলে যেকোনো কাস্টমারকে অন্য কারও কাছে দিতে পারেন। নতুন কাস্টমাররা শুধু অন-ডিউটি
-          মডারেটরদের কাছে যান; কেউ ডিউটিতে না থাকলে তাঁরা “Unassigned” তালিকায় অপেক্ষা করেন, যতক্ষণ না কেউ কাজ শুরু করেন।</p></details>
-      <details><summary>আমার তথ্য কি নিরাপদ?</summary>
-        <p>সব কানেকশন এনক্রিপ্টেড, ফেসবুক আর হোয়াটসঅ্যাপের অ্যাক্সেস এনক্রিপ্ট করে রাখা হয়, আর মডারেটররা শুধু নিজেদের কাস্টমারদেরই দেখতে পান।
-          বিস্তারিত জানতে <a href="/privacy">প্রাইভেসি পলিসি</a> পড়ুন (ইংরেজিতে)।</p></details>
-    </section>
+<!-- HOW IT WORKS: INTERACTIVE -->
+<section id="how" style="max-width: 1200px; margin: 0 auto; padding: 80px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">অর্ডার কীভাবে হয়</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">"এটা আছে?" থেকে "ডেলিভারড" পর্যন্ত — আপনি একটা শব্দও টাইপ না করে।</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">প্রতিটা ধাপে ট্যাপ করে দেখুন কাস্টমার কী দেখেন।</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: stretch">
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<button type="button" class="step" data-step="0" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:'Hind Siliguri',Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">1</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">কাস্টমার জিজ্ঞেস করেন — যেভাবে খুশি</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">লাইভের স্ক্রিনশট, ভয়েস নোট, কিংবা বাংলিশে "eta ache?"</span></span></button><button type="button" class="step" data-step="1" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:'Hind Siliguri',Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">2</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">Quicky প্রোডাক্ট খুঁজে বের করে</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">ছবি মিলিয়ে নেয় আপনার ক্যাটালগের সাথে, তারপর আসল দামসহ প্রোডাক্ট কার্ড পাঠায়।</span></span></button><button type="button" class="step" data-step="2" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:'Hind Siliguri',Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">3</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">সাইজ, স্টক আর একটা মানানসই সাজেশন</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">অপশনগুলো বাটন হয়ে যায়, স্টক লাইভ, সাথে মিলিয়ে আরেকটা প্রোডাক্ট সাজেস্ট করে।</span></span></button><button type="button" class="step" data-step="3" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:'Hind Siliguri',Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">4</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">অর্ডার কনফার্ম</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">নাম, ফোন, ঠিকানা, কুপন, ডেলিভারি চার্জ আর COD মোট — চ্যাটেই কনফার্ম।</span></span></button><button type="button" class="step" data-step="4" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:'Hind Siliguri',Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">5</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">যাচাই করে পাঠানো</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">ডেলিভারি রেকর্ড যাচাই, তারপর Steadfast বা Pathao অটোমেটিক বুক।</span></span></button><button type="button" class="step" data-step="5" style="text-align:left;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border-radius:18px;cursor:pointer;font-family:'Hind Siliguri',Inter,sans-serif;color:#101217">
+<span class="num" style="flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">6</span>
+<span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:600;font-size:17px">ডেলিভারি পর্যন্ত আপডেট</span><span style="font-size:15px;color:#4A4F5A;line-height:1.5">ট্র্যাকিং মেসেজ, "আমার পার্সেল কই?"-এর উত্তর, তারপর রিভিউ চাওয়া।</span></span></button>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; background: #101217; border-radius: 28px; padding: 32px; display: flex; align-items: center; justify-content: center; min-height: 520px; box-sizing: border-box">
+<div style="width: 100%; max-width: 380px; background: #FFFFFF; border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 12px; font-weight: 600; color: #5B606B; text-transform: uppercase; letter-spacing: 0.06em"><span id="stepLabel"></span></span>
+<div class="panel" data-panel="0">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="align-self: flex-end; width: 160px; height: 100px; border-radius: 16px; background: #E9E6F2; display: flex; align-items: flex-end; padding: 8px; box-sizing: border-box; font-size: 11px; color: #4A4F5A; font-weight: 600">ফেসবুক লাইভের স্ক্রিনশট</div>
+<div style="align-self: flex-end; display: flex; align-items: center; gap: 8px; background: #2B4BFF; color: #FFFFFF; padding: 10px 14px; border-radius: 18px 18px 4px 18px; font-size: 13px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+<span style="letter-spacing: 2px">▮▮▯▮▮▮▯▮▮</span><span>0:06</span></div>
+<span class="bn" style="align-self: flex-end; font-size: 12px; color: #5B606B">"এমব্রয়ডারি ওয়ালা, ঈদের জন্য"</span>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">কাস্টমাররা পাঠান ঝাপসা স্ক্রিনশট, ভয়েস নোট আর বাংলিশ। Quicky সবই বোঝে — কোনো প্রোডাক্ট কোড লাগে না।</span>
+</div>
+</div>
+<div class="panel" data-panel="1">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">জি আপু, ঈদের জন্য এই ৩টা এমব্রয়ডারি ড্রেস আছে:</div>
+<div style="display: flex; gap: 8px; overflow: hidden">
+<div style="flex: 0 0 118px; border: 1px solid #E4E4DE; border-radius: 14px; overflow: hidden"><div style="height: 80px; background: #EADFD3"></div><div style="padding: 8px; font-size: 12px"><b>Nokshi Three-Piece</b><br>৳2,150</div></div>
+<div style="flex: 0 0 118px; border: 1px solid #E4E4DE; border-radius: 14px; overflow: hidden"><div style="height: 80px; background: #D8E3DC"></div><div style="padding: 8px; font-size: 12px"><b>জামদানি কুর্তি</b><br>৳1,450</div></div>
+<div style="flex: 0 0 118px; border: 1px solid #E4E4DE; border-radius: 14px; overflow: hidden"><div style="height: 80px; background: #DCDDEB"></div><div style="padding: 8px; font-size: 12px"><b>ঈদ সিল্ক সেট</b><br>৳2,950</div></div>
+</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">পুরো ক্যাটালগের সাথে ছবি মিলিয়ে প্রোডাক্ট কার্ড পাঠায় — ছবি, দাম আর "এটি নিতে চাই" বাটন। কখনো বানানো দাম বলে না।</span>
+</div>
+</div>
+<div class="panel" data-panel="2">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">কোন সাইজ নেবেন আপু?</div>
+<div style="display: flex; gap: 6px">
+<span style="padding: 8px 14px; border-radius: 99px; border: 1px solid #2B4BFF; color: #2B4BFF; font-size: 13px; font-weight: 600">M</span>
+<span style="padding: 8px 14px; border-radius: 99px; background: #2B4BFF; color: #FFFFFF; font-size: 13px; font-weight: 600">L · ৬টা বাকি</span>
+<span style="padding: 8px 14px; border-radius: 99px; border: 1px solid #D9D9D2; color: #8A8F99; font-size: 13px; font-weight: 600; text-decoration: line-through">XL</span>
+</div>
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">এর সাথে এই ওড়নাটা খুব সুন্দর মানাবে — ৳450</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">অপশনগুলো ট্যাপ করার মতো বাটন হয়ে যায়। স্টক আসে সরাসরি ক্যাটালগ থেকে, আর অর্ডার বড় করতে মানানসই প্রোডাক্ট সাজেস্ট করে।</span>
+</div>
+</div>
+<div class="panel" data-panel="3">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="border: 1px solid #E4E4DE; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+<div style="display: flex; justify-content: space-between"><b>অর্ডার #১০৪২</b><span style="color: #11864A; font-weight: 600">কনফার্মড</span></div>
+<div style="display: flex; justify-content: space-between; color: #3A3F49"><span>Nokshi Three-Piece (L)</span><span>৳2,150</span></div>
+<div style="display: flex; justify-content: space-between; color: #3A3F49"><span>ডেলিভারি · ঢাকার ভিতরে</span><span>৳70</span></div>
+<div style="display: flex; justify-content: space-between; color: #3A3F49"><span>কুপন EID10</span><span>−৳215</span></div>
+<div style="border-top: 1px dashed #D9D9D2; padding-top: 6px; display: flex; justify-content: space-between"><b>মোট · ক্যাশ অন ডেলিভারি</b><b>৳2,005</b></div>
+<span style="color: #5B606B">মিরপুর ১০, ঢাকা · ০১৭১২-৩৪৫৬৭৮ · ১–২ দিনে পৌঁছাবে</span>
+</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">নাম, ফোন আর ঠিকানা চ্যাটেই নেওয়া হয়। কুপন বসে, এলাকা অনুযায়ী ডেলিভারি চার্জ, পরিষ্কার বিল — আর পাঠানোর আগে কোনো পরিবর্তন হলে সেটাও সামলায়।</span>
+</div>
+</div>
+<div class="panel" data-panel="4">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="border: 1px solid #E4E4DE; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px">
+<div style="display: flex; justify-content: space-between; align-items: center"><b>পাঠানোর আগে</b><span style="padding: 3px 10px; border-radius: 99px; background: #E3F6EC; color: #11864A; font-weight: 600">কম ঝুঁকি</span></div>
+<span style="color: #3A3F49">কুরিয়ার রেকর্ড: ১৬টার মধ্যে ১৪টা পার্সেল ডেলিভারড (৮৮%)</span>
+<span style="color: #3A3F49">আপনার শপে: ৩টা অর্ডার, ০ রিটার্ন</span>
+<div style="height: 1px; background: #EEEEEA"></div>
+<div style="display: flex; justify-content: space-between"><span>Steadfast · অটোমেটিক বুকড</span><b>SF-29384</b></div>
+</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">পাঠানোর আগেই দেখুন কাস্টমারের ডেলিভারি হিস্ট্রি, তারপর এক ক্লিকে Steadfast বা Pathao বুক করুন — অথবা অর্ডার কনফার্ম হওয়ামাত্র Quicky নিজেই বুক করে দেবে।</span>
+</div>
+</div>
+<div class="panel" data-panel="5">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="border: 1px solid #E4E4DE; border-radius: 16px; padding: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 13px"><span class="bn">পার্সেল আজ আপনার এলাকায় পৌঁছাবে</span><span style="padding: 6px 10px; border-radius: 10px; background: #2B4BFF; color: #FFFFFF; font-weight: 600">ট্র্যাক</span></div>
+<div class="bn" style="align-self: flex-end; background: #2B4BFF; color: #FFFFFF; padding: 8px 12px; border-radius: 18px 18px 4px 18px; font-size: 14px">আমার পার্সেল কই?</div>
+<div class="bn" style="align-self: flex-start; background: #F0F0EC; padding: 8px 12px; border-radius: 18px 18px 18px 4px; font-size: 14px">আপু, পার্সেল এখন ডেলিভারির জন্য বের হয়েছে। আজ সন্ধ্যার মধ্যে পাবেন।</div>
+<div style="display: flex; gap: 4px; color: #E8A400; font-size: 20px" aria-label="পাঁচ তারকা রিভিউ অনুরোধ">★★★★★</div>
+<span style="font-size: 14px; color: #3A3F49; line-height: 1.5; padding-top: 6px">ট্র্যাকিং আপডেট নিজে থেকেই যায়, "আমার পার্সেল কই?"-এর লাইভ উত্তর মেলে, আর ডেলিভারির পর রিভিউ চাওয়া হয়। ফেইলড ডেলিভারি কম, টাইপিং শূন্য।</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
 
-    <section class="final">
-      <h2>প্রতিটি কাস্টমারকে দিন দ্রুত আর আন্তরিক উত্তর</h2>
-      <a class="btn big" href="/app?signup=1">আপনার শপের ইনবক্স তৈরি করুন</a>
-    </section>
-  </main>
+<!-- INBOX -->
+<section id="features" style="background: #FFFFFF; border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 640px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">পুরো টিমের জন্য একটাই ইনবক্স</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">সব চ্যানেল, সব কাস্টমার, এক স্ক্রিনে।</h2>
+</div>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55; max-width: 420px">Messenger, Instagram, আপনার বর্তমান নম্বরে WhatsApp, কমেন্ট আর ওয়েবসাইট চ্যাট — এক জায়গা থেকে উত্তর, AI আর আপনার টিম মিলে।</p>
+</div>
+<div style="border: 1px solid #E4E4DE; border-radius: 24px; overflow: hidden; display: flex; flex-wrap: wrap; background: #FBFBF9">
+<div style="flex: 1 1 300px; min-width: 0; border-right: 1px solid #E4E4DE; background: #FFFFFF">
+<div style="display: flex; gap: 6px; padding: 14px; border-bottom: 1px solid #EEEEEA; font-size: 13px; font-weight: 600">
+<span style="padding: 6px 10px; border-radius: 9px; background: #101217; color: #FFFFFF">অপেক্ষায় ৩</span>
+<span style="padding: 6px 10px; border-radius: 9px; color: #4A4F5A">না-পড়া ৮</span>
+<span style="padding: 6px 10px; border-radius: 9px; color: #4A4F5A">খোলা ২৪</span>
+<span style="padding: 6px 10px; border-radius: 9px; color: #4A4F5A">শেষ</span>
+</div>
+<div style="display: flex; flex-direction: column">
+<div style="padding: 14px; border-bottom: 1px solid #EEEEEA; background: #F2F4FF; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Sadia Rahman</b><span style="color: #B4540A; font-weight: 600; font-size: 12px">৪ মিনিট অপেক্ষায়</span></div>
+<span style="font-size: 13px; color: #4A4F5A">রিটার্ন চান — কালার মেলেনি</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #FFE9D6; color: #8A3D00">মানুষ দরকার</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">Messenger</span></div>
+</div>
+<div style="padding: 14px; border-bottom: 1px solid #EEEEEA; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Tanvir Ahmed</b><span style="color: #5B606B; font-size: 12px">২ মি.</span></div>
+<span style="font-size: 13px; color: #4A4F5A">অর্ডার #১০৪৩ কনফার্মড · ৳১,৪৫০</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #E6EAFF; color: #1A33C9">AI</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">Instagram</span></div>
+</div>
+<div style="padding: 14px; border-bottom: 1px solid #EEEEEA; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Mitu Akter</b><span style="color: #5B606B; font-size: 12px">৬ মি.</span></div>
+<span style="font-size: 13px; color: #4A4F5A">ডিসকাউন্ট চেয়েছেন</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #E6EAFF; color: #1A33C9">AI</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">WhatsApp</span></div>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><b>Rakib Hasan</b><span style="color: #5B606B; font-size: 12px">১১ মি.</span></div>
+<span style="font-size: 13px; color: #4A4F5A">রাফি উত্তর দিচ্ছেন…</span>
+<div style="display: flex; gap: 6px"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #FFF3C4; color: #6B5200">মানুষ · রাফি</span><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: #EEEEEA; color: #3A3F49">কমেন্ট</span></div>
+</div>
+</div>
+</div>
+<div style="flex: 999 1 420px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px">
+<div style="display: flex; flex-direction: column"><span style="font-weight: 700; font-size: 18px">Sadia Rahman</span><span style="font-size: 13px; color: #5B606B">মার্চ থেকে কাস্টমার · ৪টা অর্ডার</span></div>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #D9D9D2; background: #FFFFFF; font: 600 13px 'Hind Siliguri', Inter, sans-serif; cursor: pointer">অ্যাসাইন</button>
+<button type="button" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: #101217; color: #FFFFFF; font: 600 13px 'Hind Siliguri', Inter, sans-serif; cursor: pointer">দায়িত্ব নিন</button>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px">
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #5B606B; font-weight: 600">AI সারাংশ</span><span style="font-size: 14px; line-height: 1.45">নিয়মিত ক্রেতা। গতকাল অর্ডার #১০৩১ পেয়েছেন; বলছেন ছবির চেয়ে কালার গাঢ়, এক্সচেঞ্জ চান।</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #5B606B; font-weight: 600">ডেলিভারি রেকর্ড</span><span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 26px; font-weight: 700">92%</span><span style="font-size: 13px; color: #11864A; font-weight: 600">রিটার্নের ঝুঁকি কম</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #5B606B; font-weight: 600">টিম নোট</span><span style="font-size: 14px; line-height: 1.45">VIP — সন্ধ্যা ৬টার আগে কল দিন। bKash পছন্দ করেন।</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 24px; padding-top: 8px">
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>অপেক্ষায়, না-পড়া, খোলা, শেষ — সন্ধ্যার মধ্যে ইনবক্স খালি</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>নাম, ফোন, অর্ডার বা চ্যাটের যেকোনো শব্দ দিয়ে খুঁজুন</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>চ্যাট অ্যাসাইন করুন, নোট রাখুন, কে টাইপ করছে দেখুন</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>চ্যাট পরে দেখার জন্য রাখুন — ঠিক সময়ে ফিরে আসবে</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>প্রতিটা চ্যাটের পাশে অর্ডার, নোট আর হিস্ট্রি</span>
+<span style="display: flex; gap: 10px; font-size: 15px; line-height: 1.45"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>আনলিমিটেড টিমমেট — প্রতি জনের আলাদা ফি নেই</span>
+</div>
+</div>
+</div>
+</div>
+</section>
 
-  <footer class="footer">
-    <span>© Quicky</span>
-    <span class="spacer"></span>
-    <a href="/privacy">প্রাইভেসি</a>
-    <a href="/terms">শর্তাবলি</a>
-    <a href="/data-deletion">ডেটা মুছে ফেলা</a>
-    <a href="/app">লগ ইন</a>
-  </footer>
+<!-- CONTROL / HANDOFF -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">নিয়ন্ত্রণ আপনার হাতে</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">AI বিক্রি করে। যেটা মানুষেরই সামলানো উচিত, সেটা সামলায় আপনার টিম।</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">অভিযোগ, রিফান্ড, রাগী কাস্টমার আর বিশেষ অনুরোধ সরাসরি আপনার টিমের কাছে যায় — কারণ লিখে রেখে, সাথে নোটিফিকেশন। AI কখনো তর্ক করে না।</p>
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; gap: 14px; align-items: flex-start"><span style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: #101217; color: #FFD233; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; line-height: 1">.</span><div style="display: flex; flex-direction: column; gap: 2px"><b style="font-size: 16px">একটা ডট (.) লিখেই দায়িত্ব নিন</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">Quicky, Messenger বা Business Suite থেকে। AI চুপ হয়ে যায়; আরেকটা ডট দিলে আবার AI-এর হাতে। ভুলে গেলে? নিজেই ফিরে যায়, আর আপনি কী বলেছেন সেটাও মনে রাখে।</span></div></div>
+<div style="display: flex; gap: 14px; align-items: flex-start"><span style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: #E6EAFF; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A33C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"></path></svg></span><div style="display: flex; flex-direction: column; gap: 2px"><b style="font-size: 16px">লাইভের আগে প্র্যাকটিস মোড</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">লাইভ না করা পর্যন্ত AI শুধু আপনার টেস্ট চ্যাটে উত্তর দেয়। ফ্রি ট্রায়াল শুরু হয় তখন, সাইন আপের দিন না।</span></div></div>
+<div style="display: flex; gap: 14px; align-items: flex-start"><span style="flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px; background: #E6EAFF; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A33C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"></path></svg></span><div style="display: flex; flex-direction: column; gap: 2px"><b style="font-size: 16px">চ্যানেল ধরে AI চালু বা বন্ধ</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">Messenger আর কমেন্টে উত্তর দিক, WhatsApp-এ না — কিংবা একজন স্প্যামারের জন্য বন্ধ করে দিন।</span></div></div>
+</div>
+</div>
+<div style="flex: 1 1 440px; min-width: 0; background: #101217; border-radius: 28px; padding: 28px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box">
+<div style="background: #1C1F27; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; color: #EDEDEA; font-size: 14px"><span>সাদিয়া · রিফান্ড চান</span><span style="padding: 4px 10px; border-radius: 99px; background: #FFD233; color: #101217; font-weight: 700; font-size: 12px">এখনই দেখুন</span></div>
+<div style="background: #1C1F27; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; color: #EDEDEA; font-size: 14px"><span>রাকিব · ৪২ সাইজ চেয়েছেন (কাল আসবে)</span><span style="color: #A2A7B1; font-size: 12px">২ মিনিট অপেক্ষায়</span></div>
+<div style="background: #1C1F27; border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; color: #EDEDEA; font-size: 14px"><span>মিতু · পাঠানোর পর বাতিল</span><span style="color: #A2A7B1; font-size: 12px">অ্যালার্ট গেছে</span></div>
+<div style="margin-top: 8px; background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<div class="bn" style="align-self: flex-end; background: #2B4BFF; color: #FFFFFF; padding: 8px 14px; border-radius: 18px 18px 4px 18px; font-size: 22px; font-weight: 700; line-height: 1">.</div>
+<span style="align-self: center; font-size: 12px; font-weight: 600; color: #5B606B; background: #F0F0EC; padding: 4px 10px; border-radius: 99px">রাফি দায়িত্ব নিয়েছেন · AI থেমে আছে</span>
+<div class="bn" style="align-self: flex-end; background: #2B4BFF; color: #FFFFFF; padding: 8px 12px; border-radius: 18px 18px 4px 18px; font-size: 14px">আপু, আমি রাফি। কালার এক্সচেঞ্জ করে দিচ্ছি, কোনো চার্জ লাগবে না।</div>
+</div>
+</div>
+</section>
+
+<!-- TEACH -->
+<section style="background: #101217; color: #EDEDEA">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #FFD233; text-transform: uppercase; letter-spacing: 0.08em">নতুন কর্মীর মতো শিখিয়ে দিন</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em; color: #FFFFFF">প্রম্পট না, ডেভেলপার না। শুধু বাংলায় বলে দিন।</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px">
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">01</span>
+<b style="font-size: 18px; color: #FFFFFF">থাম্বস আপ বা ডাউন</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">ইনবক্সে AI-এর যেকোনো উত্তরে। থাম্বস ডাউন দিলে জানতে চায় কী বলা উচিত ছিল — লিখে বা মুখে বলে দিন।</span>
+</div>
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">02</span>
+<b style="font-size: 18px; color: #FFFFFF">আগে দেখে নিন</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">কাস্টমার ঠিক যেভাবে দেখবেন, নতুন উত্তরটা Quicky সেভাবেই দেখায়। আপনি হ্যাঁ বললে তবেই লাইভ।</span>
+</div>
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">03</span>
+<b style="font-size: 18px; color: #FFFFFF">ফাঁকগুলো পূরণ করুন</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">যেসব প্রশ্নের উত্তর দিতে পারেনি তার তালিকা, কোনটা কতবার এসেছে সহ। একবার শেখালেই সবসময় উত্তর।</span>
+</div>
+<div style="background: #1C1F27; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 15px; font-weight: 700; color: #FFD233">04</span>
+<b style="font-size: 18px; color: #FFFFFF">এক ক্লিকে আগের অবস্থায়</b>
+<span style="font-size: 15px; color: #B7BCC6; line-height: 1.55">প্রতিটা পরিবর্তন ভার্সন হিসেবে সেভ থাকে। পছন্দ না হলে সাথে সাথে ফিরিয়ে নিন।</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- BUILT FOR BD -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">বাংলাদেশের মতো করে বানানো</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">COD, কুরিয়ার, bKash আর বাংলিশ — সব সামলায়।</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">ফেক অর্ডার যাচাই</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">COD পার্সেল পাঠানোর আগে দেখুন কাস্টমারের ডেলিভারি রেকর্ড — আপনার শপে আর সব কুরিয়ারে।</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">Steadfast ও Pathao</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">এক ক্লিকে বা অটোমেটিক বুক করুন। ট্র্যাকিং আপডেট নিজে থেকেই কাস্টমারের ইনবক্সে যায়।</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">bKash ও Nagad-এ অ্যাডভান্স</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">AI ট্রানজেকশন আইডি নেয়, আপনার টিম এক ট্যাপে অ্যাপ্রুভ করে। ঝুঁকিপূর্ণ অর্ডারে অ্যাডভান্স চান।</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">বাংলা, বাংলিশ, ভয়েস</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">"vaiya L size ase?" বা ২০ সেকেন্ডের ভয়েস নোট — সব বোঝে, আর কাস্টমারকে ঠিকঠাক আপু বা ভাইয়া বলে সম্বোধন করে।</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">কমেন্ট থেকে অর্ডার</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">পোস্টে "দাম?" লিখলেই কমেন্টে উত্তর আর ইনবক্সে প্রোডাক্ট কার্ড — চুপ হয়ে গেলে আরেকবার মনে করিয়ে দেয়।</span></div>
+<div style="background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 10px"><b style="font-size: 18px">ডেলিভারি জোন</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.55">ঢাকার ভিতরে-বাইরে চার্জ আর ডেলিভারির দিন, প্রতিটা অর্ডারে ঠিকঠাক।</span></div>
+</div>
+</section>
+
+<!-- GROWTH -->
+<section style="background: #FFFFFF; border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">"ভেবে দেখি" বলা কাস্টমারদের ফিরিয়ে আনুন</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">এমন ফলো-আপ, যে জানে কখন বলতে হয় — আর কখন থামতে হয়।</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">যিনিই আগ্রহ দেখান, তিনি লিড হয়ে যান। Quicky আগ্রহী কাস্টমারদের ঠিক সময়ে মনে করিয়ে দেয়, Meta-র ২৪ ঘণ্টার নিয়মের মধ্যে — আর আপনার টিম যার সাথে কথা বলছে তাকে কখনো বিরক্ত করে না।</p>
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 15px">
+<span style="display: flex; gap: 10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>লিড তালিকা — প্রোডাক্ট, নম্বর আর কলব্যাকের সময়সহ</span>
+<span style="display: flex; gap: 10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>গত ২৪ ঘণ্টায় যারা মেসেজ দিয়েছেন সবাইকে অফার পাঠান</span>
+<span style="display: flex; gap: 10px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2B4BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto"><path d="M20 6 9 17l-5-5"></path></svg>অফার যারা পেয়েছেন শুধু তাদের জন্য, আর শুধু মেয়াদ পর্যন্ত — AI ঠিক মেনে চলে</span>
+</div>
+</div>
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="border: 1px solid #E4E4DE; border-radius: 18px; padding: 18px; display: flex; gap: 14px; align-items: center"><span style="padding: 4px 10px; border-radius: 99px; background: #FFE9D6; color: #8A3D00; font-size: 12px; font-weight: 700">হট</span><div style="display: flex; flex-direction: column; flex: 1"><b style="font-size: 15px">ফারহান সিলেটে ডেলিভারি নিয়ে জিজ্ঞেস করেছেন</b><span style="font-size: 13px; color: #5B606B">৩ ঘণ্টা পর রিমাইন্ডার, আবার ২০ ঘণ্টা পর</span></div></div>
+<div style="border: 1px solid #E4E4DE; border-radius: 18px; padding: 18px; display: flex; gap: 14px; align-items: center"><span style="padding: 4px 10px; border-radius: 99px; background: #FFF3C4; color: #6B5200; font-size: 12px; font-weight: 700">ওয়ার্ম</span><div style="display: flex; flex-direction: column; flex: 1"><b style="font-size: 15px">নুসরাত শুধু দাম জিজ্ঞেস করেছেন</b><span style="font-size: 13px; color: #5B606B">২০ ঘণ্টা পর একবার আলতো করে মনে করানো</span></div></div>
+<div style="border: 1px solid #E4E4DE; border-radius: 18px; padding: 18px; display: flex; gap: 14px; align-items: center"><span style="padding: 4px 10px; border-radius: 99px; background: #EEEEEA; color: #3A3F49; font-size: 12px; font-weight: 700">স্কিপ</span><div style="display: flex; flex-direction: column; flex: 1"><b class="bn" style="font-size: 15px">রুপা বলেছেন "লাগবে না, ধন্যবাদ"</b><span style="font-size: 13px; color: #5B606B">ফলো-আপ নয় — না-কে সম্মান</span></div></div>
+<div style="background: #101217; color: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap"><div style="display: flex; flex-direction: column"><b style="font-size: 15px">রাত ১২টা পর্যন্ত ফ্রি ডেলিভারি</b><span style="font-size: 13px; color: #A2A7B1">আজ মেসেজ দেওয়া ৪৭ জনকে পাঠানো হবে</span></div><span style="padding: 8px 14px; border-radius: 10px; background: #FFD233; color: #101217; font-weight: 700; font-size: 13px">অফার পাঠান</span></div>
+</div>
+</div>
+</section>
+
+<!-- SAVED REPLIES -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 440px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E4DE; border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: center"><b style="font-size: 16px">ডেলিভারি চার্জ</b><span style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: #E3F6EC; color: #11864A">সাথে সাথে উত্তর</span></div>
+<div class="bn" style="background: #F6F6F3; border-radius: 12px; padding: 12px; font-size: 14px; line-height: 1.5">ঢাকার ভিতরে ৳৭০, ঢাকার বাইরে ৳১৩০। ১–৩ দিনে ডেলিভারি।</div>
+<span style="font-size: 12px; font-weight: 600; color: #5B606B; text-transform: uppercase; letter-spacing: 0.06em">কাস্টমার যখন লেখেন</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span class="bn" style="font-size: 13px; padding: 6px 10px; border-radius: 99px; background: #F0F0EC">ডেলিভারি চার্জ কত?</span>
+<span style="font-size: 13px; padding: 6px 10px; border-radius: 99px; background: #F0F0EC">delivery charge koto</span>
+<span style="font-size: 13px; padding: 6px 10px; border-radius: 99px; background: #F0F0EC">dhakar baire charge?</span>
+<span style="font-size: 13px; padding: 6px 10px; border-radius: 99px; border: 1px dashed #2B4BFF; color: #2B4BFF; font-weight: 600">+ আপনার চ্যাটে আরও ৬টা পাওয়া গেছে</span>
+</div>
+<div style="background: #F2F4FF; border-radius: 12px; padding: 12px; font-size: 14px; color: #1A33C9; font-weight: 600">গত ১৪ দিনে ২১৪টা মেসেজের উত্তর নিজে নিজেই দিয়ে দিত</div>
+</div>
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">সেভড রিপ্লাই</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">একই প্রশ্ন? উত্তর ফ্রি।</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">ডেলিভারি চার্জ তো বদলায় না, তাহলে ২০০ বার একই উত্তর কেন টাইপ করবেন? একবার লিখে রাখুন। কাস্টমার যেভাবেই জিজ্ঞেস করুক — ইমোজি, সালাম, বাংলা বা ইংরেজি সংখ্যা — Quicky মিলিয়ে নিয়ে সাথে সাথে উত্তর দেয়।</p>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">ছবি, প্রোডাক্ট কার্ড বা নিজের গলার ভয়েস নোট যোগ করুন। দাম সবসময় আসে ক্যাটালগ থেকে, তাই পুরনো দাম কখনো যায় না।</p>
+</div>
+</section>
+
+<!-- COMPARISON -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 40px 24px 96px; display: flex; flex-direction: column; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">শুধু মডারেটর বা চ্যাটবট কেন নয়?</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">দুজনে যা করে Quicky তা করে — আর যা কেউই পারে না, সেটাও।</h2>
+</div>
+<div style="overflow-x: auto; border: 1px solid #E4E4DE; border-radius: 20px; background: #FFFFFF">
+<table style="width: 100%; min-width: 720px; border-collapse: collapse; font-size: 15px">
+<thead>
+<tr style="text-align: left; background: #FBFBF9">
+<th style="padding: 16px 20px; font-weight: 600; color: #5B606B; border-bottom: 1px solid #E4E4DE">&#160;</th>
+<th style="padding: 16px 20px; font-weight: 700; border-bottom: 1px solid #E4E4DE">মডারেটর</th>
+<th style="padding: 16px 20px; font-weight: 700; border-bottom: 1px solid #E4E4DE">সাধারণ চ্যাটবট</th>
+<th style="padding: 16px 20px; font-weight: 700; border-bottom: 1px solid #E4E4DE; color: #2B4BFF">Quicky</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">রাত ২টায় উত্তর</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">পরদিন সকালে</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">সাথে সাথে, মুখস্থ বুলি</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">কয়েক সেকেন্ডে, মানুষের মতো</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">বাংলিশ ও ভয়েস নোট</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">হ্যাঁ</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">শুধু কিওয়ার্ড</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">হ্যাঁ</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">স্ক্রিনশট থেকে প্রোডাক্ট</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">মনে থাকলে</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">না</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">পুরো ক্যাটালগের সাথে মেলায়</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">অর্ডার নেওয়া ও কুরিয়ার বুক</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">হাতে করে</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">ফর্মের লিংক</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">চ্যাটেই, তারপর অটোমেটিক</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">কাস্টমারকে মনে রাখে</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">মাঝে মাঝে</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">না</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">সব চ্যানেল জুড়ে</td></tr>
+<tr><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">কখন মানুষ ডাকতে হবে জানে</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">—</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; color: #4A4F5A">না</td><td style="padding: 14px 20px; border-bottom: 1px solid #EEEEEA; font-weight: 600">কারণ লিখে হস্তান্তর করে</td></tr>
+<tr><td style="padding: 14px 20px; font-weight: 600">ঈদ, ছুটির দিন, ২৪/৭ কাজ করে</td><td style="padding: 14px 20px; color: #4A4F5A">না</td><td style="padding: 14px 20px; color: #4A4F5A">হ্যাঁ</td><td style="padding: 14px 20px; font-weight: 600">হ্যাঁ</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ROI CALCULATOR -->
+<section style="background: #FFD233">
+<div style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<span style="font-size: 14px; font-weight: 700; color: #101217; text-transform: uppercase; letter-spacing: 0.08em">হিসাবটা করে দেখুন</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">আপনার ইনবক্স কতটা সময় খেয়ে ফেলে?</h2>
+<label style="display: flex; flex-direction: column; gap: 8px; font-weight: 600; font-size: 15px">দিনে মেসেজ: <span id="msgsOut">200</span>
+<input id="msgs" type="range" min="20" max="1000" step="10" value="200" aria-label="দিনে মেসেজ">
+</label>
+<label style="display: flex; flex-direction: column; gap: 8px; font-weight: 600; font-size: 15px">মডারেটরের মাসিক বেতন: ৳<span id="salOut">15,000</span>
+<input id="sal" type="range" min="8000" max="30000" step="500" value="15000" aria-label="মডারেটরের মাসিক বেতন">
+</label>
+<span style="font-size: 13px; color: #3A3F49; line-height: 1.5">ধরে নেওয়া হয়েছে প্রতি মেসেজে প্রায় ১ মিনিট টাইপিং আর একজন মডারেটরের মাসে ২০০ কর্মঘণ্টা।</span>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px">
+<div style="background: #101217; color: #FFFFFF; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; font-weight: 700"><span id="hours">100</span></span><span style="font-size: 14px; color: #B7BCC6">ঘণ্টা টাইপিং, প্রতি মাসে</span></div>
+<div style="background: #101217; color: #FFFFFF; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; font-weight: 700"><span id="mods">0.5</span></span><span style="font-size: 14px; color: #B7BCC6">জন ফুল-টাইম মডারেটরের সমান কাজ</span></div>
+<div style="background: #FFFFFF; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 6px; grid-column: 1 / -1"><span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; font-weight: 700">৳<span id="cost">7,500</span></span><span style="font-size: 14px; color: #3A3F49">প্রতি মাসে শুধু টাইপিংয়ে মডারেটরের সময় — যেটা Quicky আপনার টিমের কাঁধ থেকে নামিয়ে দিতে পারে</span></div>
+</div>
+</div>
+</section>
+
+<!-- SETUP -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">মাত্র ১০ মিনিটে লাইভ</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">আজ সাইন আপ। আজ রাতেই প্রথম AI অর্ডার।</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+<div style="border-top: 3px solid #101217; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #5B606B">ধাপ ১ · ১ মিনিট</span><b style="font-size: 18px">পেজ কানেক্ট করুন</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">অফিসিয়াল ফেসবুক লগইন — একই ধাপে Instagram আর WhatsApp। কোনো পাসওয়ার্ড দিতে হয় না।</span></div>
+<div style="border-top: 3px solid #101217; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #5B606B">ধাপ ২ · ৩ মিনিট</span><b style="font-size: 18px">ব্যবসার ধরন বেছে নিন</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">পোশাক, কসমেটিকস, গ্যাজেট, খাবার, সেলুন… Quicky ঠিক সাইজ, ফিল্ড আর প্রশ্নগুলো সেট করে দেয়।</span></div>
+<div style="border-top: 3px solid #101217; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #5B606B">ধাপ ৩ · ৩ মিনিট</span><b style="font-size: 18px">প্রোডাক্ট ও ডেলিভারি যোগ করুন</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">শিট বা CSV থেকে ইমপোর্ট, ডেলিভারি চার্জ সেট, কুরিয়ার কি যোগ।</span></div>
+<div style="border-top: 3px solid #2B4BFF; padding-top: 20px; display: flex; flex-direction: column; gap: 8px"><span style="font-size: 13px; font-weight: 700; color: #2B4BFF">ধাপ ৪ · ৩ মিনিট</span><b style="font-size: 18px">প্র্যাকটিস, তারপর লাইভ</b><span style="font-size: 15px; color: #4A4F5A; line-height: 1.5">কাস্টমার সেজে নিজের AI-এর সাথে চ্যাট করুন। পছন্দ হলে এক সুইচেই আসল ক্রেতাদের উত্তর দেওয়া শুরু।</span></div>
+</div>
+<span style="font-size: 15px; color: #4A4F5A">অন্য টুল থেকে আসছেন, বা নিজে সেটআপ করতে চান না? আমরাই করে দেব, ফ্রিতে।</span>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="background: #FFFFFF; border-top: 1px solid #E4E4DE; border-bottom: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 720px">
+<span style="font-size: 14px; font-weight: 700; color: #2B4BFF; text-transform: uppercase; letter-spacing: 0.08em">টাকায় প্রাইসিং</span>
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em">আপনার টিম ফ্রি। AI-এর জন্য মাসে একটা নির্দিষ্ট দাম।</h2>
+<p style="margin: 0; font-size: 17px; color: #4A4F5A; line-height: 1.55">ইনবক্স, আনলিমিটেড টিমমেট আর সেভড রিপ্লাইয়ে কোনো খরচ নেই। AI এজেন্ট একটা সহজ মাসিক সাবস্ক্রিপশন, পেমেন্ট bKash, Nagad বা কার্ডে। রিচার্জের ঝামেলা নেই, প্রতি উত্তরে আলাদা খরচও নেই।</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px">
+<div style="border: 1px solid #E4E4DE; border-radius: 24px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+<b style="font-size: 18px">ফ্রি</b>
+<span class="price-soon" style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 36px; line-height: 1.2; font-weight: 700">শীঘ্রই আসছে</span>
+<span style="font-size: 15px; color: #4A4F5A">ছোট পেজ গুছিয়ে নিতে।</span>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 15px"><span>সব চ্যানেল এক ইনবক্সে</span><span>আনলিমিটেড টিমমেট</span><span>ফ্রিতে উত্তর দেওয়া সেভড রিপ্লাই</span><span>প্র্যাকটিস মোডে AI চেষ্টা করুন</span></div>
+<a href="/app?signup=1" style="margin-top: auto; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #101217; color: #101217; font-weight: 600; text-decoration: none">ফ্রি শুরু করুন</a>
+</div>
+<div style="border: 2px solid #2B4BFF; border-radius: 24px; padding: 28px; display: flex; flex-direction: column; gap: 14px; position: relative">
+<span style="position: absolute; top: -13px; left: 24px; background: #2B4BFF; color: #FFFFFF; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px">বেশিরভাগ শপের পছন্দ</span>
+<b style="font-size: 18px">গ্রোথ</b>
+<span class="price-soon" style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 36px; line-height: 1.2; font-weight: 700">শীঘ্রই আসছে</span>
+<span style="font-size: 15px; color: #4A4F5A">একটা বাড়ন্ত ব্র্যান্ডের জন্য AI সেলস এজেন্ট।</span>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 15px"><span>ফ্রি-এর সবকিছু</span><span>AI এজেন্ট: অর্ডার, ছবি, ভয়েস</span><span>Steadfast ও Pathao বুকিং</span><span>ফলো-আপ ও ব্রডকাস্ট</span></div>
+<a href="/app?signup=1" style="margin-top: auto; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #2B4BFF; color: #FFFFFF; font-weight: 600; text-decoration: none">ফ্রি ট্রায়াল শুরু করুন</a>
+</div>
+<div style="border: 1px solid #E4E4DE; border-radius: 24px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+<b style="font-size: 18px">প্রো</b>
+<span class="price-soon" style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 36px; line-height: 1.2; font-weight: 700">শীঘ্রই আসছে</span>
+<span style="font-size: 15px; color: #4A4F5A">একাধিক পেজের ব্র্যান্ড আর ব্যস্ত টিমের জন্য।</span>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 15px"><span>গ্রোথ-এর সবকিছু</span><span>একাধিক পেজ ও ব্র্যান্ড</span><span>ফেক অর্ডার যাচাই ও টিকিট</span><span>অ্যানালিটিক্স ও Meta Conversions API</span></div>
+<a href="/app?signup=1" style="margin-top: auto; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #101217; color: #101217; font-weight: 600; text-decoration: none">ফ্রি ট্রায়াল শুরু করুন</a>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="max-width: 860px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 32px">
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 44px; line-height: 1.25; letter-spacing: -0.03em; text-align: center">সেলাররা যা জানতে চান</h2>
+<div style="display: flex; flex-direction: column; border-top: 1px solid #E4E4DE">
+<details style="border-bottom:1px solid #E4E4DE" open><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">AI কি আমার কাস্টমারকে ভুল কিছু বলবে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">AI শুধু আপনার ক্যাটালগ, দাম আর নলেজ বুক থেকেই উত্তর দেয় — বানানো দাম, স্টক বা ডিসকাউন্ট কখনো না। নিশ্চিত না হলে জিজ্ঞেস করে নেয় বা চ্যাট আপনার টিমকে দেয়। আর শুরু হয় প্র্যাকটিস মোডে, তাই আসল কাস্টমার দেখার আগেই আপনি পরীক্ষা করে নিতে পারেন।</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">আমার ফেসবুক পাসওয়ার্ড কি দিতে হবে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">না। ফেসবুকের নিজস্ব অফিসিয়াল লগইন দিয়ে কানেক্ট করবেন, যেভাবে যেকোনো Meta-অনুমোদিত অ্যাপ কানেক্ট করেন।</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">আমার টিম কি নিজেরাও উত্তর দিতে পারবে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">অবশ্যই। "দায়িত্ব নিন" ট্যাপ করুন, বা Messenger কিংবা Business Suite থেকে একটা ডট লিখুন — AI চুপ হয়ে যাবে। আরেকটা ডট দিলে আবার AI-এর হাতে।</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">কোন কোন ভাষা বোঝে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">বাংলা, বাংলিশ আর ইংরেজি — ভয়েস নোট আর "vaiya L size ase?"-এর মতো মিশ্র বানানসহ। কাস্টমারকে কীভাবে সম্বোধন করবে, সেটা আপনি ঠিক করবেন — আপু, ভাইয়া, স্যার বা ম্যাডাম।</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">কোন কুরিয়ার আর পেমেন্ট কাজ করে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">বুকিং আর ট্র্যাকিংয়ের জন্য Steadfast ও Pathao, আর অ্যাডভান্সের জন্য bKash বা Nagad ট্রানজেকশন আইডি। আরও কুরিয়ার আসছে।</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">সাবস্ক্রিপশন শেষ হলে কী হবে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">AI থেমে যাবে আর আপনার টিম আগেই জানতে পারবে। ইনবক্স, সেভড রিপ্লাই আর অর্ডার চলতেই থাকবে, রিনিউ করলেই AI আবার চালু।</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">সেটআপে কত সময় লাগে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">বেশিরভাগ শপের জন্য প্রায় ১০ মিনিট। নিজে করতে না চাইলে, বা অন্য টুল থেকে আসলে, আমরাই ফ্রিতে সেটআপ করে দেব।</p></details><details style="border-bottom:1px solid #E4E4DE"><summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;cursor:pointer;font:600 18px 'Hind Siliguri',Inter,sans-serif;color:#101217;list-style:none">আমার চ্যাট আর ডেটা কে দেখতে পারে?<span class="sign" style="font-size:24px;font-weight:400;color:#5B606B">+</span></summary><p style="margin:0;padding:0 4px 22px;font-size:16px;color:#4A4F5A;line-height:1.6">শুধু আপনি আর যে টিমমেটদের আপনি ইনভাইট করবেন, আপনার দেওয়া রোল অনুযায়ী। যখন খুশি ডেটা এক্সপোর্ট বা ডিলিট করতে পারবেন।</p></details>
+</div>
+</section>
+
+<!-- FINAL CTA -->
+<section id="start" style="padding: 0 24px 96px">
+<div style="max-width: 1200px; margin: 0 auto; background: #101217; border-radius: 32px; padding: 72px 32px; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center">
+<h2 class="h2" style="margin: 0; font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-size: 52px; line-height: 1.22; letter-spacing: -0.03em; color: #FFFFFF; max-width: 760px">আজ রাতের মেসেজগুলো Quicky-কে সামলাতে দিন।</h2>
+<p style="margin: 0; font-size: 18px; color: #B7BCC6; max-width: 560px; line-height: 1.55">পেজ কানেক্ট করুন, প্রোডাক্ট যোগ করুন — সকালে উঠে দেখুন ইনবক্সের বদলে অর্ডার।</p>
+<div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center">
+<a href="/app?signup=1" style="height: 56px; display: flex; align-items: center; padding: 0 28px; border-radius: 14px; background: #FFD233; color: #101217; font-weight: 700; font-size: 17px; text-decoration: none">ফ্রি শুরু করুন — কার্ড লাগবে না</a>
+<a href="/app" style="height: 56px; display: flex; align-items: center; padding: 0 24px; border-radius: 14px; border: 1px solid #3A3F49; color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none">লগইন</a>
+</div>
+<span style="font-size: 14px; color: #A2A7B1">কোনো চুক্তি নেই · যখন খুশি বাতিল · বাংলাদেশে তৈরি</span>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer style="border-top: 1px solid #E4E4DE">
+<div style="max-width: 1200px; margin: 0 auto; padding: 48px 24px; display: flex; flex-wrap: wrap; gap: 40px; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 10px; max-width: 320px">
+<span style="font-family: 'Space Grotesk', 'Hind Siliguri', sans-serif; font-weight: 700; font-size: 20px">heyquicky</span>
+<span style="font-size: 14px; color: #5B606B; line-height: 1.5">অনলাইন শপের জন্য AI সেলস ইনবক্স। প্রতিটা মেসেজের উত্তর, প্রতিটা অর্ডার হাতে।</span>
+</div>
+<div style="display: flex; gap: 56px; flex-wrap: wrap; font-size: 14px">
+<div style="display: flex; flex-direction: column; gap: 10px"><b>প্রোডাক্ট</b><a href="#features" style="color: #4A4F5A; text-decoration: none">ফিচার</a><a href="#how" style="color: #4A4F5A; text-decoration: none">কীভাবে কাজ করে</a><a href="#pricing" style="color: #4A4F5A; text-decoration: none">প্রাইসিং</a></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><b>অ্যাকাউন্ট</b><a href="/app?signup=1" style="color: #4A4F5A; text-decoration: none">ফ্রি শুরু করুন</a><a href="/app" style="color: #4A4F5A; text-decoration: none">লগইন</a><a href="/" lang="en" style="color: #4A4F5A; text-decoration: none; font-family: Inter, sans-serif">English</a></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><b>আইনি</b><a href="/privacy" style="color: #4A4F5A; text-decoration: none">প্রাইভেসি</a><a href="/terms" style="color: #4A4F5A; text-decoration: none">শর্তাবলি</a><a href="/data-deletion" style="color: #4A4F5A; text-decoration: none">ডেটা ডিলিট</a></div>
+</div>
+</div>
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 24px 32px; font-size: 13px; color: #5B606B">© ২০২৬ HeyQuicky</div>
+</footer>
+
+</div>
+<script>
+(function(){
+function bn(x){return String(x).replace(/[0-9]/g,function(d){return '০১২৩৪৫৬৭৮৯'[d];});}
+var labels=["কাস্টমার জিজ্ঞেস করেন — যেভাবে খুশি", "Quicky প্রোডাক্ট খুঁজে বের করে", "সাইজ, স্টক আর একটা মানানসই সাজেশন", "অর্ডার কনফার্ম", "যাচাই করে পাঠানো", "ডেলিভারি পর্যন্ত আপডেট"];
+function pick(i){document.querySelectorAll('.step').forEach(function(b,j){var on=i===j;b.style.background=on?'#FFFFFF':'transparent';b.style.border='1.5px solid '+(on?'#2B4BFF':'#E4E4DE');var n=b.querySelector('.num');n.style.background=on?'#2B4BFF':'#EEEEEA';n.style.color=on?'#FFFFFF':'#3A3F49';});
+document.querySelectorAll('.panel').forEach(function(p){p.style.display=(+p.dataset.panel===i)?'block':'none';});
+document.getElementById('stepLabel').textContent='ধাপ '+bn(i+1)+' / ৬ · '+labels[i];}
+document.querySelectorAll('.step').forEach(function(b){b.addEventListener('click',function(){pick(+b.dataset.step);});});pick(0);
+document.querySelectorAll('details').forEach(function(d){var s=d.querySelector('.sign');function u(){s.textContent=d.open?'−':'+';}d.addEventListener('toggle',u);u();});
+var m=document.getElementById('msgs'),s=document.getElementById('sal');
+function calc(){var msgs=+m.value,sal=+s.value,h=Math.round(msgs*30/60),mods=h/200;document.getElementById('msgsOut').textContent=bn(msgs);document.getElementById('salOut').textContent=bn(sal.toLocaleString('en-IN'));document.getElementById('hours').textContent=bn(h.toLocaleString('en-IN'));document.getElementById('mods').textContent=bn(mods.toFixed(1));document.getElementById('cost').textContent=bn(Math.round(mods*sal).toLocaleString('en-IN'));}
+m.addEventListener('input',calc);s.addEventListener('input',calc);calc();
+})();
+</script>
 </body>
 </html>
