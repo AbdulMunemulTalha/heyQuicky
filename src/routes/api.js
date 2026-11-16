@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomBytes } from 'node:crypto';
-import { row, isDuplicateKey, normalizeEmail } from '../db.js';
+import { row, isDuplicateKey, normalizeEmail, ONBOARDING_STEPS, AI_STYLES, AI_ADDRESS, AI_SALES } from '../db.js';
+import { parseCsv, productsFromRows, googleSheetCsvUrl } from '../productImport.js';
 import { hashPassword, verifyPassword, createSession, deleteSession, bearerToken, requireAuth, requireOwner } from '../auth.js';
 import { InboxError } from '../inbox.js';
 import { ordersCsv, normalizeBdPhone } from '../orders.js';
@@ -16,13 +17,21 @@ const publicUser = (u) => ({
 const publicChannel = (c) => ({
   id: c.id, platform: c.platform, externalId: c.external_id, name: c.name, connected: Boolean(c.access_token),
   needsReconnect: Boolean(c.needs_reconnect),
+  aiEnabled: c.ai_enabled !== false,
   importStatus: c.import_status || null,
   importError: c.import_error || null,
   conversationCount: c.conversation_count ?? 0,
 });
 
-const CATEGORIES = ['fashion', 'beauty', 'electronics', 'food', 'home', 'kids', 'other'];
-const ONBOARDING_STEPS = ['business', 'channels', 'team', 'done'];
+// The onboarding categories; the older ones are still accepted for shops set up before them.
+const CATEGORIES = ['clothing', 'cosmetics', 'electronics', 'mobile_accessories', 'jewellery', 'shoes', 'grocery', 'food',
+  'salon', 'clinic', 'coaching', 'other', 'fashion', 'beauty', 'home', 'kids'];
+const AUDIENCES = ['women', 'girls', 'men', 'kids', 'everyone'];
+const SURVEY = {
+  messages_per_day: ['under_50', '50_200', '200_1000', '1000_plus'],
+  team_size: ['just_me', '1_2', '3_plus'],
+  ad_spend: ['none', 'under_20k', '20k_1lakh', '1lakh_plus'],
+};
 
 const publicWorkspace = (w) => ({
   id: w.id,
@@ -34,7 +43,31 @@ const publicWorkspace = (w) => ({
   deliveryOutsideDhaka: w.delivery_outside_dhaka,
   aiMode: w.ai_mode ?? 'suggest',
   shopNotes: w.shop_notes ?? '',
+  orderFields: w.order_fields ?? null,
+  address: w.address ?? '',
+  sellsOffline: Boolean(w.sells_offline),
+  audience: w.audience ?? [],
+  deliveryInsideDays: w.delivery_inside_days ?? '',
+  deliveryOutsideDays: w.delivery_outside_days ?? '',
+  cashOnDelivery: w.cash_on_delivery !== false,
+  freeDeliveryOver: w.free_delivery_over ?? null,
+  bkashNumber: w.bkash_number ?? '',
+  nagadNumber: w.nagad_number ?? '',
+  aiName: w.ai_name ?? '',
+  aiStyle: w.ai_style ?? 'banglish',
+  aiAddress: w.ai_address ?? 'auto',
+  aiSales: w.ai_sales ?? 'consultative',
 });
+
+const text = (value, max, label) => {
+  const out = String(value ?? '').trim();
+  if (out.length > max) throw new InboxError(400, `${label} is too long (${max} characters at most)`);
+  return out;
+};
+const oneOf = (value, allowed, message) => {
+  if (!allowed.includes(value)) throw new InboxError(400, message);
+  return value;
+};
 
 const publicProduct = (p) => ({
   id: p._id ?? p.id, name: p.name, price: p.price, variants: p.variants ?? '', description: p.description ?? '', inStock: p.in_stock !== false,
@@ -81,7 +114,7 @@ function id(req) {
   return n;
 }
 
-export function apiRoutes(db, config, inbox, orders, importer, agent) {
+export function apiRoutes(db, config, inbox, orders, importer, agent, { fetchImpl = fetch } = {}) {
   const router = Router();
   const auth = requireAuth(db);
   const getWorkspace = async (wsId) => row(await db.workspaces.findById(wsId).lean());
@@ -98,11 +131,19 @@ export function apiRoutes(db, config, inbox, orders, importer, agent) {
     const email = normalizeEmail(req.body.email);
     if (password.length < 8) throw new InboxError(400, 'Password must be at least 8 characters');
     if (await db.users.exists({ email })) throw new InboxError(409, 'Email already registered');
-    const ws = await db.insert(db.workspaces, { name: businessName.trim(), onboarding_step: 'business' });
+    if (businessName.trim().length > 100) throw new InboxError(400, 'Shop name is too long');
+    const phone = String(req.body.phone ?? '').trim() ? normalizeBdPhone(req.body.phone) : '';
+    if (phone === null) throw new InboxError(400, 'Mobile must be a Bangladeshi number like 01711111111');
+    const survey = {};
+    for (const [key, allowed] of Object.entries(SURVEY)) {
+      const value = req.body.survey?.[key];
+      if (value !== undefined && value !== '') survey[key] = oneOf(value, allowed, 'Unknown answer in the sign-up questions');
+    }
+    const ws = await db.insert(db.workspaces, { name: businessName.trim(), onboarding_step: 'channels', signup_survey: survey });
     let user;
     try {
       user = await db.insert(db.users, {
-        workspace_id: ws.id, name: name.trim(), email, password_hash: hashPassword(password), role: 'owner', is_online: true,
+        workspace_id: ws.id, name: name.trim(), phone, email, password_hash: hashPassword(password), role: 'owner', is_online: true,
       });
     } catch (err) {
       // Someone signed up with the same email at the same moment.
@@ -132,6 +173,7 @@ export function apiRoutes(db, config, inbox, orders, importer, agent) {
       user: publicUser(req.user),
       workspace: publicWorkspace(await getWorkspace(req.user.workspace_id)),
       devTools: !config.isProduction,
+      support: { email: config.legal?.supportEmail || null },
       ai: agent ? { available: agent.status().available, model: agent.status().model } : { available: false, model: null },
       connect: {
         facebook: Boolean(config.meta.appId && config.meta.appSecret),
@@ -213,6 +255,39 @@ export function apiRoutes(db, config, inbox, orders, importer, agent) {
       if (!ONBOARDING_STEPS.includes(body.onboardingStep)) throw new InboxError(400, 'Unknown onboarding step');
       updates.onboarding_step = body.onboardingStep;
     }
+    if (body.orderFields !== undefined) {
+      if (!Array.isArray(body.orderFields) || body.orderFields.length > 12) throw new InboxError(400, 'Order fields must be a list of up to 12');
+      updates.order_fields = body.orderFields.map((field) => {
+        const label = text(field?.label, 40, 'An order field name');
+        if (!label) throw new InboxError(400, 'Every order field needs a name');
+        return { label, hint: text(field?.hint, 120, 'An order field hint') };
+      });
+    }
+    if (body.address !== undefined) updates.address = text(body.address, 200, 'Address');
+    if (body.sellsOffline !== undefined) updates.sells_offline = Boolean(body.sellsOffline);
+    if (body.audience !== undefined) {
+      if (!Array.isArray(body.audience)) throw new InboxError(400, 'Choose who you sell to');
+      updates.audience = [...new Set(body.audience.map((a) => oneOf(a, AUDIENCES, 'Choose who you sell to')))];
+    }
+    for (const [key, field] of [['deliveryInsideDays', 'delivery_inside_days'], ['deliveryOutsideDays', 'delivery_outside_days']]) {
+      if (body[key] !== undefined) updates[field] = text(body[key], 20, 'Delivery days');
+    }
+    if (body.cashOnDelivery !== undefined) updates.cash_on_delivery = Boolean(body.cashOnDelivery);
+    if (body.freeDeliveryOver !== undefined) {
+      const value = body.freeDeliveryOver === null || body.freeDeliveryOver === '' ? null : Number(body.freeDeliveryOver);
+      if (value !== null && (!Number.isInteger(value) || value <= 0)) throw new InboxError(400, 'Free delivery amount must be a whole number of taka');
+      updates.free_delivery_over = value;
+    }
+    for (const [key, field, label] of [['bkashNumber', 'bkash_number', 'bKash'], ['nagadNumber', 'nagad_number', 'Nagad']]) {
+      if (body[key] === undefined) continue;
+      const number = String(body[key]).trim() ? normalizeBdPhone(body[key]) : '';
+      if (number === null) throw new InboxError(400, `${label} number must be a Bangladeshi mobile number like 01711111111`);
+      updates[field] = number;
+    }
+    if (body.aiName !== undefined) updates.ai_name = text(body.aiName, 30, 'Assistant name');
+    if (body.aiStyle !== undefined) updates.ai_style = oneOf(body.aiStyle, AI_STYLES, 'Unknown writing style');
+    if (body.aiAddress !== undefined) updates.ai_address = oneOf(body.aiAddress, AI_ADDRESS, 'Unknown way to address customers');
+    if (body.aiSales !== undefined) updates.ai_sales = oneOf(body.aiSales, AI_SALES, 'Unknown sales style');
     // Field names come from the fixed lists above, never from the request.
     if (Object.keys(updates).length) await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: updates });
     res.json(publicWorkspace(await getWorkspace(req.user.workspace_id)));
@@ -250,6 +325,11 @@ export function apiRoutes(db, config, inbox, orders, importer, agent) {
     res.json(agent?.status() ?? { available: false });
   });
 
+  router.post('/ai/practice', auth, requireOwner, async (req, res) => {
+    if (!agent) throw new InboxError(503, 'AI replies are not set up on this server yet');
+    res.json(await agent.practice(req.user, req.body?.messages));
+  });
+
   router.post('/conversations/:id/ai/suggest', auth, async (req, res) => {
     res.json(await agent.suggest(req.user, id(req)));
   });
@@ -272,6 +352,31 @@ export function apiRoutes(db, config, inbox, orders, importer, agent) {
   router.post('/products', auth, requireOwner, async (req, res) => {
     const product = await db.insert(db.products, { workspace_id: req.user.workspace_id, ...productFields(req.body) });
     res.status(201).json(publicProduct(product));
+  });
+
+  router.post('/products/import', auth, requireOwner, async (req, res) => {
+    let csv = req.body?.csv;
+    if (req.body?.sheetUrl !== undefined) {
+      const url = googleSheetCsvUrl(req.body.sheetUrl);
+      if (!url) throw new InboxError(400, 'Paste a Google Sheets link (docs.google.com/spreadsheets/…)');
+      let response;
+      try {
+        response = await fetchImpl(url, { redirect: 'follow', signal: AbortSignal.timeout(15_000) });
+      } catch {
+        throw new InboxError(502, "Couldn't reach Google Sheets. Try again in a moment.");
+      }
+      const type = response.headers.get('content-type') ?? '';
+      if (!response.ok || type.includes('text/html')) {
+        throw new InboxError(400, 'Google wouldn\'t share that sheet. In the sheet, click Share and set "Anyone with the link" to Viewer.');
+      }
+      csv = await response.text();
+    }
+    if (typeof csv !== 'string' || !csv.trim()) throw new InboxError(400, 'Choose a CSV file or paste a Google Sheets link');
+    if (csv.length > 2_000_000) throw new InboxError(400, 'That file is too big (2 MB at most)');
+    const { products, skipped, error } = productsFromRows(parseCsv(csv));
+    if (error) throw new InboxError(400, error);
+    for (const product of products) await db.insert(db.products, { workspace_id: req.user.workspace_id, ...product });
+    res.status(201).json({ added: products.length, skipped });
   });
 
   router.patch('/products/:id', auth, requireOwner, async (req, res) => {
@@ -369,6 +474,14 @@ export function apiRoutes(db, config, inbox, orders, importer, agent) {
       if (isDuplicateKey(err)) throw new InboxError(409, 'This account is already connected');
       throw err;
     }
+  });
+
+  router.patch('/channels/:id', auth, requireOwner, async (req, res) => {
+    if (typeof req.body?.aiEnabled !== 'boolean') throw new InboxError(400, 'Nothing to change');
+    const channel = await db.channels.findOneAndUpdate({ _id: id(req), workspace_id: req.user.workspace_id },
+      { $set: { ai_enabled: req.body.aiEnabled } }, { new: true, lean: true });
+    if (!channel) throw new InboxError(404, 'Channel not found');
+    res.json(publicChannel(row(channel)));
   });
 
   // Re-reads past Facebook/Instagram conversations (WhatsApp history can only be synced once, at connection).

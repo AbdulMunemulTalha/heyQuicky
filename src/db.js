@@ -11,6 +11,12 @@ const opts = { versionKey: false };
 
 const PLATFORMS = ['messenger', 'instagram', 'whatsapp'];
 
+// Onboarding, in order. 'done' means the shop is set up.
+export const ONBOARDING_STEPS = ['channels', 'business', 'shop', 'assistant', 'products', 'payments', 'team', 'test', 'live', 'done'];
+export const AI_STYLES = ['banglish', 'bangla', 'english', 'casual'];
+export const AI_ADDRESS = ['auto', 'apu', 'bhaiya', 'sir_madam', 'bondhu'];
+export const AI_SALES = ['consultative', 'direct'];
+
 function defineModels(conn) {
   const counter = new Schema({ _id: String, seq: { type: Number, default: 0 } }, opts);
 
@@ -20,9 +26,33 @@ function defineModels(conn) {
     phone: { type: String, default: '' },
     category: { type: String, default: '' },
     // Shops created before onboarding existed count as set up.
-    onboarding_step: { type: String, enum: ['business', 'channels', 'team', 'done'], default: 'done' },
+    onboarding_step: { type: String, enum: ONBOARDING_STEPS, default: 'done' },
+    // Answers from the sign-up form, to size help and plans.
+    signup_survey: {
+      messages_per_day: { type: String, default: '' },
+      team_size: { type: String, default: '' },
+      ad_spend: { type: String, default: '' },
+    },
+    // What the AI asks for before an order is handed to the team, e.g. Size: S, M, L.
+    order_fields: { type: [{ _id: false, label: String, hint: String }], default: undefined },
+    // Shop & delivery.
+    address: { type: String, default: '' },
+    sells_offline: { type: Boolean, default: false },
+    audience: { type: [String], default: undefined },
     delivery_inside_dhaka: { type: Number, default: 70 },
     delivery_outside_dhaka: { type: Number, default: 130 },
+    delivery_inside_days: { type: String, default: '' },
+    delivery_outside_days: { type: String, default: '' },
+    cash_on_delivery: { type: Boolean, default: true },
+    free_delivery_over: { type: Number, default: null },
+    // Advance payments: numbers customers send money to.
+    bkash_number: { type: String, default: '' },
+    nagad_number: { type: String, default: '' },
+    // How the AI assistant presents itself.
+    ai_name: { type: String, default: '' },
+    ai_style: { type: String, enum: AI_STYLES, default: 'banglish' },
+    ai_address: { type: String, enum: AI_ADDRESS, default: 'auto' },
+    ai_sales: { type: String, enum: AI_SALES, default: 'consultative' },
     // AI chat agent: off, suggest (drafts for moderators) or auto (replies itself).
     ai_mode: { type: String, enum: ['off', 'suggest', 'auto'], default: 'suggest' },
     // Policies, FAQs and anything else the owner wants the AI to know.
@@ -34,6 +64,8 @@ function defineModels(conn) {
     _id: numericId,
     workspace_id: { type: Number, required: true, index: true },
     name: { type: String, required: true },
+    // The owner's mobile, so the team can call if they get stuck during setup.
+    phone: { type: String, default: '' },
     // Stored lowercased so sign-in ignores case; see normalizeEmail.
     email: { type: String, required: true, unique: true },
     password_hash: { type: String, required: true },
@@ -61,6 +93,8 @@ function defineModels(conn) {
     access_token: { type: String, default: '' },
     // Set when Meta rejects the stored token, so the owner knows to reconnect.
     needs_reconnect: { type: Boolean, default: false },
+    // The owner can keep the AI away from one channel (e.g. answer WhatsApp themselves).
+    ai_enabled: { type: Boolean, default: true },
     waba_id: { type: String, default: null },
     // The Facebook Page an Instagram account is reached through (needed to read its history).
     page_id: { type: String, default: null },

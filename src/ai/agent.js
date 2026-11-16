@@ -35,15 +35,16 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
   async function loadContext(conversationId) {
     const conversation = await db.conversations.findById(conversationId).lean();
     if (!conversation) return null;
-    const [workspace, products, savedReplies, recent] = await Promise.all([
+    const [workspace, channel, products, savedReplies, recent] = await Promise.all([
       db.workspaces.findById(conversation.workspace_id).lean(),
+      db.channels.findById(conversation.channel_id, { ai_enabled: 1 }).lean(),
       db.products.find({ workspace_id: conversation.workspace_id }).sort({ name: 1 }).limit(300).lean(),
       db.savedReplies.find({ workspace_id: conversation.workspace_id }).sort({ shortcut: 1 }).lean(),
       db.messages.find({ conversation_id: conversationId }).sort({ _id: -1 }).limit(30).lean(),
     ]);
     const messages = recent.reverse();
     const lastInbound = messages.findLast((m) => m.direction === 'in') ?? null;
-    return { conversation, workspace, products, savedReplies, messages, lastInbound };
+    return { conversation, workspace, channel, products, savedReplies, messages, lastInbound };
   }
 
   async function generate(ctx) {
@@ -92,6 +93,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     if (!ctx) return 'gone';
     const mode = modeOf(ctx.workspace);
     if (mode === 'off') return 'off';
+    // The owner switched the AI off for this channel (moderators can still ask for a suggestion).
+    if (ctx.channel?.ai_enabled === false) return 'channel_off';
     if (ctx.lastInbound?._id !== messageId) return 'stale';
 
     let auto = mode === 'auto' && !handoffActive(ctx.conversation);
@@ -155,6 +158,34 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
   return {
     onInbound,
     respond,
+
+    // Practice chat during onboarding: the owner plays a customer. Nothing is stored or sent to Meta.
+    async practice(user, turns) {
+      if (!provider) throw new InboxError(503, 'AI replies are not set up on this server yet');
+      if (!Array.isArray(turns) || !turns.length || turns.length > 30) throw new InboxError(400, 'Send the practice conversation');
+      const messages = turns.map((t) => ({
+        role: t?.role === 'assistant' ? 'assistant' : 'user',
+        content: String(t?.content ?? '').trim().slice(0, 1000),
+      })).filter((t) => t.content);
+      if (!messages.length || messages.at(-1).role !== 'user') throw new InboxError(400, 'Write a customer message first');
+      const [workspace, products, savedReplies] = await Promise.all([
+        db.workspaces.findById(user.workspace_id).lean(),
+        db.products.find({ workspace_id: user.workspace_id }).sort({ name: 1 }).limit(300).lean(),
+        db.savedReplies.find({ workspace_id: user.workspace_id }).sort({ shortcut: 1 }).lean(),
+      ]);
+      const turnsForModel = toModelMessages(messages.map((m) => ({ direction: m.role === 'user' ? 'in' : 'out', text: m.content })));
+      if (!turnsForModel) throw new InboxError(400, 'Write a customer message first');
+      try {
+        const { data } = await provider.generateJson({
+          system: buildSystemPrompt({ workspace, products, savedReplies }), messages: turnsForModel, schema: REPLY_SCHEMA,
+        });
+        lastError = null;
+        return normalize(data);
+      } catch (err) {
+        lastError = { message: err.message, at: new Date() };
+        throw new InboxError(502, `The AI couldn't answer: ${err.message}`);
+      }
+    },
 
     status: () => ({
       available: Boolean(provider),

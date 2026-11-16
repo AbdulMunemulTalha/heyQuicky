@@ -51,7 +51,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.use(webhookRoutes(config, inbox, { db, emit }));
   app.use(connectRoutes(db, config, { fetchImpl, emit, importer }));
   app.use(legalRoutes(config));
-  app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent));
+  app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent, { fetchImpl }));
   // The dashboard is a single page; its assets live under /app/assets.
   app.use('/app', express.static(clientDir, { index: false }));
   app.get(['/app', '/app/'], (_req, res) => {

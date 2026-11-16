@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, session } from '../api.js';
 import { ErrorText } from './common.jsx';
+import { SignupStep } from './Onboarding.jsx';
 
 // The landing page's "Start free" links to /app?signup=1.
 function startsInSignup() {
@@ -15,13 +16,27 @@ export function Auth({ onSignedIn }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Sign-up is step 1 of onboarding, in the same layout as the other steps.
+  if (signup) {
+    return (
+      <SignupStep
+        onLogin={() => setSignup(false)}
+        onSubmit={async (body) => {
+          const { token } = await api('/auth/signup', { method: 'POST', body });
+          session.set(token);
+          await onSignedIn();
+        }}
+      />
+    );
+  }
+
   async function submit(e) {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
       const body = Object.fromEntries(new FormData(e.target));
-      const { token } = await api(signup ? '/auth/signup' : '/auth/login', { method: 'POST', body });
+      const { token } = await api('/auth/login', { method: 'POST', body });
       session.set(token);
       await onSignedIn();
     } catch (err) {
@@ -35,20 +50,12 @@ export function Auth({ onSignedIn }) {
     <section className="auth">
       <form className="card" onSubmit={submit}>
         <h1><a href="/" className="brand-link brand">heyquicky</a></h1>
-        <p className="muted">Messenger, Instagram and WhatsApp orders in one inbox.</p>
-        {signup && (
-          <div>
-            <label>Business name<input name="businessName" autoComplete="organization" required /></label>
-            <label>Your name<input name="name" autoComplete="name" required /></label>
-          </div>
-        )}
+        <p className="muted">Log in to your shop's inbox.</p>
         <label>Email<input name="email" type="email" autoComplete="email" required /></label>
-        <label>Password<input name="password" type="password" autoComplete={signup ? 'new-password' : 'current-password'} required minLength={8} /></label>
+        <label>Password<input name="password" type="password" autoComplete="current-password" required minLength={8} /></label>
         <ErrorText>{error}</ErrorText>
-        <button type="submit" disabled={busy}>{signup ? 'Create account' : 'Sign in'}</button>
-        <button type="button" className="link" onClick={() => setSignup(!signup)}>
-          {signup ? 'Already have an account? Sign in' : 'New business? Create an account'}
-        </button>
+        <button type="submit" disabled={busy}>Log in</button>
+        <button type="button" className="link" onClick={() => setSignup(true)}>New business? Start free</button>
         <p className="muted small legal-links"><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/data-deletion">Data deletion</a></p>
       </form>
     </section>

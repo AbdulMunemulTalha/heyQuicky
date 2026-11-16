@@ -4,7 +4,7 @@ import { api, session } from './api.js';
 import { describeConnectResult, takeFacebookRedirect } from './connect.js';
 import { ConnectContext, SocketContext } from './components/common.jsx';
 import { Auth } from './components/Auth.jsx';
-import { Onboarding } from './components/Onboarding.jsx';
+import { Onboarding, STEPS, stepIndex } from './components/Onboarding.jsx';
 import { Inbox } from './components/Inbox.jsx';
 import { ConnectDialog } from './components/ConnectDialog.jsx';
 
@@ -16,12 +16,12 @@ export function App() {
   const [pendingConnect, setPendingConnect] = useState(null);
   const [connectResult, setConnectResult] = useState('');
   const [resultVersion, setResultVersion] = useState(0);
-  const [showReady, setShowReady] = useState(false);
+  // "Save & exit" leaves onboarding for the inbox; remembered per shop until they resume.
+  const [setupPaused, setSetupPaused] = useState(false);
   const redirectHandled = useRef(false);
 
   const signOut = useCallback(() => {
     session.set(null);
-    setShowReady(false);
     setMe(null);
   }, []);
 
@@ -46,7 +46,10 @@ export function App() {
     setResultVersion((v) => v + 1);
   }, []);
 
-  const onboarding = Boolean(me && me.user.role === 'owner' && (me.workspace.onboardingStep !== 'done' || showReady));
+  const pauseKey = me ? `quicky:setup-paused:${me.workspace.id}` : null;
+  useEffect(() => { if (pauseKey) setSetupPaused(localStorage.getItem(pauseKey) === '1'); }, [pauseKey]);
+  const setupOpen = Boolean(me && me.user.role === 'owner' && me.workspace.onboardingStep !== 'done');
+  const onboarding = setupOpen && !setupPaused;
 
   // Facebook sends the owner back to /app?connect=<id> (or ?connect_error=...) after login.
   useEffect(() => {
@@ -74,15 +77,10 @@ export function App() {
     signOut();
   }
 
-  // Reaching the "Ready" step already saves onboardingStep "done" (so a reload
-  // opens the inbox), but the wizard stays up until the owner clicks through.
-  const setOnboardingWorkspace = (workspace) => {
-    if (workspace.onboardingStep === 'done') setShowReady(true);
-    setWorkspace(workspace);
-  };
-
-  function finishOnboarding() {
-    setShowReady(false);
+  function pauseSetup(paused) {
+    if (paused) localStorage.setItem(pauseKey, '1');
+    else localStorage.removeItem(pauseKey);
+    setSetupPaused(paused);
   }
 
   if (me === undefined) return null;
@@ -92,9 +90,17 @@ export function App() {
     <SocketContext.Provider value={socket}>
       <ConnectContext.Provider value={connect}>
         {onboarding ? (
-          <Onboarding me={me} setWorkspace={setOnboardingWorkspace} onFinish={finishOnboarding} onSignOut={signOutEverywhere} />
+          <Onboarding me={me} setWorkspace={setWorkspace} onFinish={() => pauseSetup(false)}
+            onSaveExit={() => pauseSetup(true)} onSignOut={signOutEverywhere} />
         ) : (
-          <Inbox me={me} setMe={setMe} onSignOut={signOut} settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} />
+          <>
+            <Inbox me={me} setMe={setMe} onSignOut={signOut} settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} />
+            {setupOpen && (
+              <button type="button" className="resume-setup" onClick={() => pauseSetup(false)}>
+                Finish setting up · step {stepIndex(me.workspace.onboardingStep) + 1} of {STEPS.length} →
+              </button>
+            )}
+          </>
         )}
         <ConnectDialog pendingId={pendingConnect} onClose={() => setPendingConnect(null)} onResult={showResult} />
       </ConnectContext.Provider>

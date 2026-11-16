@@ -39,6 +39,15 @@ export function Settings({ open, onClose, me, setMe, team, reloadTeam, savedRepl
     reloadConversations();
   }
 
+  async function setChannelAi(c, aiEnabled) {
+    try {
+      await api(`/channels/${c.id}`, { method: 'PATCH', body: { aiEnabled } });
+      loadChannels();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
   async function importChannel(c) {
     try {
       await api(`/channels/${c.id}/import`, { method: 'POST' });
@@ -118,6 +127,7 @@ export function Settings({ open, onClose, me, setMe, team, reloadTeam, savedRepl
               <td><span className={`badge ${c.platform}`}>{PLATFORM_LABEL[c.platform]}</span></td>
               <td>{c.name}</td>
               <td className="muted">{c.externalId}</td>
+              <td><label className="check-inline" title="Let the AI agent answer customers on this channel"><input type="checkbox" checked={c.aiEnabled} onChange={() => setChannelAi(c, !c.aiEnabled)} /> AI answers</label></td>
               <td>
                 {c.needsReconnect
                   ? <span className="warn">Facebook access expired: connect again</span>
