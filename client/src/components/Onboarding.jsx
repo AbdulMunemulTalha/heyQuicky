@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { PLATFORM_LABEL } from '../format.js';
-import { ErrorText, FacebookButton, ImportStatus, WhatsAppButton, useConnect, useSocketEvent } from './common.jsx';
+import { ErrorText, ImportStatus, useConnect, useSocketEvent } from './common.jsx';
 
 // The ten setup steps. 'account' is the sign-up form; the rest are saved as the workspace's onboardingStep.
 export const STEPS = [
@@ -266,7 +266,7 @@ const CHANNEL_HINT = {
 };
 
 function ChannelsStep({ me, data, go, back }) {
-  const { result, showResult } = useConnect();
+  const { result, showResult, open } = useConnect();
   const channels = data.channels ?? [];
   const { facebook, whatsapp } = me.connect;
 
@@ -295,23 +295,25 @@ function ChannelsStep({ me, data, go, back }) {
       <StepHead title="Connect your page and channels">
         Use Facebook's official login: we never see your password and never post without asking. Then pick which channels the AI should answer. You can change this any time.
       </StepHead>
+      <div className="channel-tiles">
+        {[
+          ['messenger', 'fb', 'f', 'Facebook Page', 'Messenger messages', 'facebook', facebook],
+          ['instagram', 'instagram', 'IG', 'Instagram', 'Linked to your page — no extra login', 'instagram', facebook],
+          ['whatsapp', 'wa', 'WA', 'WhatsApp', 'Your existing business number', 'whatsapp', whatsapp],
+        ].map(([platform, ico, letter, title, hint, kind, ready]) => {
+          const count = channels.filter((c) => c.platform === platform).length;
+          return (
+            <button type="button" key={platform} className={`channel-tile${count ? ' connected' : ''}`} onClick={() => open(kind)}>
+              <span className={`ch-ico ${ico}`}>{letter}</span>
+              <b>{title}</b>
+              <small>{hint}</small>
+              {count ? <span className="tile-state ok">Connected{count > 1 ? ` · ${count}` : ''}</span>
+                : ready ? <span className="tile-state">Connect →</span> : <Soon>Not set up on this server</Soon>}
+            </button>
+          );
+        })}
+      </div>
       <div className="onb-card">
-        <div className="connect-row">
-          <span className="ch-ico fb">f</span>
-          <div className="grow"><b>Facebook Page &amp; Instagram</b><small>Log in with the Facebook account that manages your page.</small></div>
-          {facebook ? <FacebookButton className="primary">{channels.some((c) => c.platform !== 'whatsapp') ? 'Connect more' : 'Connect with Facebook'}</FacebookButton>
-            : <Soon>Not set up on this server</Soon>}
-        </div>
-        <div className="connect-row">
-          <span className="ch-ico wa">WA</span>
-          <div className="grow"><b>WhatsApp Business</b><small>Keep using the WhatsApp Business app on your phone; your chats can come along.</small></div>
-          {whatsapp ? (
-            <span className="row-actions">
-              <WhatsAppButton mode="app" className="ghost">Connect my number</WhatsAppButton>
-              <WhatsAppButton mode="new" className="link">Use a new number</WhatsAppButton>
-            </span>
-          ) : <Soon>Not set up on this server</Soon>}
-        </div>
         <details className="manual-connect">
           <summary className="muted small">Have a WhatsApp phone number ID and access token? Connect manually</summary>
           <form className="inline-form" onSubmit={manualWhatsApp}>

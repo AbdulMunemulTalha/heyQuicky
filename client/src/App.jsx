@@ -6,14 +6,15 @@ import { ConnectContext, SocketContext } from './components/common.jsx';
 import { Auth } from './components/Auth.jsx';
 import { Onboarding, STEPS, stepIndex } from './components/Onboarding.jsx';
 import { Inbox } from './components/Inbox.jsx';
-import { ConnectDialog } from './components/ConnectDialog.jsx';
+import { ConnectFlow } from './components/ConnectFlow.jsx';
 
 export function App() {
   // undefined while checking a saved session, null when signed out.
   const [me, setMe] = useState(session.token ? undefined : null);
   const [socket, setSocket] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [pendingConnect, setPendingConnect] = useState(null);
+  // The connect popup: { kind, mode?, pendingId? } while open.
+  const [connectStart, setConnectStart] = useState(null);
   const [connectResult, setConnectResult] = useState('');
   const [resultVersion, setResultVersion] = useState(0);
   // "Save & exit" leaves onboarding for the inbox; remembered per shop until they resume.
@@ -57,10 +58,10 @@ export function App() {
     redirectHandled.current = true;
     const redirect = takeFacebookRedirect();
     if (!redirect || me.user.role !== 'owner') return;
-    // During onboarding the picker opens over the wizard instead of Settings.
+    // During onboarding the popup opens over the wizard instead of Settings.
     if (!onboarding) setSettingsOpen(true);
     if (redirect.error) showResult({ problems: [redirect.error] });
-    else setPendingConnect(redirect.id);
+    else setConnectStart({ kind: 'facebook', pendingId: redirect.id });
   }, [me, onboarding, showResult]);
 
   const connect = useMemo(() => ({
@@ -68,6 +69,7 @@ export function App() {
     result: connectResult,
     resultVersion,
     showResult,
+    open: (kind, options = {}) => setConnectStart({ kind, ...options }),
   }), [me?.connect, connectResult, resultVersion, showResult]);
 
   const setWorkspace = (workspace) => setMe((m) => ({ ...m, workspace }));
@@ -102,7 +104,16 @@ export function App() {
             )}
           </>
         )}
-        <ConnectDialog pendingId={pendingConnect} onClose={() => setPendingConnect(null)} onResult={showResult} />
+        <ConnectFlow
+          start={connectStart}
+          me={me}
+          onboarding={onboarding}
+          onClose={() => { setConnectStart(null); setResultVersion((v) => v + 1); }}
+          // From the onboarding "Connect channels" step: move on, or jump to the practice chat.
+          onContinueSetup={onboarding && me.workspace.onboardingStep === 'channels'
+            ? () => api('/workspace', { method: 'PATCH', body: { onboardingStep: 'business' } }).then(setWorkspace).catch(() => {}) : undefined}
+          onTestAi={onboarding ? () => api('/workspace', { method: 'PATCH', body: { onboardingStep: 'test' } }).then(setWorkspace).catch(() => {}) : undefined}
+        />
       </ConnectContext.Provider>
     </SocketContext.Provider>
   );

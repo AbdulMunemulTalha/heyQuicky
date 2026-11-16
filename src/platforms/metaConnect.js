@@ -26,7 +26,7 @@ export function createMetaClient({ appId, appSecret, graphVersion, fetchImpl = g
   const post = (path, body, accessToken) => graphRequest(url(path), { method: 'POST', body, accessToken, fetchImpl });
 
   return {
-    loginUrl({ redirectUri, state, configId }) {
+    loginUrl({ redirectUri, state, configId, rerequest = false }) {
       const u = new URL(`https://www.facebook.com/${graphVersion}/dialog/oauth`);
       u.searchParams.set('client_id', appId);
       u.searchParams.set('redirect_uri', redirectUri);
@@ -34,6 +34,8 @@ export function createMetaClient({ appId, appSecret, graphVersion, fetchImpl = g
       u.searchParams.set('response_type', 'code');
       if (configId) u.searchParams.set('config_id', configId);
       else u.searchParams.set('scope', LOGIN_SCOPES.join(','));
+      // Asks again for permissions the person switched off last time.
+      if (rerequest) u.searchParams.set('auth_type', 'rerequest');
       return u.toString();
     },
 
@@ -49,7 +51,7 @@ export function createMetaClient({ appId, appSecret, graphVersion, fetchImpl = g
 
     async listPages(userToken) {
       const pages = [];
-      let next = url('me/accounts', { fields: 'id,name,access_token,instagram_business_account{id,username}', limit: '100' });
+      let next = url('me/accounts', { fields: 'id,name,category,fan_count,access_token,instagram_business_account{id,username}', limit: '100' });
       for (let i = 0; next && i < MAX_PAGE_REQUESTS; i += 1) {
         const data = await graphRequest(next, { accessToken: userToken, fetchImpl });
         for (const p of data.data ?? []) {
@@ -57,6 +59,8 @@ export function createMetaClient({ appId, appSecret, graphVersion, fetchImpl = g
           pages.push({
             id: String(p.id),
             name: p.name,
+            category: p.category ?? null,
+            followers: Number.isFinite(p.fan_count) ? p.fan_count : null,
             accessToken: p.access_token,
             instagram: ig ? { id: String(ig.id), username: ig.username ?? null } : null,
           });
@@ -64,6 +68,16 @@ export function createMetaClient({ appId, appSecret, graphVersion, fetchImpl = g
         next = data.paging?.next ?? null;
       }
       return pages;
+    },
+
+    // What the person allowed in the Facebook window: { permission: 'granted' | 'declined' }.
+    async grantedPermissions(userToken) {
+      const data = await get('me/permissions', {}, userToken);
+      return Object.fromEntries((data.data ?? []).map((p) => [p.permission, p.status]));
+    },
+
+    async userName(userToken) {
+      return (await get('me', { fields: 'name' }, userToken)).name ?? null;
     },
 
     // Without this the Page's (and its Instagram account's) messages never reach our webhook.

@@ -105,13 +105,15 @@ test('connects a Facebook Page and its Instagram account after login', async () 
 
   // Page tokens never reach the browser.
   const pages = await call(`/api/connect/facebook/${pendingId}`, { token: ownerToken });
-  assert.deepEqual(pages.data.map((p) => p.name), ['Demo Fashion', 'Second Shop']);
+  assert.deepEqual(pages.data.pages.map((p) => p.name), ['Demo Fashion', 'Second Shop']);
   assert.ok(!JSON.stringify(pages.data).includes('PAGE1'));
-  assert.equal(pages.data[0].instagram.username, 'demofashion');
+  assert.equal(pages.data.pages[0].instagram.username, 'demofashion');
+  assert.equal(pages.data.permissions, null, 'no permission list when Facebook does not return one');
   assert.ok(!(await ctx.db.pendingConnections.findOne().lean()).payload.includes('PAGE1'));
 
   const done = await call(`/api/connect/facebook/${pendingId}`, { method: 'POST', token: ownerToken, body: { messenger: ['111'], instagram: ['999'] } });
-  assert.deepEqual(done.data, { connected: ['Demo Fashion', '@demofashion'], problems: [], importing: true });
+  assert.deepEqual({ ...done.data, channelIds: done.data.channelIds.length, importingIds: done.data.importingIds.length },
+    { connected: ['Demo Fashion', '@demofashion'], problems: [], importing: true, channelIds: 2, importingIds: 2, steps: { messages: true, instagram: true } });
   const subscribe = meta.calls.find((c) => c.path.endsWith('/111/subscribed_apps'));
   assert.equal(subscribe.auth, 'Bearer PAGE1');
   assert.equal(subscribe.body.subscribed_fields, 'messages,message_echoes');
@@ -205,4 +207,50 @@ test('connects a WhatsApp Business app number and starts syncing its chats', asy
   assert.equal(wa.importStatus, 'running');
   assert.equal((await call(`/api/channels/${wa.id}/import`, { method: 'POST', token: ownerToken })).status, 400,
     'WhatsApp history can only be synced at connection');
+});
+
+test('a popup login reports back to the dashboard window, with what was allowed', async () => {
+  meta.on('GET', /\/oauth\/access_token\?.*code=POPUP/, () => [200, { access_token: 'SHORTP' }]);
+  meta.on('GET', /\/oauth\/access_token\?.*fb_exchange_token=SHORTP/, () => [200, { access_token: 'LONGP' }]);
+  meta.on('GET', /\/me\/permissions/, () => [200, { data: [
+    { permission: 'pages_show_list', status: 'granted' }, { permission: 'pages_messaging', status: 'granted' },
+    { permission: 'pages_manage_metadata', status: 'granted' }, { permission: 'instagram_manage_messages', status: 'declined' },
+  ] }]);
+  meta.on('GET', /\/me\?fields=name/, () => [200, { name: 'Talha' }]);
+  const ownerToken = await login('owner@shop.test');
+
+  const start = await call('/api/connect/facebook/start?popup=1&rerequest=1', { token: ownerToken });
+  const loginUrl = new URL(start.data.url);
+  assert.equal(loginUrl.searchParams.get('auth_type'), 'rerequest');
+  const back = await call(`/auth/facebook/callback?state=${loginUrl.searchParams.get('state')}&code=POPUP`);
+  assert.equal(back.status, 200, 'no redirect: the popup page answers');
+  assert.match(back.data, /window\.opener\.postMessage\(\{"type":"quicky-facebook-connect","id":"[\w-]+"\}, "https:\/\/inbox\.example\.com"\)/,
+    'only this site can read the result');
+  const id = back.data.match(/"id":"([\w-]+)"/)[1];
+
+  const pending = await call(`/api/connect/facebook/${id}`, { token: ownerToken });
+  assert.equal(pending.data.userName, 'Talha');
+  assert.deepEqual(pending.data.permissions.map((p) => [p.key, p.allowed]), [['pages', true], ['messages', true], ['instagram', false]]);
+
+  // A cancelled popup login is reported to the window too.
+  const again = await call('/api/connect/facebook/start?popup=1', { token: ownerToken });
+  const cancelled = await call(`/auth/facebook/callback?state=${new URL(again.data.url).searchParams.get('state')}&error=access_denied&error_reason=user_denied`);
+  assert.match(cancelled.data, /"error":"Facebook connection was cancelled\."/);
+});
+
+test('warns when Meta connects a different WhatsApp number than the one typed', async () => {
+  meta.on('GET', /\/oauth\/access_token\?.*code=WAOTHER/, () => [200, { access_token: 'BIZ2' }]);
+  meta.on('POST', /\/66666\/subscribed_apps/, () => [200, { success: true }]);
+  meta.on('POST', /\/88888\/register/, () => [200, { success: true }]);
+  meta.on('GET', /\/88888\?/, () => [200, { verified_name: 'Demo', display_phone_number: '+880 1811-111111' }]);
+  const ownerToken = await login('owner@shop.test');
+  const body = { code: 'WAOTHER', phoneNumberId: '88888', wabaId: '66666' };
+  const mismatch = await call('/api/connect/whatsapp', { method: 'POST', token: ownerToken, body: { ...body, expectedNumber: '01712-345678' } });
+  // Another test's fake Graph route may answer for this number, so compare with what came back.
+  const shown = mismatch.data.displayNumber;
+  assert.ok(shown);
+  assert.ok(mismatch.data.problems.includes(`Meta connected ${shown}, not the number you typed. If that's wrong, disconnect it in Settings and connect again.`));
+  assert.ok(mismatch.data.channelId);
+  const same = await call('/api/connect/whatsapp', { method: 'POST', token: ownerToken, body: { ...body, expectedNumber: shown } });
+  assert.ok(!same.data.problems.some((p) => /not the number/.test(p)));
 });

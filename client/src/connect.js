@@ -7,6 +7,39 @@ export async function startFacebookConnect() {
   window.location.assign(url);
 }
 
+// Facebook login in a popup window, so the dashboard can show progress while it's open.
+// Resolves to { id } (a pending connection to pick pages from), { error } or { closed: true }.
+// If the browser blocks popups, falls back to a full-page redirect (the page then comes back to /app?connect=…).
+export function facebookPopup({ rerequest = false } = {}) {
+  const width = 600;
+  const height = 720;
+  const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+  const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+  // Opened straight from the click (before any await) so popup blockers allow it.
+  const win = window.open('', 'quicky-facebook', `width=${width},height=${height},left=${left},top=${top}`);
+  let cleanup = () => {};
+  const promise = new Promise((resolve) => {
+    const query = `?popup=${win ? 1 : 0}${rerequest ? '&rerequest=1' : ''}`;
+    api(`/connect/facebook/start${query}`).then(({ url }) => {
+      if (!win) { window.location.assign(url); return; }
+      win.location.href = url;
+    }).catch((err) => { win?.close(); resolve({ error: err.message }); });
+    if (!win) return;
+    const onMessage = (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'quicky-facebook-connect') return;
+      cleanup();
+      resolve(event.data.id ? { id: event.data.id } : { error: event.data.error || 'Facebook did not complete the login.' });
+    };
+    // A closed window with no message means the person gave up (wait a moment for a late message).
+    const timer = setInterval(() => {
+      if (win.closed) { clearInterval(timer); setTimeout(() => { cleanup(); resolve({ closed: true }); }, 800); }
+    }, 500);
+    window.addEventListener('message', onMessage);
+    cleanup = () => { clearInterval(timer); window.removeEventListener('message', onMessage); };
+  });
+  return { promise, cancel: () => { cleanup(); win?.close(); }, focus: () => win?.focus(), blocked: !win };
+}
+
 // Reads (and clears) the result of a Facebook login redirect from the URL.
 export function takeFacebookRedirect() {
   const params = new URLSearchParams(window.location.search);
@@ -54,7 +87,7 @@ async function waitForSignupInfo() {
 // and newer flows may report only the WhatsApp account (the server then finds the number).
 const SIGNUP_FINISHED = ['FINISH', 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING', 'FINISH_ONLY_WABA'];
 
-async function finishWhatsApp(code, mode) {
+async function finishWhatsApp(code, mode, expectedNumber) {
   const info = await waitForSignupInfo();
   if (!info || !SIGNUP_FINISHED.includes(info.event) || !info.wabaId) {
     return { problems: ['WhatsApp signup was not finished. Please try again and complete every step.'] };
@@ -62,7 +95,7 @@ async function finishWhatsApp(code, mode) {
   const coexistence = mode === 'app' || info.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
   try {
     const result = await api('/connect/whatsapp', {
-      method: 'POST', body: { code, wabaId: info.wabaId, phoneNumberId: info.phoneNumberId || null, coexistence },
+      method: 'POST', body: { code, wabaId: info.wabaId, phoneNumberId: info.phoneNumberId || null, coexistence, expectedNumber },
     });
     if (result.importing) {
       result.problems.push('Your WhatsApp chats are being copied in now. Keep the WhatsApp Business app open on your phone until it finishes.');
@@ -76,13 +109,13 @@ async function finishWhatsApp(code, mode) {
 // mode "app": the number the business already uses in the WhatsApp Business app
 // (keeps the app working and can bring its chats along). mode "new": a fresh number.
 // Resolves to a { connected, problems, pin } result for the dashboard to show.
-export async function connectWhatsApp(connectSettings, mode) {
+export async function connectWhatsApp(connectSettings, mode, expectedNumber = '') {
   embeddedSignup = null;
   const FB = await loadFacebookSdk(connectSettings);
   return new Promise((resolve) => {
     FB.login((response) => {
       const code = response.authResponse?.code;
-      resolve(code ? finishWhatsApp(code, mode) : { problems: ['WhatsApp signup was cancelled.'] });
+      resolve(code ? finishWhatsApp(code, mode, expectedNumber) : { problems: ['WhatsApp signup was cancelled.'] });
     }, {
       config_id: connectSettings.whatsappConfigId,
       response_type: 'code',

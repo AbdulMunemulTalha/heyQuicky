@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { initials, importLabel } from '../format.js';
-import { connectWhatsApp, startFacebookConnect } from '../connect.js';
 
 // A native <dialog> shown as a modal while `open` is true. Escape and the
 // close button call onClose; children only render while open.
@@ -61,35 +60,13 @@ export function useConnect() {
 }
 
 // "Connect with Facebook" / WhatsApp buttons; each disables itself while busy.
-export function FacebookButton({ className = 'brand-facebook', children }) {
-  const { showResult } = useConnect();
-  const [busy, setBusy] = useState(false);
-  return (
-    <button type="button" className={className} disabled={busy} onClick={async () => {
-      setBusy(true);
-      try {
-        await startFacebookConnect();
-      } catch (err) {
-        setBusy(false);
-        showResult({ problems: [err.message] });
-      }
-    }}>{children}</button>
-  );
+// Both open the connect popup (see ConnectFlow), which walks through the rest.
+export function FacebookButton({ className = 'brand-facebook', kind = 'facebook', children }) {
+  const { open } = useConnect();
+  return <button type="button" className={className} onClick={() => open(kind)}>{children}</button>;
 }
 
 export function WhatsAppButton({ mode, className, children }) {
-  const { settings, showResult } = useConnect();
-  const [busy, setBusy] = useState(false);
-  return (
-    <button type="button" className={className} disabled={busy} onClick={async () => {
-      setBusy(true);
-      try {
-        showResult(await connectWhatsApp(settings, mode));
-      } catch (err) {
-        showResult({ problems: [err.message] });
-      } finally {
-        setBusy(false);
-      }
-    }}>{children}</button>
-  );
+  const { open } = useConnect();
+  return <button type="button" className={className} onClick={() => open('whatsapp', { mode })}>{children}</button>;
 }

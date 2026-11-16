@@ -11,6 +11,35 @@ const PENDING_MINUTES = 30;
 
 const minutesFromNow = (m) => new Date(Date.now() + m * 60_000);
 
+// What the connect popup shows as allowed or not, from Facebook's permission list.
+// With Facebook Login for Business the configuration decides the scopes, so a
+// permission that was never asked for counts as allowed if nothing says otherwise.
+const PERMISSION_GROUPS = [
+  ['pages', 'See your Pages', ['pages_show_list']],
+  ['messages', 'Page messages', ['pages_messaging', 'pages_manage_metadata']],
+  ['instagram', 'Instagram messages', ['instagram_basic', 'instagram_manage_messages']],
+];
+function summarizePermissions(granted) {
+  if (!granted) return null;
+  return PERMISSION_GROUPS.map(([key, label, needs]) => ({
+    key, label, allowed: needs.every((p) => granted[p] !== 'declined'),
+  }));
+}
+
+// The page Facebook's popup lands on: tells the dashboard window what happened, then closes.
+// The message only goes to this site's own origin, so other sites can't read it.
+function popupPage(origin, result) {
+  const json = JSON.stringify({ type: 'quicky-facebook-connect', ...result }).replace(/</g, '\\u003c');
+  const target = JSON.stringify(origin).replace(/</g, '\\u003c');
+  const fallback = result.id ? `/app?connect=${encodeURIComponent(result.id)}` : `/app?connect_error=${encodeURIComponent(result.error)}`;
+  return `<!doctype html><meta charset="utf-8"><title>Connecting…</title>
+<p style="font:16px system-ui;padding:24px">Done. You can close this window and go back to HeyQuicky. <a href="${fallback}">Continue</a></p>
+<script>
+  try { if (window.opener) { window.opener.postMessage(${json}, ${target}); window.close(); } else { location.replace(${JSON.stringify(fallback)}); } }
+  catch (e) { location.replace(${JSON.stringify(fallback)}); }
+</script>`;
+}
+
 // Adds a channel, or refreshes its token if this workspace already has it.
 async function upsertChannel(db, workspaceId, { platform, externalId, name, token, wabaId = null, pageId = null }) {
   const taken = () => new InboxError(409, `${name} is already connected to another Quicky account`);
@@ -52,24 +81,31 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
       _id: String(req.params.id), workspace_id: req.user.workspace_id, expires_at: { $gt: new Date() },
     }).lean();
     if (!pending) throw new InboxError(404, 'This connection has expired. Please connect again.');
-    return { pending, pages: JSON.parse(decryptSecret(pending.payload, config.tokenKey)) };
+    const payload = JSON.parse(decryptSecret(pending.payload, config.tokenKey));
+    // Older pending rows hold just the list of pages.
+    return Array.isArray(payload) ? { pending, pages: payload, permissions: null, userName: null } : { pending, ...payload };
   }
 
   router.get('/api/connect/facebook/start', auth, requireOwner, requireMetaApp, async (req, res) => {
     const redirectUri = `${config.publicUrl || `${req.protocol}://${req.get('host')}`}/auth/facebook/callback`;
     const state = randomBytes(24).toString('base64url');
     await db.oauthStates.create({
-      _id: state, workspace_id: req.user.workspace_id, user_id: req.user.id, redirect_uri: redirectUri, expires_at: minutesFromNow(STATE_MINUTES),
+      _id: state, workspace_id: req.user.workspace_id, user_id: req.user.id, redirect_uri: redirectUri,
+      popup: req.query.popup === '1', expires_at: minutesFromNow(STATE_MINUTES),
     });
-    res.json({ url: meta.loginUrl({ redirectUri, state, configId: config.meta.loginConfigId }) });
+    res.json({ url: meta.loginUrl({ redirectUri, state, configId: config.meta.loginConfigId, rerequest: req.query.rerequest === '1' }) });
   });
 
   // Facebook sends the browser here after login. The owner is not identified by
   // a token on this request, only by the one-time state created above.
   router.get('/auth/facebook/callback', async (req, res) => {
-    const fail = (message) => res.redirect(`/app?connect_error=${encodeURIComponent(message)}`);
     // Deleted as it is read, so each login link works once.
     const state = await db.oauthStates.findOneAndDelete({ _id: String(req.query.state ?? ''), expires_at: { $gt: new Date() } }).lean();
+    const origin = new URL(state?.redirect_uri ?? config.publicUrl ?? `${req.protocol}://${req.get('host')}`).origin;
+    const finish = (result) => (state?.popup
+      ? res.type('html').send(popupPage(origin, result))
+      : res.redirect(result.id ? `/app?connect=${encodeURIComponent(result.id)}` : `/app?connect_error=${encodeURIComponent(result.error)}`));
+    const fail = (error) => finish({ error });
     if (!state) return fail('This Facebook login link has expired. Please try again.');
     if (req.query.error || !req.query.code) {
       return fail(req.query.error_reason === 'user_denied'
@@ -78,9 +114,16 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
     }
 
     let pages;
+    let permissions = null;
+    let userName = null;
     try {
       const userToken = await meta.userTokenFromCode({ code: String(req.query.code), redirectUri: state.redirect_uri });
       pages = await meta.listPages(userToken);
+      // Nice to have: without them the popup simply doesn't show the permission check or the name.
+      [permissions, userName] = await Promise.all([
+        meta.grantedPermissions(userToken).catch(() => null),
+        meta.userName(userToken).catch(() => null),
+      ]);
     } catch (err) {
       return fail(`Facebook error: ${err.message}`);
     }
@@ -89,22 +132,29 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
     }
 
     const id = randomBytes(18).toString('base64url');
+    const payload = { pages, permissions: summarizePermissions(permissions), userName };
     await db.pendingConnections.create({
-      _id: id, workspace_id: state.workspace_id, payload: encryptSecret(JSON.stringify(pages), config.tokenKey), expires_at: minutesFromNow(PENDING_MINUTES),
+      _id: id, workspace_id: state.workspace_id, payload: encryptSecret(JSON.stringify(payload), config.tokenKey), expires_at: minutesFromNow(PENDING_MINUTES),
     });
-    res.redirect(`/app?connect=${id}`);
+    finish({ id });
   });
 
   router.get('/api/connect/facebook/:id', auth, requireOwner, async (req, res) => {
-    const { pages } = await loadPending(req);
+    const { pages, permissions, userName } = await loadPending(req);
     const channels = await db.channels.find({ workspace_id: req.user.workspace_id }, { platform: 1, external_id: 1 }).lean();
     const connected = new Set(channels.map((c) => `${c.platform}:${c.external_id}`));
-    res.json(pages.map((p) => ({
-      id: p.id,
-      name: p.name,
-      messengerConnected: connected.has(`messenger:${p.id}`),
-      instagram: p.instagram && { ...p.instagram, connected: connected.has(`instagram:${p.instagram.id}`) },
-    })));
+    res.json({
+      userName,
+      permissions,
+      pages: pages.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category ?? null,
+        followers: p.followers ?? null,
+        messengerConnected: connected.has(`messenger:${p.id}`),
+        instagram: p.instagram && { ...p.instagram, connected: connected.has(`instagram:${p.instagram.id}`) },
+      })),
+    });
   });
 
   router.post('/api/connect/facebook/:id', auth, requireOwner, requireMetaApp, async (req, res) => {
@@ -117,9 +167,11 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
     const connected = [];
     const problems = [];
     const channelIds = [];
+    const steps = { messages: false, instagram: null };
     for (const page of chosen) {
       try {
         await meta.subscribePage(page.id, page.accessToken);
+        steps.messages = true;
       } catch (err) {
         problems.push(`${page.name}: ${err.message}`);
         continue;
@@ -137,6 +189,7 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
             channelIds.push(await upsertChannel(db, req.user.workspace_id,
               { platform: 'instagram', externalId: page.instagram.id, name, token, pageId: page.id }));
             connected.push(name);
+            steps.instagram = true;
           }
         }
       } catch (err) {
@@ -144,11 +197,14 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
         problems.push(err.message);
       }
     }
+    // Subscribing only counts if a channel was actually added for this shop.
+    steps.messages = steps.messages && channelIds.length > 0;
     await db.pendingConnections.deleteOne({ _id: pending._id });
     // Bring in the conversations these accounts already have, in the background.
-    for (const channelId of channelIds) await importer?.start(channelId);
+    const importingIds = [];
+    for (const channelId of channelIds) if (await importer?.start(channelId)) importingIds.push(channelId);
     emit(req.user.workspace_id, 'channels', null);
-    res.json({ connected, problems, importing: channelIds.length > 0 });
+    res.json({ connected, problems, importing: importingIds.length > 0, channelIds, importingIds, steps });
   });
 
   // Called by the dashboard after Meta's WhatsApp Embedded Signup popup finishes.
@@ -156,7 +212,7 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
   // WhatsApp Business app: it stays registered there, and its contacts and chat
   // history can be synced (only once, within 24 hours of onboarding).
   router.post('/api/connect/whatsapp', auth, requireOwner, requireMetaApp, async (req, res) => {
-    const { code, wabaId, coexistence = false } = req.body ?? {};
+    const { code, wabaId, coexistence = false, expectedNumber = '' } = req.body ?? {};
     let phoneNumberId = req.body?.phoneNumberId ?? null;
     if (![code, wabaId].every((v) => typeof v === 'string' && v.trim())) {
       throw new InboxError(400, 'WhatsApp signup did not finish. Please try again.');
@@ -195,10 +251,17 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
     }
 
     let name = `WhatsApp ${phoneNumberId}`;
+    let displayNumber = null;
     try {
       const info = await meta.phoneNumber(phoneNumberId, token);
+      displayNumber = info.display_phone_number ?? null;
       name = [info.verified_name, info.display_phone_number].filter(Boolean).join(' · ') || name;
     } catch { /* keep the fallback name */ }
+    // Compare the last 10 digits so "+880 1712-345678" matches "01712345678".
+    const tail = (n) => String(n ?? '').replace(/\D/g, '').slice(-10);
+    if (expectedNumber && displayNumber && tail(expectedNumber) !== tail(displayNumber)) {
+      problems.push(`Meta connected ${displayNumber}, not the number you typed. If that's wrong, disconnect it in Settings and connect again.`);
+    }
 
     const channelId = await upsertChannel(db, req.user.workspace_id, {
       platform: 'whatsapp', externalId: phoneNumberId, name, token: encryptSecret(token, config.tokenKey), wabaId,
@@ -221,7 +284,7 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
       }
     }
     emit(req.user.workspace_id, 'channels', null);
-    res.json({ connected: [name], problems, pin: registeredPin, importing });
+    res.json({ connected: [name], problems, pin: registeredPin, importing, channelId, displayNumber });
   });
 
   router.use('/api/connect', (err, _req, res, _next) => {

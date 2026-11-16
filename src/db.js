@@ -199,6 +199,8 @@ function defineModels(conn) {
     workspace_id: { type: Number, required: true },
     user_id: { type: Number, required: true },
     redirect_uri: { type: String, required: true },
+    // Login opened in a popup: the callback page reports back to the dashboard window instead of redirecting.
+    popup: { type: Boolean, default: false },
     expires_at: { type: Date, required: true, expires: 0 },
   }, opts);
 
