@@ -255,7 +255,8 @@ button:disabled { opacity: .6; cursor: progress; }
 .onb-card .card-title { font-size: 15px; }
 .card-title-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .onb-sub { margin: 8px 0 -4px; font-size: 15px; font-family: inherit; letter-spacing: 0; }
-.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; align-items: start; }
+.grid2 > .field { align-content: start; }
 .onb-card .field input, .onb-card .field select { width: 100%; min-width: 0; }
 .grid2 .wide, .inline-form .wide { grid-column: 1 / -1; flex-basis: 100%; }
 .field > span { font-weight: 600; font-size: 13px; }
