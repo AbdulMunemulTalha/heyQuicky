@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { row, isDuplicateKey, normalizeEmail, ONBOARDING_STEPS, AI_STYLES, AI_ADDRESS, AI_SALES } from '../db.js';
 import { parseCsv, productsFromRows, googleSheetCsvUrl } from '../productImport.js';
 import { hashPassword, verifyPassword, createSession, deleteSession, bearerToken, requireAuth, requireOwner } from '../auth.js';
@@ -101,6 +101,40 @@ function productFields(body, { partial = false } = {}) {
 
 const publicReply = (r) => ({ id: r._id, shortcut: r.shortcut, text: r.text });
 
+const LEAD_ID = /^[A-Za-z0-9_-]{16,64}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// The sign-up form's fields, cleaned for storing as a lead. Phones that aren't valid yet are kept as typed.
+function leadFields(body) {
+  const clip = (v, max) => String(v ?? '').trim().slice(0, max);
+  const email = clip(body?.email, 120).toLowerCase();
+  const rawPhone = clip(body?.phone, 20);
+  const survey = {};
+  for (const [key, allowed] of Object.entries(SURVEY)) {
+    if (allowed.includes(body?.survey?.[key])) survey[key] = body.survey[key];
+  }
+  return {
+    name: clip(body?.name, 80),
+    business_name: clip(body?.businessName, 100),
+    email: EMAIL.test(email) ? email : '',
+    phone: (rawPhone && normalizeBdPhone(rawPhone)) || rawPhone,
+    survey,
+  };
+}
+
+// A small per-address limit so the public lead endpoint can't be flooded.
+function rateLimiter({ max, windowMs }) {
+  const hits = new Map();
+  return (key) => {
+    const now = Date.now();
+    const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+    recent.push(now);
+    hits.set(key, recent);
+    if (hits.size > 10_000) hits.clear();
+    return recent.length <= max;
+  };
+}
+
 function required(body, fields) {
   for (const f of fields) {
     if (typeof body?.[f] !== 'string' || !body[f].trim()) throw new InboxError(400, `${f} is required`);
@@ -124,6 +158,20 @@ export function apiRoutes(db, config, inbox, orders, importer, agent, { fetchImp
     const counts = await db.conversations.aggregate([{ $match: filter }, { $group: { _id: '$assigned_user_id', n: { $sum: 1 } } }]);
     return new Map(counts.map((c) => [c._id, c.n]));
   }
+
+  // Saved while the sign-up form is being filled in (no account yet, so no login).
+  const leadLimit = rateLimiter({ max: 60, windowMs: 10 * 60_000 });
+  router.post('/leads', async (req, res) => {
+    if (!leadLimit(req.ip)) throw new InboxError(429, 'Too many requests');
+    const id = String(req.body?.id ?? '');
+    if (!LEAD_ID.test(id)) throw new InboxError(400, 'Invalid lead');
+    const fields = leadFields(req.body);
+    if (!fields.email && !fields.phone) throw new InboxError(400, 'An email or mobile number is needed');
+    // A lead that already became an account isn't changed by the form any more.
+    await db.leads.updateOne({ _id: id, converted_at: null }, { $set: { ...fields, updated_at: new Date() } }, { upsert: true })
+      .catch((err) => { if (!isDuplicateKey(err)) throw err; });
+    res.sendStatus(204);
+  });
 
   router.post('/auth/signup', async (req, res) => {
     required(req.body, ['businessName', 'name', 'email', 'password']);
@@ -151,7 +199,71 @@ export function apiRoutes(db, config, inbox, orders, importer, agent, { fetchImp
       if (isDuplicateKey(err)) throw new InboxError(409, 'Email already registered');
       throw err;
     }
+    // Mark this visitor's lead as signed up (or record one, if the form never saved it).
+    const leadId = LEAD_ID.test(String(req.body.leadId ?? '')) ? String(req.body.leadId) : `signup-${ws.id}-${randomBytes(6).toString('hex')}`;
+    await db.leads.updateOne({ _id: leadId },
+      { $set: { ...leadFields(req.body), workspace_id: ws.id, converted_at: new Date(), updated_at: new Date() } }, { upsert: true })
+      .catch((err) => console.warn('could not record sign-up lead:', err.message));
     res.status(201).json({ token: await createSession(db, user.id), user: publicUser(user) });
+  });
+
+  // The owner's sign-up details, editable from onboarding step 1.
+  router.get('/account', auth, requireOwner, async (req, res) => {
+    const ws = await getWorkspace(req.user.workspace_id);
+    const user = await db.users.findById(req.user.id, { name: 1, email: 1, phone: 1 }).lean();
+    res.json({ name: user.name, email: user.email, phone: user.phone ?? '', businessName: ws.name, survey: ws.signup_survey ?? {} });
+  });
+
+  router.patch('/account', auth, requireOwner, async (req, res) => {
+    const body = req.body ?? {};
+    const userSet = {};
+    if (body.name !== undefined) {
+      const name = String(body.name).trim();
+      if (!name || name.length > 80) throw new InboxError(400, 'Your name is required');
+      userSet.name = name;
+    }
+    if (body.phone !== undefined) {
+      const phone = String(body.phone).trim() ? normalizeBdPhone(body.phone) : '';
+      if (phone === null) throw new InboxError(400, 'Mobile must be a Bangladeshi number like 01711111111');
+      userSet.phone = phone;
+    }
+    if (body.email !== undefined) {
+      const email = normalizeEmail(body.email);
+      if (!EMAIL.test(email)) throw new InboxError(400, 'Enter a valid email');
+      if (await db.users.exists({ email, _id: { $ne: req.user.id } })) throw new InboxError(409, 'Email already registered');
+      userSet.email = email;
+    }
+    const wsSet = {};
+    if (body.businessName !== undefined) {
+      const name = String(body.businessName).trim();
+      if (!name || name.length > 100) throw new InboxError(400, 'Shop name is required');
+      wsSet.name = name;
+    }
+    if (body.survey !== undefined) {
+      for (const [key, allowed] of Object.entries(SURVEY)) {
+        const value = body.survey?.[key];
+        if (value !== undefined && value !== '') wsSet[`signup_survey.${key}`] = oneOf(value, allowed, 'Unknown answer in the sign-up questions');
+      }
+    }
+    try {
+      if (Object.keys(userSet).length) await db.users.updateOne({ _id: req.user.id }, { $set: userSet });
+    } catch (err) {
+      if (isDuplicateKey(err)) throw new InboxError(409, 'Email already registered');
+      throw err;
+    }
+    if (Object.keys(wsSet).length) await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: wsSet });
+    // Keep the follow-up list in step with what the owner changed.
+    if (userSet.email || userSet.phone !== undefined || userSet.name || wsSet.name) {
+      const set = { updated_at: new Date() };
+      if (userSet.name) set.name = userSet.name;
+      if (userSet.email) set.email = userSet.email;
+      if (userSet.phone !== undefined) set.phone = userSet.phone;
+      if (wsSet.name) set.business_name = wsSet.name;
+      await db.leads.updateMany({ workspace_id: req.user.workspace_id }, { $set: set });
+    }
+    const ws = await getWorkspace(req.user.workspace_id);
+    const user = await db.users.findById(req.user.id, { name: 1, email: 1, phone: 1 }).lean();
+    res.json({ name: user.name, email: user.email, phone: user.phone ?? '', businessName: ws.name, survey: ws.signup_survey ?? {} });
   });
 
   router.post('/auth/login', async (req, res) => {

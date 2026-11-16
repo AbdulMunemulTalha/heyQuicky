@@ -481,3 +481,8 @@ button.dark-ghost:hover:not(:disabled) { background: #1C1F27; }
 .cf-note { background: var(--bg); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
 .cf-success { color: #11864A; background: var(--success-soft); border-radius: 12px; padding: 12px 14px; font-weight: 700; }
 @media (max-width: 640px) { .channel-tiles { grid-template-columns: 1fr; } }
+
+/* Business & delivery: the shop questions appear once a category is picked. */
+.reveal { display: grid; gap: 16px; scroll-margin-top: 16px; animation: reveal-in .25s ease-out; }
+@keyframes reveal-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.right { text-align: right; margin: 0; }

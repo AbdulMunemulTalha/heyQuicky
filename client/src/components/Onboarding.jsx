@@ -2,57 +2,31 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { PLATFORM_LABEL } from '../format.js';
 import { ErrorText, ImportStatus, useConnect, useSocketEvent } from './common.jsx';
+import { Actions, Chips, Soon, StepHead, Toggle, useSubmit } from './onboarding/parts.jsx';
 
-// The ten setup steps. 'account' is the sign-up form; the rest are saved as the workspace's onboardingStep.
+// The five onboarding steps. Step 1 is the sign-up form (signed out); the other four are
+// saved as the workspace's onboardingStep. Products, courier & payments, team and the practice
+// chat were taken out to make sign-up quicker; they live on in onboarding/parkedSteps.jsx.
 export const STEPS = [
   { key: 'account', label: 'Create your account', min: 1 },
   { key: 'channels', label: 'Connect channels', min: 1 },
-  { key: 'business', label: 'Business type', min: 1 },
-  { key: 'shop', label: 'Shop & delivery', min: 1 },
+  { key: 'business', label: 'Business & delivery', min: 2 },
   { key: 'assistant', label: 'Your AI assistant', min: 1 },
-  { key: 'products', label: 'Products', min: 2 },
-  { key: 'payments', label: 'Courier & payments', min: 1 },
-  { key: 'team', label: 'Team & alerts', min: 1 },
-  { key: 'test', label: 'Test it', min: 2 },
   { key: 'live', label: 'Go live', min: 1 },
 ];
 const KEYS = STEPS.map((s) => s.key);
-export const stepIndex = (key) => Math.max(1, KEYS.indexOf(key));
+// Shops that were partway through the longer onboarding resume at the step that now covers theirs.
+const LEGACY_STEP = { shop: 'business', products: 'live', payments: 'live', team: 'live', test: 'live' };
+// An unknown or missing step starts at connecting channels ('account' = editing the sign-up details).
+export const currentStep = (key) => (KEYS.includes(key) ? key : LEGACY_STEP[key] ?? 'channels');
+// 0-based position of the shop's current step among all five ("step N of 5" shows N = index + 1).
+export const stepIndex = (key) => KEYS.indexOf(currentStep(key));
 
 // ---------- Shared pieces ----------
 
-function Chips({ options, value, onChange, multi = false }) {
-  const selected = (v) => (multi ? value.includes(v) : value === v);
-  const toggle = (v) => {
-    if (!multi) return onChange(v);
-    return onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
-  };
-  return (
-    <div className="chips" role={multi ? 'group' : 'radiogroup'}>
-      {options.map(([v, label]) => (
-        <button key={v} type="button" className={`chip${selected(v) ? ' on' : ''}`} aria-pressed={selected(v)} onClick={() => toggle(v)}>
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Toggle({ checked, onChange, label }) {
-  return (
-    <label className="check-row">
-      <span>{label}</span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-    </label>
-  );
-}
-
-function Soon({ children = 'Coming soon' }) {
-  return <span className="soon">{children}</span>;
-}
-
 // Sidebar, step header and the page frame every step shares.
 export function OnboardingShell({ current, onGo, onSaveExit, onSignOut, support, children }) {
+  const signingUp = current === 'account';
   const index = KEYS.indexOf(current);
   const minutesLeft = STEPS.slice(index).reduce((sum, s) => sum + s.min, 0);
   return (
@@ -66,7 +40,8 @@ export function OnboardingShell({ current, onGo, onSaveExit, onSignOut, support,
         <ol className="onb-nav">
           {STEPS.map((s, i) => {
             const state = i < index ? 'done' : i === index ? 'current' : 'todo';
-            const clickable = onGo && i < index && i > 0;
+            // Finished steps can be opened again to change them.
+            const clickable = onGo && !signingUp && i < index;
             return (
               <li key={s.key} className={state}>
                 <button type="button" disabled={!clickable} aria-label={`${s.label}: ${state === 'done' ? 'done' : state === 'current' ? 'current step' : 'to do'}`} onClick={() => clickable && onGo(s.key)}>
@@ -97,26 +72,6 @@ export function OnboardingShell({ current, onGo, onSaveExit, onSignOut, support,
   );
 }
 
-function StepHead({ title, children }) {
-  return (
-    <header className="onb-head">
-      <h1>{title}</h1>
-      {children && <p>{children}</p>}
-    </header>
-  );
-}
-
-function Actions({ onBack, onSkip, next = 'Continue', busy, disabled, onNext, type = 'button' }) {
-  return (
-    <div className="onb-actions">
-      {onBack && <button type="button" className="ghost" onClick={onBack}>Back</button>}
-      <span className="spacer" />
-      {onSkip && <button type="button" className="link" onClick={onSkip}>Skip for now</button>}
-      <button type={type} className="primary" disabled={busy || disabled} onClick={onNext}>{busy ? 'Saving…' : next}</button>
-    </div>
-  );
-}
-
 // ---------- Step 1: account (signed out) ----------
 
 const SURVEY = [
@@ -125,65 +80,145 @@ const SURVEY = [
   ['ad_spend', 'Monthly Facebook ad spend', [['none', 'None'], ['under_20k', 'Under ৳20k'], ['20k_1lakh', '৳20k–1 lakh'], ['1lakh_plus', '1 lakh+']]],
 ];
 
-export function SignupStep({ onSubmit, onLogin, support }) {
-  const [survey, setSurvey] = useState({ messages_per_day: '50_200', team_size: 'just_me', ad_spend: 'none' });
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEFAULT_SURVEY = { messages_per_day: '50_200', team_size: 'just_me', ad_spend: 'none' };
+
+// One id per visitor, so every save while typing updates the same lead.
+function leadId() {
+  let id = localStorage.getItem('quicky:lead-id');
+  if (!id) {
+    id = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, '');
+    localStorage.setItem('quicky:lead-id', id);
+  }
+  return id;
+}
+
+// Saves the sign-up details as they're typed (never the password), so the team can follow up
+// with people who don't finish. Waits for a pause in typing, and sends anything pending when the page closes.
+function useLeadAutosave() {
+  const timer = useRef(null);
+  const pending = useRef(null);
+  const send = useCallback((body, { beacon = false } = {}) => {
+    if (beacon && navigator.sendBeacon) {
+      navigator.sendBeacon('/api/leads', new Blob([JSON.stringify(body)], { type: 'application/json' }));
+      return;
+    }
+    api('/leads', { method: 'POST', body }).catch(() => {}); // best effort: never bother the visitor
+  }, []);
+  useEffect(() => {
+    const flush = () => { if (pending.current) { send(pending.current, { beacon: true }); pending.current = null; } };
+    window.addEventListener('pagehide', flush);
+    return () => { window.removeEventListener('pagehide', flush); clearTimeout(timer.current); };
+  }, [send]);
+  return useCallback((values) => {
+    const phoneDigits = String(values.phone ?? '').replace(/\D/g, '');
+    if (!EMAIL_OK.test(String(values.email ?? '').trim()) && phoneDigits.length < 11) return;
+    const { password, ...rest } = values; // eslint-disable-line no-unused-vars
+    pending.current = { id: leadId(), ...rest };
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => { send(pending.current); pending.current = null; }, 800);
+  }, [send]);
+}
+
+// Step 1. Signed out it creates the account; signed in it edits the details given at sign-up.
+function AccountForm({ initial, signedIn, onSubmit, onLogin, onValues }) {
+  const [survey, setSurvey] = useState({ ...DEFAULT_SURVEY, ...(initial?.survey ?? {}) });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const formRef = useRef(null);
+  const values = (nextSurvey = survey) => ({ ...Object.fromEntries(new FormData(formRef.current)), survey: nextSurvey });
 
   async function submit(e) {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
-      const f = Object.fromEntries(new FormData(e.target));
-      await onSubmit({ name: f.name, businessName: f.businessName, email: f.email, phone: f.phone, password: f.password, survey });
+      await onSubmit(values());
     } catch (err) {
       setError(err.message);
       setBusy(false);
     }
   }
+  const pickSurvey = (key, v) => {
+    const next = { ...survey, [key]: v };
+    setSurvey(next);
+    onValues?.(values(next));
+  };
 
+  return (
+    <div className="onb-split">
+      <form ref={formRef} className="onb-card" onSubmit={submit} onInput={() => onValues?.(values())}>
+        <div className="grid2">
+          <label className="field">Your name<input name="name" required autoComplete="name" maxLength={80} defaultValue={initial?.name} /></label>
+          <label className="field">Shop or page name<input name="businessName" required autoComplete="organization" maxLength={100} defaultValue={initial?.businessName} /></label>
+          <label className="field">Email<input name="email" type="email" required autoComplete="email" placeholder="you@shop.com" defaultValue={initial?.email} /></label>
+          <label className="field">Mobile<input name="phone" inputMode="tel" autoComplete="tel" placeholder="01XXX-XXXXXX" defaultValue={initial?.phone} />
+            <small className="muted">If you get stuck, we'll call you on this number.</small></label>
+          {!signedIn && (
+            <label className="field wide">Password<input name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" /></label>
+          )}
+        </div>
+        {SURVEY.map(([key, label, options]) => (
+          <div className="field" key={key}>
+            <span>{label}</span>
+            <Chips options={options} value={survey[key]} onChange={(v) => pickSurvey(key, v)} />
+          </div>
+        ))}
+        {!signedIn && (
+          <p className="muted small">We save these details as you type so our team can help you finish setting up.
+            By continuing you agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
+        )}
+        <ErrorText>{error}</ErrorText>
+        <div className="onb-actions">
+          {!signedIn && <span className="muted">Already have an account? <button type="button" className="link" onClick={onLogin}>Log in</button></span>}
+          <span className="spacer" />
+          <button type="submit" className="primary" disabled={busy}>{busy ? 'Saving…' : signedIn ? 'Save & continue' : 'Create account'}</button>
+        </div>
+      </form>
+      <aside className="onb-dark">
+        <h3>Live in about 6 minutes</h3>
+        <ol>
+          <li>Connect your page with Facebook's official login</li>
+          <li>Tell us what you sell and how you deliver</li>
+          <li>Give your AI assistant a name and a voice</li>
+          <li>Go live when you're happy</li>
+        </ol>
+        <p>No card needed. Nothing reaches your customers until you go live.</p>
+      </aside>
+    </div>
+  );
+}
+
+export function SignupStep({ onSubmit, onLogin, support }) {
+  const autosave = useLeadAutosave();
   return (
     <OnboardingShell current="account" support={support}>
       <StepHead title="Start free — no card needed">
         Tell us a little about your shop. It takes a minute, and you can test everything before a single customer sees it.
       </StepHead>
-      <div className="onb-split">
-        <form className="onb-card" onSubmit={submit}>
-          <div className="grid2">
-            <label className="field">Your name<input name="name" required autoComplete="name" maxLength={80} /></label>
-            <label className="field">Shop or page name<input name="businessName" required autoComplete="organization" maxLength={100} /></label>
-            <label className="field">Email<input name="email" type="email" required autoComplete="email" placeholder="you@shop.com" /></label>
-            <label className="field">Mobile<input name="phone" inputMode="tel" autoComplete="tel" placeholder="01XXX-XXXXXX" />
-              <small className="muted">If you get stuck, we'll call you on this number.</small></label>
-            <label className="field wide">Password<input name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" /></label>
-          </div>
-          {SURVEY.map(([key, label, options]) => (
-            <div className="field" key={key}>
-              <span>{label}</span>
-              <Chips options={options} value={survey[key]} onChange={(v) => setSurvey((s) => ({ ...s, [key]: v }))} />
-            </div>
-          ))}
-          <p className="muted small">By continuing you agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
-          <ErrorText>{error}</ErrorText>
-          <div className="onb-actions">
-            <span className="muted">Already have an account? <button type="button" className="link" onClick={onLogin}>Log in</button></span>
-            <span className="spacer" />
-            <button type="submit" className="primary" disabled={busy}>{busy ? 'Creating…' : 'Create account'}</button>
-          </div>
-        </form>
-        <aside className="onb-dark">
-          <h3>Live in about 10 minutes</h3>
-          <ol>
-            <li>Connect your page with Facebook's official login</li>
-            <li>Tell us what you sell — we set up the rest</li>
-            <li>Test the AI in practice mode</li>
-            <li>Go live when you're happy</li>
-          </ol>
-          <p>No card needed. Nothing reaches your customers until you go live.</p>
-        </aside>
-      </div>
+      <AccountForm onLogin={onLogin} onValues={autosave}
+        onSubmit={(v) => onSubmit({ ...v, leadId: leadId() }).then(() => localStorage.removeItem('quicky:lead-id'))} />
     </OnboardingShell>
+  );
+}
+
+// Signed in, back on step 1: the details from sign-up, editable (the password is changed elsewhere).
+function AccountStep({ save, setWorkspaceName }) {
+  const [initial, setInitial] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => { api('/account').then(setInitial).catch((err) => setError(err.message)); }, []);
+  return (
+    <>
+      <StepHead title="Your account">Check your details. Changes are saved when you continue.</StepHead>
+      {initial ? (
+        <AccountForm initial={initial} signedIn onSubmit={async (v) => {
+          const { name, businessName, email, phone, survey } = v;
+          const account = await api('/account', { method: 'PATCH', body: { name, businessName, email, phone, survey } });
+          setWorkspaceName(account.businessName);
+          await save({}, 'channels');
+        }} />
+      ) : <ErrorText>{error}</ErrorText>}
+    </>
   );
 }
 
@@ -203,10 +238,9 @@ function useSetupData() {
   return { channels, team, products, reload };
 }
 
-const practiceKey = (wsId) => `quicky:practice:${wsId}`;
 
 export function Onboarding({ me, setWorkspace, onFinish, onSaveExit, onSignOut }) {
-  const step = KEYS.includes(me.workspace.onboardingStep) && me.workspace.onboardingStep !== 'account' ? me.workspace.onboardingStep : 'channels';
+  const step = currentStep(me.workspace.onboardingStep);
   const data = useSetupData();
   const { resultVersion } = useConnect();
   const reloadData = data.reload;
@@ -221,43 +255,21 @@ export function Onboarding({ me, setWorkspace, onFinish, onSaveExit, onSignOut }
   }, [setWorkspace]);
   const go = useCallback((key) => save({}, key).catch((err) => alert(err.message)), [save]);
   const prev = KEYS[KEYS.indexOf(step) - 1];
-  const back = prev && prev !== 'account' ? () => go(prev) : null;
+  const back = prev ? () => go(prev) : null;
   const props = { ws: me.workspace, me, data, save, go, back };
 
   return (
     <OnboardingShell current={step} onGo={go} onSaveExit={onSaveExit} onSignOut={onSignOut} support={me.support}>
+      {step === 'account' && <AccountStep {...props} setWorkspaceName={(name) => setWorkspace({ ...me.workspace, name })} />}
       {step === 'channels' && <ChannelsStep {...props} />}
       {step === 'business' && <BusinessStep {...props} />}
-      {step === 'shop' && <ShopStep {...props} />}
       {step === 'assistant' && <AssistantStep {...props} />}
-      {step === 'products' && <ProductsStep {...props} />}
-      {step === 'payments' && <PaymentsStep {...props} />}
-      {step === 'team' && <TeamStep {...props} />}
-      {step === 'test' && <TestStep {...props} />}
       {step === 'live' && <LiveStep {...props} onFinish={onFinish} />}
     </OnboardingShell>
   );
 }
 
-// Runs a save with a busy flag and an error message.
-function useSubmit() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const run = async (fn) => {
-    setBusy(true);
-    setError('');
-    try {
-      await fn();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return { busy, error, run, setError };
-}
-
-// ---------- Step 2: channels ----------
+// ---------- Step 1: channels ----------
 
 const CHANNEL_HINT = {
   messenger: 'Private messages to your Facebook page',
@@ -343,12 +355,13 @@ function ChannelsStep({ me, data, go, back }) {
         ))}
         {data.channels && !channels.length && <p className="muted empty">Nothing connected yet. You can also do this later from Settings.</p>}
       </div>
-      <Actions onBack={back} onSkip={channels.length ? null : () => go('business')} onNext={() => go('business')} disabled={!channels.length} />
+      {!channels.length && <p className="muted small right">Connect at least one channel to continue.</p>}
+      <Actions onBack={back} onNext={() => go('business')} disabled={!channels.length} />
     </>
   );
 }
 
-// ---------- Step 3: business type ----------
+// ---------- Step 2: business & delivery ----------
 
 const CATEGORIES = [
   ['clothing', 'Clothing', 'Products'], ['cosmetics', 'Cosmetics', 'Products'], ['electronics', 'Electronics', 'Products'],
@@ -373,18 +386,30 @@ const FIELDS = {
 };
 const fieldsFor = (category) => (FIELDS[category] ?? FIELDS.other).map(([label, hint]) => ({ label, hint, on: true }));
 
-function BusinessStep({ ws, save, back }) {
+function BusinessStep({ ws, save, go, back }) {
   const initialCategory = OLD_CATEGORY[ws.category] ?? (FIELDS[ws.category] ? ws.category : '');
   const [category, setCategory] = useState(initialCategory);
   const [fields, setFields] = useState(() => (ws.orderFields?.length && initialCategory
     ? ws.orderFields.map((f) => ({ ...f, on: true }))
     : initialCategory ? fieldsFor(initialCategory) : []));
   const [custom, setCustom] = useState('');
+  const [shop, setShop] = useState({
+    address: ws.address, phone: ws.phone, sellsOffline: ws.sellsOffline,
+    audience: ws.audience?.length ? ws.audience : [],
+    deliveryInsideDhaka: ws.deliveryInsideDhaka, deliveryInsideDays: ws.deliveryInsideDays || '1–2',
+    deliveryOutsideDhaka: ws.deliveryOutsideDhaka, deliveryOutsideDays: ws.deliveryOutsideDays || '2–3',
+    cashOnDelivery: ws.cashOnDelivery, freeDelivery: Boolean(ws.freeDeliveryOver), freeDeliveryOver: ws.freeDeliveryOver || 3000,
+  });
+  const set = (key) => (value) => setShop((f) => ({ ...f, [key]: value?.target ? value.target.value : value }));
   const { busy, error, run } = useSubmit();
+  const shopRef = useRef(null);
 
   function pick(c) {
+    const first = !category;
     setCategory(c);
     setFields(fieldsFor(c));
+    // The first pick reveals the shop & delivery questions below: bring them into view.
+    if (first) setTimeout(() => shopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
   function addCustom(e) {
     e.preventDefault();
@@ -393,11 +418,23 @@ function BusinessStep({ ws, save, back }) {
     setFields((f) => [...f, { label, hint: '', on: true }]);
     setCustom('');
   }
+  function submit(e) {
+    e.preventDefault();
+    const { freeDelivery, ...rest } = shop;
+    run(() => save({
+      category,
+      orderFields: fields.filter((f) => f.on).map(({ label: l, hint }) => ({ label: l, hint })),
+      ...rest,
+      deliveryInsideDhaka: Number(shop.deliveryInsideDhaka),
+      deliveryOutsideDhaka: Number(shop.deliveryOutsideDhaka),
+      freeDeliveryOver: freeDelivery ? Number(shop.freeDeliveryOver) : null,
+    }, 'assistant'));
+  }
   const label = CATEGORIES.find(([v]) => v === category)?.[1];
 
   return (
-    <>
-      <StepHead title="What do you sell?">Pick the closest match. We'll set up the order questions your customers usually need to answer.</StepHead>
+    <form onSubmit={submit}>
+      <StepHead title="What do you sell?">Pick the closest match, then tell us about your shop and delivery. The AI uses this to answer and quote charges correctly.</StepHead>
       <div className="onb-split">
         <div className="cat-grid">
           {CATEGORIES.map(([value, name, kind]) => (
@@ -416,86 +453,58 @@ function BusinessStep({ ws, save, back }) {
                   <input type="checkbox" checked={f.on} onChange={(e) => setFields((all) => all.map((x, j) => (j === i ? { ...x, on: e.target.checked } : x)))} />
                 </label>
               ))}
-              <form className="add-field" onSubmit={addCustom}>
-                <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Add your own question" maxLength={40} />
-                <button type="submit" className="ghost">Add</button>
-              </form>
+              <div className="add-field">
+                <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Add your own question" maxLength={40}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addCustom(e); }} />
+                <button type="button" className="ghost" onClick={addCustom}>Add</button>
+              </div>
               <small className="muted">The AI asks for these, with name, phone and address, before handing an order to your team. You can change them any time.</small>
             </>
-          ) : <p className="muted">Pick a category to see the order questions we'll set up.</p>}
+          ) : <p className="muted">Pick a category to see the order questions we'll set up, and your shop and delivery details.</p>}
         </aside>
       </div>
+
+      {category && (
+        <div ref={shopRef} className="reveal">
+          <div className="onb-card">
+            <b className="card-title">Your shop</b>
+            <div className="grid2">
+              <label className="field">Area / pickup address<input value={shop.address} onChange={set('address')} placeholder="e.g. Mirpur 10, Dhaka" maxLength={200} /></label>
+              <label className="field">Customer support number<input value={shop.phone} onChange={set('phone')} inputMode="tel" placeholder="01XXX-XXXXXX" /></label>
+            </div>
+            <div className="field"><span>Where do you sell?</span>
+              <Chips options={[[false, 'Online only'], [true, 'Online + physical shop']]} value={shop.sellsOffline} onChange={set('sellsOffline')} /></div>
+            <div className="field"><span>Who do you sell to?</span>
+              <Chips multi options={[['women', 'Women'], ['girls', 'Girls'], ['men', 'Men'], ['kids', 'Kids'], ['everyone', 'Everyone']]} value={shop.audience} onChange={set('audience')} /></div>
+          </div>
+          <div className="onb-card">
+            <b className="card-title">Delivery</b>
+            <div className="grid2">
+              <fieldset className="zone"><legend>Inside Dhaka</legend>
+                <label className="field">Charge (৳)<input type="number" min="0" step="1" required value={shop.deliveryInsideDhaka} onChange={set('deliveryInsideDhaka')} /></label>
+                <label className="field">Days<input value={shop.deliveryInsideDays} onChange={set('deliveryInsideDays')} maxLength={20} /></label>
+              </fieldset>
+              <fieldset className="zone"><legend>Outside Dhaka</legend>
+                <label className="field">Charge (৳)<input type="number" min="0" step="1" required value={shop.deliveryOutsideDhaka} onChange={set('deliveryOutsideDhaka')} /></label>
+                <label className="field">Days<input value={shop.deliveryOutsideDays} onChange={set('deliveryOutsideDays')} maxLength={20} /></label>
+              </fieldset>
+            </div>
+            <Toggle label="Accept cash on delivery" checked={shop.cashOnDelivery} onChange={set('cashOnDelivery')} />
+            <div className="check-row">
+              <span>Free delivery on orders over ৳
+                <input className="inline-num" type="number" min="1" step="1" value={shop.freeDeliveryOver} disabled={!shop.freeDelivery} onChange={set('freeDeliveryOver')} aria-label="Free delivery amount" /></span>
+              <input type="checkbox" checked={shop.freeDelivery} onChange={(e) => set('freeDelivery')(e.target.checked)} aria-label="Offer free delivery" />
+            </div>
+          </div>
+        </div>
+      )}
       <ErrorText>{error}</ErrorText>
-      <Actions onBack={back} busy={busy} disabled={!category}
-        onNext={() => run(() => save({ category, orderFields: fields.filter((f) => f.on).map(({ label: l, hint }) => ({ label: l, hint })) }, 'shop'))} />
-    </>
-  );
-}
-
-// ---------- Step 4: shop & delivery ----------
-
-function ShopStep({ ws, save, back }) {
-  const [form, setForm] = useState({
-    address: ws.address, phone: ws.phone, sellsOffline: ws.sellsOffline,
-    audience: ws.audience?.length ? ws.audience : [],
-    deliveryInsideDhaka: ws.deliveryInsideDhaka, deliveryInsideDays: ws.deliveryInsideDays || '1–2',
-    deliveryOutsideDhaka: ws.deliveryOutsideDhaka, deliveryOutsideDays: ws.deliveryOutsideDays || '2–3',
-    cashOnDelivery: ws.cashOnDelivery, freeDelivery: Boolean(ws.freeDeliveryOver), freeDeliveryOver: ws.freeDeliveryOver || 3000,
-  });
-  const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value?.target ? value.target.value : value }));
-  const { busy, error, run } = useSubmit();
-
-  function submit(e) {
-    e.preventDefault();
-    const { freeDelivery, ...rest } = form;
-    run(() => save({
-      ...rest,
-      deliveryInsideDhaka: Number(form.deliveryInsideDhaka),
-      deliveryOutsideDhaka: Number(form.deliveryOutsideDhaka),
-      freeDeliveryOver: freeDelivery ? Number(form.freeDeliveryOver) : null,
-    }, 'assistant'));
-  }
-
-  return (
-    <form onSubmit={submit}>
-      <StepHead title="Your shop and delivery">The AI uses this to quote delivery charges and dates correctly in every order.</StepHead>
-      <div className="onb-card">
-        <b className="card-title">Your shop</b>
-        <div className="grid2">
-          <label className="field">Area / pickup address<input value={form.address} onChange={set('address')} placeholder="e.g. Mirpur 10, Dhaka" maxLength={200} /></label>
-          <label className="field">Customer support number<input value={form.phone} onChange={set('phone')} inputMode="tel" placeholder="01XXX-XXXXXX" /></label>
-        </div>
-        <div className="field"><span>Where do you sell?</span>
-          <Chips options={[[false, 'Online only'], [true, 'Online + physical shop']]} value={form.sellsOffline} onChange={set('sellsOffline')} /></div>
-        <div className="field"><span>Who do you sell to?</span>
-          <Chips multi options={[['women', 'Women'], ['girls', 'Girls'], ['men', 'Men'], ['kids', 'Kids'], ['everyone', 'Everyone']]} value={form.audience} onChange={set('audience')} /></div>
-      </div>
-      <div className="onb-card">
-        <b className="card-title">Delivery</b>
-        <div className="grid2">
-          <fieldset className="zone"><legend>Inside Dhaka</legend>
-            <label className="field">Charge (৳)<input type="number" min="0" step="1" required value={form.deliveryInsideDhaka} onChange={set('deliveryInsideDhaka')} /></label>
-            <label className="field">Days<input value={form.deliveryInsideDays} onChange={set('deliveryInsideDays')} maxLength={20} /></label>
-          </fieldset>
-          <fieldset className="zone"><legend>Outside Dhaka</legend>
-            <label className="field">Charge (৳)<input type="number" min="0" step="1" required value={form.deliveryOutsideDhaka} onChange={set('deliveryOutsideDhaka')} /></label>
-            <label className="field">Days<input value={form.deliveryOutsideDays} onChange={set('deliveryOutsideDays')} maxLength={20} /></label>
-          </fieldset>
-        </div>
-        <Toggle label="Accept cash on delivery" checked={form.cashOnDelivery} onChange={set('cashOnDelivery')} />
-        <div className="check-row">
-          <span>Free delivery on orders over ৳
-            <input className="inline-num" type="number" min="1" step="1" value={form.freeDeliveryOver} disabled={!form.freeDelivery} onChange={set('freeDeliveryOver')} aria-label="Free delivery amount" /></span>
-          <input type="checkbox" checked={form.freeDelivery} onChange={(e) => set('freeDelivery')(e.target.checked)} aria-label="Offer free delivery" />
-        </div>
-      </div>
-      <ErrorText>{error}</ErrorText>
-      <Actions onBack={back} busy={busy} type="submit" />
+      <Actions onBack={back} onSkip={() => go('assistant')} busy={busy} disabled={!category} type="submit" />
     </form>
   );
 }
 
-// ---------- Step 5: AI assistant ----------
+// ---------- Step 3: AI assistant ----------
 
 const NAMES = ['Nusrat', 'Sadia', 'Tania', 'Karim', 'Rahim', 'Arif'];
 const STYLES = [['banglish', 'Banglish, warm'], ['bangla', 'Bangla, polite'], ['english', 'English'], ['casual', 'Friendly & casual']];
@@ -513,7 +522,7 @@ function previewText({ name, style, address, shop }) {
   return `Walaikum assalam ${t.lat}! Ami ${who}, ${shop} er moderator. Bolun, ki khujchen?`;
 }
 
-function AssistantStep({ ws, save, back }) {
+function AssistantStep({ ws, save, go, back }) {
   const [name, setName] = useState(ws.aiName || 'Nusrat');
   const [style, setStyle] = useState(ws.aiStyle);
   const [address, setAddress] = useState(ws.aiAddress);
@@ -550,305 +559,13 @@ function AssistantStep({ ws, save, back }) {
         </aside>
       </div>
       <ErrorText>{error}</ErrorText>
-      <Actions onBack={back} busy={busy} next="Looks good" disabled={!name.trim()}
+      <Actions onBack={back} onSkip={() => go('live')} busy={busy} next="Looks good" disabled={!name.trim()}
         onNext={() => run(() => save({ aiName: name.trim(), aiStyle: style, aiAddress: address, aiSales: sales }, 'products'))} />
     </>
   );
 }
 
-// ---------- Step 6: products ----------
-
-function ProductsStep({ data, go, back }) {
-  const [method, setMethod] = useState('hand');
-  const [message, setMessage] = useState('');
-  const { busy, error, run, setError } = useSubmit();
-  const products = data.products ?? [];
-  const fileRef = useRef(null);
-
-  function report({ added, skipped }) {
-    const head = `Added ${added} product${added === 1 ? '' : 's'}.`;
-    const tail = skipped.length
-      ? ` Skipped ${skipped.length}: ${skipped.slice(0, 3).map((s) => `line ${s.line} (${s.reason})`).join(', ')}${skipped.length > 3 ? '…' : ''}`
-      : '';
-    setMessage(head + tail);
-    data.reload();
-  }
-
-  const importSheet = (e) => {
-    e.preventDefault();
-    const sheetUrl = new FormData(e.target).get('sheetUrl');
-    run(async () => { report(await api('/products/import', { method: 'POST', body: { sheetUrl } })); e.target.reset(); });
-  };
-  const importCsv = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2_000_000) { setError('That file is too big (2 MB at most).'); return; }
-    if (!/\.csv$/i.test(file.name)) { setError('Choose a .csv file. In Excel: File → Save As → CSV.'); return; }
-    run(async () => { report(await api('/products/import', { method: 'POST', body: { csv: await file.text() } })); });
-    e.target.value = '';
-  };
-  const addOne = (e) => {
-    e.preventDefault();
-    const f = Object.fromEntries(new FormData(e.target));
-    run(async () => {
-      await api('/products', { method: 'POST', body: { name: f.name, price: Number(f.price), variants: f.variants } });
-      e.target.reset();
-      e.target.name.focus();
-      setMessage('');
-      data.reload();
-    });
-  };
-  async function remove(p) {
-    await api(`/products/${p.id}`, { method: 'DELETE' }).catch((err) => alert(err.message));
-    data.reload();
-  }
-
-  const methods = [
-    ['sheet', 'Google Sheet', 'Paste a link. We read the Name and Price columns.'],
-    ['csv', 'CSV or Excel', 'Upload a .csv file (Excel: Save As → CSV).'],
-    ['shop', 'WooCommerce / Shopify', 'Products, stock and orders stay in sync.', true],
-    ['facebook', 'From my Facebook posts', 'The AI reads your posts and drafts the catalog for you to check.', true],
-    ['hand', 'Add by hand', 'Start with your top 10 sellers.'],
-  ];
-
-  return (
-    <>
-      <StepHead title="Add your products">The AI only offers what's in your catalog, with real prices and stock. Bring them in any way you like.</StepHead>
-      <div className="method-grid">
-        {methods.map(([key, title, hint, soon]) => (
-          <button type="button" key={key} disabled={soon} className={`method${method === key ? ' on' : ''}`} onClick={() => setMethod(key)}>
-            <b>{title}</b><small>{hint}</small>{soon && <Soon />}
-          </button>
-        ))}
-      </div>
-      <div className="onb-card">
-        {method === 'sheet' && (
-          <form className="inline-form" onSubmit={importSheet}>
-            <input name="sheetUrl" required placeholder="https://docs.google.com/spreadsheets/d/…" />
-            <button type="submit" disabled={busy}>{busy ? 'Importing…' : 'Import'}</button>
-            <small className="muted wide">In the sheet: Share → General access → "Anyone with the link" (Viewer). Columns: Name, Price, and optionally Options/Size, Description, Stock.</small>
-          </form>
-        )}
-        {method === 'csv' && (
-          <div className="inline-form">
-            <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={importCsv} hidden />
-            <button type="button" onClick={() => fileRef.current.click()} disabled={busy}>{busy ? 'Importing…' : 'Choose CSV file'}</button>
-            <small className="muted">First row: Name, Price, and optionally Options/Size, Description, Stock. Up to 500 products at once.</small>
-          </div>
-        )}
-        {method === 'hand' && (
-          <form className="inline-form" onSubmit={addOne}>
-            <input name="name" required maxLength={120} placeholder="Product name, e.g. Red kurti" />
-            <input name="price" required type="number" min="0" step="1" placeholder="Price (৳)" style={{ maxWidth: 130 }} />
-            <input name="variants" maxLength={300} placeholder="Options, e.g. M, L, XL" />
-            <button type="submit" disabled={busy}>Add</button>
-          </form>
-        )}
-        {message && <p className="ok-text small">{message}</p>}
-        <ErrorText>{error}</ErrorText>
-      </div>
-
-      <div className="onb-card">
-        <div className="card-title-row"><b>Your catalog</b><span className="muted">{products.length} product{products.length === 1 ? '' : 's'}</span></div>
-        {products.length ? (
-          <table className="table">
-            <tbody>
-              {products.slice(0, 50).map((p) => (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td className="num">৳{p.price.toLocaleString('en-IN')}</td>
-                  <td className="muted">{p.variants}</td>
-                  <td className="muted">{p.inStock ? 'In stock' : 'Out of stock'}</td>
-                  <td><button type="button" className="link" onClick={() => remove(p)}>Delete</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="muted empty">No products yet. Without them, the AI won't quote any prices.</p>}
-        {products.length > 50 && <p className="muted small">Showing 50 of {products.length}. See them all in Settings.</p>}
-      </div>
-      <Actions onBack={back} onSkip={products.length ? null : () => go('payments')} disabled={!products.length} onNext={() => go('payments')} />
-    </>
-  );
-}
-
-// ---------- Step 7: courier & payments ----------
-
-function PaymentsStep({ ws, save, go, back }) {
-  const [bkash, setBkash] = useState(ws.bkashNumber);
-  const [nagad, setNagad] = useState(ws.nagadNumber);
-  const { busy, error, run } = useSubmit();
-  return (
-    <>
-      <StepHead title="Courier and payments">Add numbers for advance payments. You can skip this and do it later in Settings.</StepHead>
-      <div className="grid2">
-        {[['Steadfast', 'Book parcels automatically when an order is approved.'], ['Pathao', 'Book with your Pathao merchant account.']].map(([name, hint]) => (
-          <div className="onb-card courier" key={name}>
-            <div className="card-title-row"><b>{name}</b><Soon /></div>
-            <small className="muted">{hint} Courier booking is on its way; we'll let you know when you can connect.</small>
-          </div>
-        ))}
-      </div>
-      <div className="onb-card">
-        <b className="card-title">Advance payments</b>
-        <div className="grid2">
-          <label className="field">bKash number<input value={bkash} onChange={(e) => setBkash(e.target.value)} inputMode="tel" placeholder="01XXX-XXXXXX" /></label>
-          <label className="field">Nagad number<input value={nagad} onChange={(e) => setNagad(e.target.value)} inputMode="tel" placeholder="Optional" /></label>
-        </div>
-        <small className="muted">The AI shares these only when a customer wants to pay in advance. When someone says they've paid, the chat goes to your team to check.</small>
-      </div>
-      <ErrorText>{error}</ErrorText>
-      <Actions onBack={back} onSkip={() => go('team')} busy={busy}
-        onNext={() => run(() => save({ bkashNumber: bkash, nagadNumber: nagad }, 'team'))} />
-    </>
-  );
-}
-
-// ---------- Step 8: team & alerts ----------
-
-function TeamStep({ data, go, back }) {
-  const { busy, error, run } = useSubmit();
-  const [passwords, setPasswords] = useState({});
-  const moderators = (data.team ?? []).filter((m) => m.role === 'moderator' && m.isActive);
-
-  const add = (e) => {
-    e.preventDefault();
-    const body = Object.fromEntries(new FormData(e.target));
-    run(async () => {
-      const { user, password } = await api('/team', { method: 'POST', body });
-      setPasswords((p) => ({ ...p, [user.id]: password }));
-      e.target.reset();
-      data.reload();
-    });
-  };
-
-  return (
-    <>
-      <StepHead title="Your team and alerts">Invite teammates for free. Each new customer goes to one on-duty moderator, and comes back to the same one.</StepHead>
-      <div className="onb-split">
-        <div className="onb-card">
-          <div className="card-title-row"><b>Invite your team</b><span className="tag">Unlimited · free</span></div>
-          <form className="inline-form" onSubmit={add}>
-            <input name="name" required placeholder="Name" maxLength={80} />
-            <input name="email" type="email" required placeholder="Email they'll log in with" />
-            <button type="submit" disabled={busy}>Add</button>
-          </form>
-          <ErrorText>{error}</ErrorText>
-          <ul className="onb-list">
-            {moderators.map((m) => (
-              <li key={m.id}><b>{m.name}</b> · {m.email}
-                {passwords[m.id] && <span className="muted"> · password: <code>{passwords[m.id]}</code> (share it with them; shown once)</span>}</li>
-            ))}
-            {data.team && !moderators.length && <li className="muted">Running the shop alone? Skip this; you can add people later.</li>}
-          </ul>
-        </div>
-        <aside className="onb-card side-panel">
-          <b>When a person is needed</b>
-          <div className="check-row"><span>Shown in your inbox with the reason</span><input type="checkbox" checked readOnly /></div>
-          <div className="check-row soon-row"><span>Phone notifications</span><Soon /></div>
-          <div className="check-row soon-row"><span>WhatsApp alert to your number</span><Soon /></div>
-          <div className="check-row soon-row"><span>Daily summary by email</span><Soon /></div>
-        </aside>
-      </div>
-      <Actions onBack={back} onSkip={moderators.length ? null : () => go('test')} onNext={() => go('test')} disabled={!moderators.length} />
-    </>
-  );
-}
-
-// ---------- Step 9: test it ----------
-
-const PROMPTS = [
-  ['Ask the price', 'Apnader best seller tar dam koto?'],
-  ['Ask the delivery charge', 'Dhakar baire delivery charge koto? Koydin lagbe?'],
-  ['Place an order', 'Ami order korte chai. Nusrat Jahan, 01811223344, House 12 Road 5 Dhanmondi'],
-  ['Complain', 'Amar parcel ta chera eseche, taka ferot chai'],
-];
-export const CHECKS = [
-  ['price', 'Answered a price question', (a) => ['price', 'stock', 'product_info'].includes(a.intent)],
-  ['delivery', 'Quoted the delivery charge', (a) => a.intent === 'delivery'],
-  ['order', 'Took a test order', (a) => a.intent === 'order'],
-  ['complaint', 'Handed a complaint to you', (a) => a.intent === 'complaint' && a.handoff],
-];
-
-function TestStep({ ws, me, go, back }) {
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [passed, setPassed] = useState(() => JSON.parse(localStorage.getItem(practiceKey(ws.id)) || '[]'));
-  const endRef = useRef(null);
-  const available = me.ai.available;
-
-  useEffect(() => { endRef.current?.scrollIntoView({ block: 'nearest' }); }, [messages]);
-  useEffect(() => { localStorage.setItem(practiceKey(ws.id), JSON.stringify(passed)); }, [passed, ws.id]);
-
-  async function send(content) {
-    const value = content.trim();
-    if (!value || busy) return;
-    const next = [...messages, { role: 'user', content: value }];
-    setMessages(next);
-    setText('');
-    setBusy(true);
-    setError('');
-    try {
-      const answer = await api('/ai/practice', { method: 'POST', body: { messages: next.filter((m) => m.role !== 'note').map(({ role, content: c }) => ({ role, content: c })) } });
-      setMessages((m) => [...m,
-        ...(answer.reply ? [{ role: 'assistant', content: answer.reply }] : []),
-        ...(answer.handoff ? [{ role: 'note', content: `Handed to your team: ${answer.handoff_reason || 'needs a person'}` }] : [])]);
-      const hits = CHECKS.filter(([, , test]) => test(answer)).map(([key]) => key);
-      if (hits.length) setPassed((p) => [...new Set([...p, ...hits])]);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <>
-      <StepHead title="Test it like a customer">You're in practice mode: only you see these replies, and nothing goes to Meta. Try a few real situations before going live.</StepHead>
-      {!available && (
-        <p className="notice rounded">AI replies aren't switched on for this server yet (it needs an ANTHROPIC_API_KEY). You can finish setup now and test here later from Settings.</p>
-      )}
-      <div className="onb-split">
-        <div className="onb-card chat-test">
-          <div className="card-title-row"><b>Chat as a customer</b><span className="tag warn-tag">Practice mode · nothing is sent</span></div>
-          <div className="test-msgs">
-            {messages.map((m, i) => (
-              m.role === 'note' ? <p key={i} className="test-note">{m.content}</p>
-                : <p key={i} className={m.role === 'user' ? 'b-out' : 'b-in'}>{m.content}</p>
-            ))}
-            {busy && <p className="b-in typing">{ws.aiName || 'AI'} is typing…</p>}
-            {!messages.length && <p className="muted empty">Write like a customer would, in Bangla, Banglish or English.</p>}
-            <span ref={endRef} />
-          </div>
-          <div className="chips try">
-            <span className="muted small">Try:</span>
-            {PROMPTS.map(([label, sample]) => (
-              <button key={label} type="button" className="chip small" disabled={!available || busy} onClick={() => send(sample)}>{label}</button>
-            ))}
-          </div>
-          <form className="inline-form" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Type like a customer…" disabled={!available} maxLength={1000} />
-            <button type="submit" disabled={!available || busy || !text.trim()}>Send</button>
-            {messages.length > 0 && <button type="button" className="ghost" onClick={() => setMessages([])}>Start over</button>}
-          </form>
-          <ErrorText>{error}</ErrorText>
-        </div>
-        <aside className="onb-card side-panel">
-          <div className="card-title-row"><b>Checks</b><span className="ok-text small">{passed.length} of {CHECKS.length} passed</span></div>
-          {CHECKS.map(([key, label]) => (
-            <div key={key} className={`check-item${passed.includes(key) ? ' ok' : ''}`}><span className="tick">{passed.includes(key) ? '✓' : ''}</span>{label}</div>
-          ))}
-          <small className="muted">Something wrong? Add it to "About your shop" or your products in Settings, and the AI uses it from the next reply.</small>
-        </aside>
-      </div>
-      <Actions onBack={back} next={passed.length ? 'Everything works' : 'Continue'} onNext={() => go('live')} />
-    </>
-  );
-}
-
-// ---------- Step 10: go live ----------
+// ---------- Step 4: go live ----------
 
 const STYLE_LABEL = Object.fromEntries(STYLES);
 
@@ -856,20 +573,16 @@ function LiveStep({ ws, me, data, save, back, onFinish }) {
   const { busy, error, run } = useSubmit();
   const channels = data.channels ?? [];
   const aiChannels = channels.filter((c) => c.aiEnabled);
-  const moderators = (data.team ?? []).filter((m) => m.isActive);
-  const passed = JSON.parse(localStorage.getItem(practiceKey(ws.id)) || '[]').length;
+  const products = data.products ?? [];
   const finish = (aiMode) => run(async () => {
     await save({ aiMode }, 'done');
-    localStorage.removeItem(practiceKey(ws.id));
     onFinish();
   });
   const summary = [
     ['Channels', aiChannels.length ? aiChannels.map((c) => `${PLATFORM_LABEL[c.platform]} · ${c.name}`).join(', ') : 'None yet: connect in Settings'],
     ['Assistant', `${ws.aiName || 'Unnamed'} · ${STYLE_LABEL[ws.aiStyle] ?? ''}`],
-    ['Catalog', `${(data.products ?? []).length} product${(data.products ?? []).length === 1 ? '' : 's'}`],
+    ['Business', CATEGORIES.find(([v]) => v === (OLD_CATEGORY[ws.category] ?? ws.category))?.[1] ?? 'Not set'],
     ['Delivery', `৳${ws.deliveryInsideDhaka} / ৳${ws.deliveryOutsideDhaka}${ws.cashOnDelivery ? ' · COD' : ''}`],
-    ['Team', moderators.map((m) => m.name).join(', ') || 'Just you'],
-    ['Tests passed', `${passed} of ${CHECKS.length}`],
   ];
   return (
     <>
@@ -880,7 +593,10 @@ function LiveStep({ ws, me, data, save, back, onFinish }) {
           <div className="summary-grid">
             {summary.map(([k, v]) => <div key={k}><small>{k}</small><b>{v}</b></div>)}
           </div>
-          <small className="muted">You can switch the AI off for any channel, or go back to drafts only, any time in Settings.</small>
+          {!products.length && (
+            <p className="notice rounded small">Next, add your products in <b>Settings → AI chat agent</b>. Until then the AI won't quote prices; it hands those questions to you.</p>
+          )}
+          <small className="muted">You can switch the AI off for any channel, or go back to drafts only, any time in Settings. Add your team, products and bKash/Nagad numbers there too.</small>
         </div>
         <aside className="onb-dark">
           <h3>Let Quicky answer tonight's messages.</h3>

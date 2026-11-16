@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import express from 'express';
 import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
@@ -20,6 +21,35 @@ const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 const CLIENT_DIR = fileURLToPath(new URL('../client/dist', import.meta.url));
 
 // aiProvider: optional stand-in for the model provider (tests); by default it comes from config.
+// Sign-up leads for following up, as a spreadsheet. Off unless ADMIN_TOKEN is set.
+function leadsCsvRoute(db, config) {
+  const cell = (v) => {
+    const s = v instanceof Date ? v.toISOString() : String(v ?? '');
+    const safe = /^[=+\-@]/.test(s) ? `'${s}` : s; // stops spreadsheet formulas
+    return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  };
+  return async (req, res, next) => {
+    try {
+      if (!config.adminToken) return res.sendStatus(404);
+      const [scheme, encoded] = String(req.get('authorization') ?? '').split(' ');
+      const [, password = ''] = scheme === 'Basic' ? Buffer.from(encoded ?? '', 'base64').toString().split(/:(.*)/s) : [];
+      const a = Buffer.from(password);
+      const b = Buffer.from(config.adminToken);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        return res.set('WWW-Authenticate', 'Basic realm="HeyQuicky leads"').sendStatus(401);
+      }
+      const leads = await db.leads.find().sort({ updated_at: -1 }).limit(20_000).lean();
+      const head = ['signed_up', 'name', 'shop', 'email', 'mobile', 'messages_per_day', 'team_size', 'ad_spend', 'workspace_id', 'first_seen', 'last_updated'];
+      const rows = leads.map((l) => [l.converted_at ? 'yes' : 'no', l.name, l.business_name, l.email, l.phone,
+        l.survey?.messages_per_day, l.survey?.team_size, l.survey?.ad_spend, l.workspace_id, l.created_at, l.updated_at]);
+      res.type('text/csv').set('Content-Disposition', 'attachment; filename="heyquicky-leads.csv"')
+        .send([head, ...rows].map((r) => r.map(cell).join(',')).join('\n'));
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiProvider } = {}) {
   const app = express();
   const server = createServer(app);
@@ -48,6 +78,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   // Keep the raw body so webhook signatures can be checked against the exact bytes.
   app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
+  app.get('/admin/leads.csv', leadsCsvRoute(db, config));
   app.use(webhookRoutes(config, inbox, { db, emit }));
   app.use(connectRoutes(db, config, { fetchImpl, emit, importer }));
   app.use(legalRoutes(config));

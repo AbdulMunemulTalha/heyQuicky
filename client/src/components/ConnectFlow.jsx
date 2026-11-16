@@ -40,7 +40,7 @@ function Bar({ step }) {
 }
 
 // `start` = { kind: 'facebook' | 'instagram' | 'whatsapp', mode?, pendingId? }.
-export function ConnectFlow({ start, me, onClose, onContinueSetup, onTestAi, onboarding }) {
+export function ConnectFlow({ start, me, onClose, onContinueSetup, onboarding }) {
   const [screen, setScreen] = useState(null);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(null); // { id, userName, permissions, pages }
@@ -398,7 +398,6 @@ export function ConnectFlow({ start, me, onClose, onContinueSetup, onTestAi, onb
         {result?.problems?.length > 0 && <p className="cf-error">{result.problems.join(' ')}</p>}
         <button type="button" className="cf-primary" onClick={() => { close(); onContinueSetup?.(); }}>{onboarding ? 'Continue setup' : 'Done'}</button>
         <div className="cf-two">
-          {onboarding && <button type="button" className="cf-secondary" onClick={() => { close(); onTestAi?.(); }}>Test the AI now</button>}
           <button type="button" className="cf-secondary" disabled={fbNotSetUp} onClick={() => openFacebook()}>Add another page</button>
         </div>
       </Shell>

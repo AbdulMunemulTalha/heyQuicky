@@ -229,6 +229,7 @@ The manual form (ID plus access token) is still under **Connect manually (advanc
 | `AI_PROVIDER` | Which model provider the agent uses. Default `claude`. |
 | `AI_REPLY_DELAY_MS` | How long the AI waits for a customer to finish typing before answering. Default `4000`. |
 | `MONGODB_URI` | MongoDB connection string. Defaults to `mongodb://127.0.0.1:27017/quicky`. |
+| `ADMIN_TOKEN` | Password for `/admin/leads.csv`: everyone who started the sign-up form (saved as they type, never the password), with whether they finished. Log in as user `admin` with this password. Leave empty to turn the page off. |
 | `SQLITE_IMPORT_PATH` | Optional. A SQLite database from before the move to MongoDB, copied in once on the first start with an empty MongoDB. |
 | `DRY_RUN` | `1` stores replies without sending them to Meta. |
 | `PORT`, `NODE_ENV` | Standard. |

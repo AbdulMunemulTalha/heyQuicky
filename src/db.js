@@ -12,7 +12,9 @@ const opts = { versionKey: false };
 const PLATFORMS = ['messenger', 'instagram', 'whatsapp'];
 
 // Onboarding, in order. 'done' means the shop is set up.
-export const ONBOARDING_STEPS = ['channels', 'business', 'shop', 'assistant', 'products', 'payments', 'team', 'test', 'live', 'done'];
+// 'account' = editing the sign-up details again; 'shop', 'products', 'payments', 'team' and 'test'
+// belong to the longer onboarding and stay valid for shops that were partway through it.
+export const ONBOARDING_STEPS = ['account', 'channels', 'business', 'shop', 'assistant', 'products', 'payments', 'team', 'test', 'live', 'done'];
 export const AI_STYLES = ['banglish', 'bangla', 'english', 'casual'];
 export const AI_ADDRESS = ['auto', 'apu', 'bhaiya', 'sir_madam', 'bondhu'];
 export const AI_SALES = ['consultative', 'direct'];
@@ -226,6 +228,22 @@ function defineModels(conn) {
     created_at: createdAt,
   }, opts);
 
+  // Someone filling in the sign-up form, saved as they type so the team can follow up
+  // even if they never press "Create account". Never holds a password.
+  const lead = new Schema({
+    _id: String, // random id the sign-up page keeps for this visitor
+    name: { type: String, default: '' },
+    business_name: { type: String, default: '' },
+    email: { type: String, default: '', index: true },
+    phone: { type: String, default: '' },
+    survey: { type: Object, default: {} },
+    // Set when the same visitor finishes signing up.
+    workspace_id: { type: Number, default: null },
+    converted_at: { type: Date, default: null },
+    created_at: createdAt,
+    updated_at: { type: Date, default: () => new Date() },
+  }, opts);
+
   const savedReply = new Schema({
     _id: numericId,
     workspace_id: { type: Number, required: true },
@@ -248,6 +266,7 @@ function defineModels(conn) {
     pendingConnections: conn.model('PendingConnection', pendingConnection, 'pending_connections'),
     savedReplies: conn.model('SavedReply', savedReply, 'saved_replies'),
     products: conn.model('Product', product, 'products'),
+    leads: conn.model('Lead', lead, 'leads'),
   };
 }
 

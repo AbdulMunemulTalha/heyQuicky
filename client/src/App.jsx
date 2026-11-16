@@ -109,10 +109,9 @@ export function App() {
           me={me}
           onboarding={onboarding}
           onClose={() => { setConnectStart(null); setResultVersion((v) => v + 1); }}
-          // From the onboarding "Connect channels" step: move on, or jump to the practice chat.
+          // From the onboarding "Connect channels" step: move on to the next step.
           onContinueSetup={onboarding && me.workspace.onboardingStep === 'channels'
             ? () => api('/workspace', { method: 'PATCH', body: { onboardingStep: 'business' } }).then(setWorkspace).catch(() => {}) : undefined}
-          onTestAi={onboarding ? () => api('/workspace', { method: 'PATCH', body: { onboardingStep: 'test' } }).then(setWorkspace).catch(() => {}) : undefined}
         />
       </ConnectContext.Provider>
     </SocketContext.Provider>

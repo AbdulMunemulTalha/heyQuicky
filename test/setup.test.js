@@ -19,8 +19,8 @@ function fakeProvider(answer = () => ({ reply: 'Ji ache, dam 1,200 taka.', hando
 }
 
 // An app on a random port with helpers to call it as the shop owner.
-async function server({ aiProvider = null, fetchImpl } = {}) {
-  const ctx = await setup({ env: { DRY_RUN: '1' } });
+async function server({ aiProvider = null, fetchImpl, env = {} } = {}) {
+  const ctx = await setup({ env: { DRY_RUN: '1', ...env } });
   const { server: srv } = createApp(ctx.db, ctx.config, { aiProvider, fetchImpl });
   await new Promise((resolve) => srv.listen(0, resolve));
   const base = `http://127.0.0.1:${srv.address().port}`;
@@ -34,7 +34,7 @@ async function server({ aiProvider = null, fetchImpl } = {}) {
   };
   const { data } = await call('/auth/login', { method: 'POST', body: { email: 'owner@shop.test', password: 'password123' } });
   const close = () => new Promise((resolve) => srv.close(resolve));
-  return { ...ctx, call, token: data.token, close };
+  return { ...ctx, call, base, token: data.token, close };
 }
 
 test('sign-up saves the mobile and survey answers and starts setup at channels', async () => {
@@ -237,5 +237,75 @@ test('practice chat answers as the shop without storing or sending anything', as
     assert.equal(res.status, 503);
   } finally {
     await noAi.close();
+  }
+});
+
+test('sign-up details are saved as a lead while typing, and linked when the account is created', async () => {
+  const s = await server({ env: { ADMIN_TOKEN: 'secret-admin' } });
+  try {
+    const id = 'lead_abcdefghijklmnop';
+    const save = (body) => s.call('/leads', { method: 'POST', body: { id, ...body } });
+    assert.equal((await save({ name: 'Talha' })).status, 400, 'needs an email or a mobile number');
+    assert.equal((await s.call('/leads', { method: 'POST', body: { id: 'bad', email: 'a@b.test' } })).status, 400);
+
+    assert.equal((await save({ name: 'Talha', email: 'Talha@Nokshi.test', phone: '01712-345678', password: 'never-stored',
+      survey: { team_size: '1_2', ad_spend: 'bogus' } })).status, 204);
+    await save({ name: 'Talha Ahmed', businessName: 'Nokshi Threads', email: 'talha@nokshi.test', phone: '01712-345678' });
+    const lead = await s.db.leads.findById(id).lean();
+    assert.deepEqual({ name: lead.name, shop: lead.business_name, email: lead.email, phone: lead.phone },
+      { name: 'Talha Ahmed', shop: 'Nokshi Threads', email: 'talha@nokshi.test', phone: '01712345678' });
+    assert.ok(!JSON.stringify(lead).includes('never-stored'), 'the password is never stored');
+    assert.equal(lead.converted_at, null);
+
+    const signup = await s.call('/auth/signup', { method: 'POST', body: { leadId: id, businessName: 'Nokshi Threads', name: 'Talha Ahmed',
+      email: 'talha@nokshi.test', password: 'password123', phone: '01712345678' } });
+    assert.equal(signup.status, 201);
+    const converted = await s.db.leads.findById(id).lean();
+    assert.ok(converted.converted_at);
+    assert.ok(converted.workspace_id);
+    await save({ name: 'Someone else', email: 'x@y.test' });
+    assert.equal((await s.db.leads.findById(id).lean()).name, 'Talha Ahmed', 'a signed-up lead is not overwritten by the form');
+
+    // The follow-up list: password-protected spreadsheet.
+    await s.call('/leads', { method: 'POST', body: { id: 'lead_qrstuvwxyz123456', name: '=HYPERLINK("x")', phone: '01811111111' } });
+    const csv = (auth) => fetch(`${s.base}/admin/leads.csv`, { headers: auth ? { authorization: `Basic ${Buffer.from(auth).toString('base64')}` } : {} });
+    assert.equal((await csv()).status, 401);
+    assert.equal((await csv('admin:wrong')).status, 401);
+    const ok = await csv('admin:secret-admin');
+    assert.equal(ok.status, 200);
+    const text = await ok.text();
+    assert.match(text.split('\n')[0], /^signed_up,name,shop,email,mobile/);
+    assert.match(text, /yes,Talha Ahmed,Nokshi Threads,talha@nokshi\.test,01712345678/);
+    assert.match(text, /no,"'=HYPERLINK\(""x""\)",,,01811111111/, 'formulas are neutralised');
+  } finally {
+    await s.close();
+  }
+  const off = await server();
+  try {
+    assert.equal((await fetch(`${off.base}/admin/leads.csv`)).status, 404, 'no admin token, no page');
+  } finally {
+    await off.close();
+  }
+});
+
+test('the owner can go back to step 1 and change their sign-up details', async () => {
+  const s = await server();
+  try {
+    const account = await s.call('/account', { token: s.token });
+    assert.deepEqual({ ...account.data, survey: undefined }, { name: 'Owner', email: 'owner@shop.test', phone: '', businessName: 'Shop', survey: undefined });
+    assert.equal((await s.call('/workspace', { method: 'PATCH', token: s.token, body: { onboardingStep: 'account' } })).status, 200);
+    const bad = await s.call('/account', { method: 'PATCH', token: s.token, body: { email: 'nadia@shop.test' } });
+    assert.equal(bad.status, 409, 'cannot take another user\'s email');
+    assert.equal((await s.call('/account', { method: 'PATCH', token: s.token, body: { phone: '123' } })).status, 400);
+    const saved = await s.call('/account', { method: 'PATCH', token: s.token,
+      body: { name: 'Rupa', email: 'Rupa@Shop.test', phone: '01712-345678', businessName: 'Rupa Fashion', survey: { team_size: '3_plus' } } });
+    assert.deepEqual({ ...saved.data, survey: saved.data.survey.team_size },
+      { name: 'Rupa', email: 'rupa@shop.test', phone: '01712345678', businessName: 'Rupa Fashion', survey: '3_plus' });
+    const login = await s.call('/auth/login', { method: 'POST', body: { email: 'rupa@shop.test', password: 'password123' } });
+    assert.equal(login.status, 200, 'logs in with the new email');
+    const mod = await s.call('/auth/login', { method: 'POST', body: { email: 'nadia@shop.test', password: 'password123' } });
+    assert.equal((await s.call('/account', { token: mod.data.token })).status, 403);
+  } finally {
+    await s.close();
   }
 });
