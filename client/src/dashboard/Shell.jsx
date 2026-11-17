@@ -80,7 +80,7 @@ export function Sidebar({ open, onClose }) {
       <Link to="/" className="logo"><BrandMark size={26} />heyquicky</Link>
       <button type="button" className="brand-switch" onClick={() => openOverlay('brands')} aria-label={t('shell.switchBrand')}>
         <Avatar name={ws.name} size={30} tone="peach" />
-        <span className="grow">
+        <span className="grow brand-text">
           <span className="brand-name">{ws.name}</span><br />
           <span className={`brand-status ${status.cls}`}>{status.text}</span>
         </span>
@@ -92,8 +92,8 @@ export function Sidebar({ open, onClose }) {
           <Link to="/" className="nav-back">← {t('settingsNav.back')}</Link>
           <div className="nav-section">{t('settingsNav.title')}</div>
           {SETTINGS_NAV.filter((n) => !n.module || ws.modules[n.module]).map((n) => (
-            <Link key={n.key} to={n.to} className={`nav-item${settingsKey === n.key ? ' on' : ''}`} aria-current={settingsKey === n.key ? 'page' : undefined}>
-              <Icon name={n.icon} size={17} />{t(n.label)}
+            <Link key={n.key} to={n.to} className={`nav-item${settingsKey === n.key ? ' on' : ''}`} title={t(n.label)} aria-current={settingsKey === n.key ? 'page' : undefined}>
+              <Icon name={n.icon} size={17} /><span className="nav-label">{t(n.label)}</span>
             </Link>
           ))}
         </nav>
@@ -102,8 +102,8 @@ export function Sidebar({ open, onClose }) {
           {NAV.filter((n) => !n.module || ws.modules[n.module]).map((n, i) => (n.section
             ? <div key={n.section + i} className="nav-section">{t(n.section)}</div>
             : (
-              <Link key={n.key} to={n.to} className={`nav-item${active === n.key ? ' on' : ''}`} aria-current={active === n.key ? 'page' : undefined}>
-                <Icon name={n.icon} size={17} />{t(n.label)}
+              <Link key={n.key} to={n.to} className={`nav-item${active === n.key ? ' on' : ''}`} title={t(n.label)} aria-current={active === n.key ? 'page' : undefined}>
+                <Icon name={n.icon} size={17} /><span className="nav-label">{t(n.label)}</span>
                 {n.badge && <Badge count={badges[n.badge]} tone={n.tone} />}
               </Link>
             )))}
@@ -119,7 +119,7 @@ export function Sidebar({ open, onClose }) {
           <small>{t('shell.repliesLeft', { n: t.num(ws.repliesLeft) })}</small>
         </div>
         <div className="side-settings">
-          <Link to="/settings" className={`nav-item${active === 'settings' ? ' on' : ''}`}><Icon name="settings" size={17} />{t('nav.settings')}</Link>
+          <Link to="/settings" className={`nav-item${active === 'settings' ? ' on' : ''}`}><Icon name="settings" size={17} /><span className="nav-label">{t('nav.settings')}</span></Link>
           <button type="button" className="icon-btn" aria-label={t('help.title')} onClick={() => openOverlay('help')}><Icon name="help" size={16} /></button>
         </div>
         <div className="row">
@@ -177,7 +177,7 @@ export function Topbar({ onMenu }) {
             {t('shell.practice')}
           </button>
         </div>
-        <button type="button" className="btn hide-mobile" onClick={() => openOverlay('testChat')}><Icon name="chat" size={15} />{t('shell.testChat')}</button>
+        <button type="button" className="btn hide-mobile" title={t('shell.testChat')} onClick={() => openOverlay('testChat')}><Icon name="chat" size={15} /><span className="btn-label">{t('shell.testChat')}</span></button>
         <button type="button" className={`btn hide-mobile${t.lang === 'en' ? ' bn' : ''}`} onClick={() => setLanguage(t.lang === 'en' ? 'bn' : 'en')} lang={t.lang === 'en' ? 'bn' : 'en'}>
           {t('shell.otherLang')}
         </button>
