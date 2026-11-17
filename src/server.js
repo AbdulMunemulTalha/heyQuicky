@@ -5,6 +5,7 @@ import { createApp } from './app.js';
 import { migrateSqlite } from './migrateSqlite.js';
 import { runMigrations } from './dashboard/migrations.js';
 import { startCourierSync } from './routes/dashboard/orderDetail.js';
+import { startFollowups } from './dashboard/followups.js';
 
 const config = loadConfig();
 
@@ -26,6 +27,8 @@ if (config.sqliteImportPath && existsSync(config.sqliteImportPath) && !(await db
 await runMigrations(db, { log: (line) => console.log(line) });
 const { server, inbox, io } = createApp(db, config);
 // Parcels on the way are checked with their courier every 30 minutes (CRR-02).
+// Follow-up reminders for customers who went quiet are checked every 5 minutes (FUP-01).
+startFollowups(db, inbox);
 startCourierSync(db, config, { emit: (ws, event, payload) => io.to(`workspace:${ws}`).emit(event, payload) });
 
 server.listen(config.port, () => {

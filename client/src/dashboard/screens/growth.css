@@ -1,0 +1,26 @@
+#dash .gr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#dash .gr-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+#dash .gr-list li { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--border); }
+#dash .gr-list li:first-child { border-top: 0; }
+#dash .gr-list strong { display: block; font-size: 13.5px; }
+#dash .gr-list small { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px; }
+#dash .gr-tag { width: 64px; justify-content: center; flex: none; text-transform: uppercase; letter-spacing: .03em; font-size: 10.5px; }
+#dash .gr-when { text-align: right; max-width: 220px; }
+#dash .gr-how { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+#dash .gr-opts { margin-top: 14px; padding: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+#dash .gr-tabs { padding: 0 18px; align-items: center; }
+#dash .gr-actions { display: flex; gap: 6px; justify-content: flex-end; }
+#dash .log-wrap { position: relative; }
+#dash .log-menu { right: 0; left: auto; }
+#dash .gr-four { grid-template-columns: repeat(4, 1fr); }
+#dash .gr-products { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 10px; }
+#dash .gr-product { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; cursor: pointer; }
+#dash .gr-product input { accent-color: var(--accent); }
+#dash .gr-product.on-z { border-color: var(--accent); background: var(--accent-tint); }
+#dash .gr-send { display: flex; gap: 8px; margin: 14px 0 8px; }
+#dash .gr-send .input { max-width: 220px; }
+#dash .gr-history { display: flex; flex-direction: column; gap: 12px; }
+#dash .gr-history li { border-top: 1px solid var(--border); padding-top: 10px; }
+#dash .gr-history li:first-child { border-top: 0; padding-top: 0; }
+@media (max-width: 1100px) { #dash .gr-grid { grid-template-columns: minmax(0, 1fr); } #dash .gr-four { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { #dash .gr-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } #dash .gr-when { display: none; } }

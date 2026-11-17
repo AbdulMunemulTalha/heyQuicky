@@ -3,7 +3,7 @@
 Updated after each screen. **Done** = built, wired to real data and tested. **Partial** = what's missing is listed.
 ONB rows belong to onboarding, which is frozen and was built earlier; only their dashboard-side parts are tracked here.
 
-Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments, 03 Orders, 11 Order detail (+ 11b, 11c), 12 New / edit order and 04 Customers are built.
+Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments, 03 Orders, 11 Order detail (+ 11b, 11c), 12 New / edit order, 04 Customers and 05 Follow-ups, leads & broadcasts are built.
 
 | ID | Status | Route |
 |---|---|---|
@@ -123,12 +123,12 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | SR-08 | Partial — "/" search of saved replies in the composer, suggested replies above the box, AI draft. Missing: AI adapting a saved reply while keeping numbers and links | /app/inbox |
 | SR-09 | Not started (screen 06) | /app/saved-replies |
 | SR-10 | Not started | AI pipeline |
-| FUP-01 | Not started (screen 05) | /app/growth |
-| FUP-02 | Not started (Phase 3) | /app/growth/leads?tab=lost |
-| FUP-03 | Not started (screen 05) | /app/growth?tab=leads |
+| FUP-01 | Done — chats where the customer asked and went quiet are watched: hot (delivery, address, quantity, size) gets reminders at 3 h and 20 h, warm (price only) at 20 h; at most 2, only inside the 24 h window, never in chats a teammate owns; replies and orders stop them; on/off switch; runs every 5 minutes | /app/growth |
+| FUP-02 | Partial — optional 10% offer on the last reminder (switch on screen 05). Missing: an expiring per-customer offer the AI honours only until it ends (P2) | /app/growth |
+| FUP-03 | Done — interested customers are captured automatically with the product, interest and when to follow up; To chase / Contacted; Open chat, WhatsApp, copy number, Log call (Ordered / Call later / No answer / Not interested) | /app/growth?tab=leads |
 | FUP-04 | Not started (Phase 2) | /app/growth/leads |
 | FUP-05 | Not started (Phase 3) | /app/growth/leads |
-| FUP-06 | Not started (screen 05) | /app/growth?tab=broadcasts |
+| FUP-06 | Partial — Broadcasts: hot / warm / last 24 h / buyers in 24 h, live recipient count that respects Meta's 24-hour rule, text / buttons / product / carousel / photo, send now or schedule, results (replied, ordered). Missing: the designed Messenger cards (screen 24) — sent as text for now; WhatsApp templates | /app/growth?tab=broadcasts |
 | FUP-07 | Not started | AI pipeline |
 | FUP-08 | Not started (Phase 3) | /app/growth/leads?tab=lost |
 | TKT-01 | Not started (Phase 2) | /app/tickets |

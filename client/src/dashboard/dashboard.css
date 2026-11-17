@@ -361,3 +361,20 @@
 #dash .team-note { background: var(--yellow-soft); color: var(--yellow-text); padding: 8px 10px; border-radius: 8px; font-size: 12.5px; margin-bottom: 6px; }
 #dash .pill.tag { gap: 4px; }
 #dash .pill.tag button { border: 0; background: none; padding: 0; cursor: pointer; color: inherit; font-size: 13px; line-height: 1; }
+
+/* Option cards, swatches and small menus shared by orders, growth and settings. */
+#dash .kpi-inline { font: 600 12px/1 Inter, sans-serif; color: var(--green-text); }
+#dash .status-pick { position: relative; display: inline-block; }
+#dash .pill-btn { border: 0; cursor: pointer; font-family: inherit; }
+#dash .pill-btn:disabled { cursor: default; }
+#dash .status-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 10; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 4px; min-width: 160px; }
+#dash .status-menu button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 7px 10px; border-radius: 6px; font-size: 12.5px; cursor: pointer; color: var(--text); text-align: left; }
+#dash .status-menu button:hover { background: var(--hover); }
+#dash .od-swatch { width: 44px; height: 52px; border-radius: 8px; background-size: cover; background-position: center; flex: none; }
+#dash .od-swatch.sm { width: 18px; height: 18px; border-radius: 4px; display: inline-block; vertical-align: middle; }
+#dash .of-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+#dash .label-like { font-size: 12.5px; font-weight: 600; }
+#dash .of-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+#dash .of-zone { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); cursor: pointer; text-align: left; color: var(--text); }
+#dash .of-zone small { color: var(--muted); font-size: 11.5px; }
+#dash .of-zone.on-z { border-color: var(--accent); background: var(--accent-tint); box-shadow: 0 0 0 1px var(--accent); }

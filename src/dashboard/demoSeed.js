@@ -111,6 +111,7 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     return customers[name];
   };
 
+  const convs = {};
   for (const [name, platform, text, ago, state] of CHATS) {
     const contact = await db.insert(db.contacts, { workspace_id: ws.id, channel_id: channels[platform], external_id: `${name.replace(/\s/g, '').toLowerCase()}-${ws.id}`, name });
     const customer = await customerFor(name, '', { contact_ids: [contact.id], tags: state.tags ?? [], vip: (state.tags ?? []).includes('VIP') });
@@ -126,6 +127,7 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
       reopened_at: state.reopened ? min(ago) : null,
       last_replier: state.ai ? 'ai' : state.team ? 'team' : 'customer',
     });
+    convs[name] = conv.id;
     const say = (direction, body, at, extra = {}) => db.insert(db.messages, { conversation_id: conv.id, direction, text: body, created_at: at, status: direction === 'in' ? 'received' : 'sent', ...extra });
     await say('in', 'আপু এই থ্রি-পিস টা কি L সাইজে আছে?', min(ago + 1200));
     await say('out', 'জি আপু, Nokshi Cotton Three-Piece L সাইজে ৬টা আছে। দাম ৳২,১৫০, ঢাকার ভিতরে ডেলিভারি ৳৭০।', min(ago + 1199), { sent_by_ai: true });
@@ -208,6 +210,28 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     if (customers[name]) await db.customers.updateOne({ _id: customers[name].id }, { $set: { stats, vip }, $addToSet: { tags: { $each: tags } } });
   }
   await db.customers.updateOne({ workspace_id: ws.id, name: 'Earn Money BD' }, { $set: { blocked: true, ai_off: true, ai_off_reason: 'Spam' } });
+
+  // Follow-ups (FUP-01) and leads (FUP-03) as in frame 05.
+  for (const [name, temp, status, dueMin, extra] of [
+    ['Farhan Hossain', 'hot', 'watching', 40, {}], ['Nusrat Islam', 'warm', 'watching', 18 * 60, {}],
+    ['Tanvir Ahmed', 'hot', 'sent', -30, { step: 2, sent_at: min(30) }], ['Mitu Akter', 'warm', 'sent', 9 * 60, { step: 1, sent_at: min(120), with_offer: true }],
+    ['Rakib Hasan', 'skip', 'skipped', 0, { skip_reason: 'A teammate is handling it' }], ['Imran Kabir', 'skip', 'skipped', 0, { skip_reason: 'Said no, or only said thanks' }],
+  ]) {
+    if (!convs[name]) continue;
+    await db.insert(db.followups, { workspace_id: ws.id, conversation_id: convs[name], temp, status, due_at: new Date(Date.now() + dueMin * 60_000), ...extra });
+  }
+  for (const [name, phone, product, amount, temp, stage, times, ago, outcome] of [
+    ['Tanvir Ahmed', '01819224410', 'Jamdani Kurti', 1450, 'hot', 'new', 2, 9, ''], ['Nadia Islam', '01711552244', 'Eid Silk Set', 2950, 'hot', 'new', 1, 18, ''],
+    ['Kamrul H.', '01822334455', 'Silk Panjabi', 2550, 'warm', 'new', 1, 60, ''], ['Farhan Hossain', '01611223344', 'Nokshi Cotton Three-Piece', 2150, 'hot', 'new', 3, 18, ''],
+    ['Rina Begum', '01933112233', 'Nokshi Cotton Three-Piece', 2150, 'warm', 'contacted', 2, 300, 'no_answer'], ['Sabbir H.', '01744556677', 'Winter Shawl', 1850, 'warm', 'call_scheduled', 1, 400, 'call_later'],
+  ]) {
+    await db.insert(db.prospects, { workspace_id: ws.id, name, phone, product, amount, temp, stage, times_asked: times, last_seen_at: min(ago), outcome,
+      conversation_id: convs[name] ?? null, customer_id: customers[name]?.id ?? null, owner_user_id: outcome ? users.Rafi : null,
+      callback_at: outcome === 'call_later' ? new Date(Date.now() + 26 * 3_600_000) : null, follow_up_at: new Date(Date.now() + 3 * 3_600_000) });
+  }
+  await db.insert(db.broadcasts, { workspace_id: ws.id, audience: { key: 'last_24h' }, format: 'carousel', status: 'sent', sent_at: days(2),
+    content: { text: 'নতুন শীতের কালেকশন এসেছে! আজ অর্ডার করলে ফ্রি ডেলিভারি 🎁', productIds: [] }, recipients: Object.values(convs).slice(0, 5),
+    stats: { recipients: 214, sent: 214 } });
 
   for (const [question, count, topic] of [['৪২ সাইজ হবে? / 42 size ache?', 31, 'Sizes asked by chest number'], ['কবে নতুন কালেকশন আসবে?', 18, 'New stock dates'],
     ['ঢাকার বাইরে কন্ডিশনে চার্জ লাগবে?', 14, 'Courier condition charge'], ['শোরুম কোথায়?', 9, 'Physical shop / visit']]) {

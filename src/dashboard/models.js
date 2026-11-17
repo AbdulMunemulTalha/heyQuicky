@@ -203,6 +203,8 @@ export function defineDashboardModels(conn) {
     scheduled_at: { type: Date, default: null },
     status: { type: String, default: 'draft' },
     stats: { type: Mixed, default: { recipients: 0, sent: 0, replied: 0, ordered: 0 } },
+    recipients: { type: [Number], default: [] },
+    sent_at: { type: Date, default: null },
     created_by: { type: Number, default: null },
   });
 
