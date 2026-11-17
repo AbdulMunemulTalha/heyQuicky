@@ -196,6 +196,19 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     await db.customers.updateOne({ _id: customer.id }, { $inc: { 'stats.orders': 1, 'stats.spent': status === 'delivered' ? subtotal : 0, 'stats.delivered': status === 'delivered' ? 1 : 0, 'stats.cancelled': status === 'cancelled' ? 1 : 0 } });
   }
 
+  // Realistic histories for the customers the designs show (orders before the ones above).
+  for (const [name, stats, tags, vip] of [
+    ['Sadia Rahman', { orders: 4, delivered: 4, returned: 0, cancelled: 0, spent: 8640 }, ['VIP', 'Repeat buyer', 'Dhaka'], true],
+    ['Shirin Akter', { orders: 7, delivered: 3, returned: 4, cancelled: 0, spent: 4210 }, ['High risk'], false],
+    ['Rafiq Uddin', { orders: 7, delivered: 7, returned: 0, cancelled: 0, spent: 19380 }, ['VIP', 'Wholesale'], true],
+    ['Farzana Haque', { orders: 3, delivered: 2, returned: 0, cancelled: 0, spent: 6020 }, ['Repeat buyer'], false],
+    ['Nusrat Islam', { orders: 3, delivered: 2, returned: 1, cancelled: 0, spent: 4400 }, [], false],
+    ['Imran Kabir', { orders: 2, delivered: 2, returned: 0, cancelled: 0, spent: 5100 }, [], false],
+  ]) {
+    if (customers[name]) await db.customers.updateOne({ _id: customers[name].id }, { $set: { stats, vip }, $addToSet: { tags: { $each: tags } } });
+  }
+  await db.customers.updateOne({ workspace_id: ws.id, name: 'Earn Money BD' }, { $set: { blocked: true, ai_off: true, ai_off_reason: 'Spam' } });
+
   for (const [question, count, topic] of [['৪২ সাইজ হবে? / 42 size ache?', 31, 'Sizes asked by chest number'], ['কবে নতুন কালেকশন আসবে?', 18, 'New stock dates'],
     ['ঢাকার বাইরে কন্ডিশনে চার্জ লাগবে?', 14, 'Courier condition charge'], ['শোরুম কোথায়?', 9, 'Physical shop / visit']]) {
     await db.insert(db.unanswered, { workspace_id: ws.id, question, key: question.toLowerCase(), topic, count, last_asked_at: min(count * 3) });

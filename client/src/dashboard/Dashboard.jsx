@@ -16,6 +16,7 @@ const screens = {
   orders: lazy(() => import('./screens/Orders.jsx')),
   orderDetail: lazy(() => import('./screens/OrderDetail.jsx')),
   orderForm: lazy(() => import('./screens/OrderForm.jsx')),
+  customers: lazy(() => import('./screens/Customers.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
 const overlays = {};
@@ -30,6 +31,8 @@ const ROUTES = [
   ['/orders/new', 'orderForm'],
   ['/orders/:n/edit', 'orderForm'],
   ['/orders/:n', 'orderDetail'],
+  ['/customers', 'customers'],
+  ['/customers/:id', 'customers'],
 ];
 
 function pick(path) {

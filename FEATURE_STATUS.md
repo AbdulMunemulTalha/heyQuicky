@@ -3,7 +3,7 @@
 Updated after each screen. **Done** = built, wired to real data and tested. **Partial** = what's missing is listed.
 ONB rows belong to onboarding, which is frozen and was built earlier; only their dashboard-side parts are tracked here.
 
-Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments, 03 Orders, 11 Order detail (+ 11b, 11c) and 12 New / edit order are built.
+Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments, 03 Orders, 11 Order detail (+ 11b, 11c), 12 New / edit order and 04 Customers are built.
 
 | ID | Status | Route |
 |---|---|---|
@@ -109,8 +109,8 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | PAY-01 | Not started (Phase 2) | /app/payments |
 | PAY-02 | Not started (Phase 3) | /app/payments?tab=gateway |
 | PAY-03 | Partial — "Ask for ৳300 bKash advance" sends your bKash number in the customer's chat and records the request; automatic advance rules come in Phase 2 | /app/orders/:n |
-| CRM-01 | Not started (screen 04) | /app/customers |
-| CRM-02 | Partial — courier check on the order and the order form (cached a day per customer). Fake data until a fraud-check service is chosen (FRAUDCHECK_API_URL) | /app/orders/:n |
+| CRM-01 | Done — customers list (search by name, phone in Bangla or English digits, tag; All / Repeat buyers / VIP / High risk; CSV) and a profile with orders, delivered / returned / cancelled, delivered %, one timeline across Messenger, Instagram, WhatsApp, comments and orders, team notes and tags | /app/customers |
+| CRM-02 | Partial — "Before you ship" on the customer, the order and the order form, cached a day. Uses sample data until a fraud-check service is chosen (FRAUDCHECK_API_URL) | /app/customers |
 | CRM-03 | Partial — COD risk score (own returns + courier record + amount + zone) shown as Low / Medium / High on orders; segments screen in Phase 2 | /app/orders |
 | CRM-04 | Not started (Phase 2) | /app/customers/segments |
 | SR-01 | Not started (screen 06) | /app/saved-replies |
