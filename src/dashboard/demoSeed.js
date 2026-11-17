@@ -84,6 +84,9 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     channels[platform] = (await db.insert(db.channels, { workspace_id: ws.id, platform, external_id: ext, name, access_token: '' })).id;
   }
 
+  // Couriers are connected without keys, so booking runs in test mode in development.
+  for (const courier of ['steadfast', 'pathao']) await db.insert(db.courierAccounts, { workspace_id: ws.id, courier, connected: true, auto_book: courier === 'steadfast' });
+
   const products = {};
   for (const p of PRODUCTS) {
     const variants = Object.entries(p.sizes).map(([size, stock]) => ({ sku: `${p.code}-${size}`, options: { Size: size }, price: p.price, stock }));

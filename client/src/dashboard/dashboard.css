@@ -346,3 +346,9 @@
   #dash .side-foot .pill-green { background: var(--green); }
   #dash .side-foot .pill-gray { background: var(--border-strong); }
 }
+
+/* Small search box used in lists (inbox, orders, customers…). */
+#dash .ib-search { display: flex; align-items: center; gap: 6px; margin: 0 16px 8px; padding: 0 10px; height: 32px; border: 1px solid var(--border); border-radius: 8px; color: var(--faint); background: var(--panel-2); }
+#dash .ib-search input { border: 0; outline: none; background: none; flex: 1; font-size: 13px; color: var(--text); min-width: 0; }
+#dash .tabs { scrollbar-width: none; }
+#dash .tabs::-webkit-scrollbar { display: none; }

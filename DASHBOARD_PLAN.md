@@ -290,7 +290,7 @@ Every adapter has a **fake** mode, used in dev and tests and whenever its creden
 
 New dependencies, each only where the repo has nothing for the job:
 - `web-push`, for push encryption.
-- `pdfkit`, for courier labels (OMS "Print labels").
+- ~~`pdfkit`~~ not needed: labels are a printable HTML sheet the browser prints.
 - `@resvg/resvg-js`, to render size charts as images: the AI sends an image (CAT-05), and the server must produce a PNG.
 
 That's all. Everything else uses what's already installed. `.env.example` and the README will list every variable.

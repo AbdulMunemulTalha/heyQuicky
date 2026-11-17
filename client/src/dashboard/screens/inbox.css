@@ -4,8 +4,6 @@
 #dash .ib-list-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px; }
 #dash .ib-list-head h1 { font-size: 22px; font-weight: 700; }
 #dash .ib-list-head .segmented button { height: 24px; font-size: 12px; padding: 0 10px; }
-#dash .ib-search { display: flex; align-items: center; gap: 6px; margin: 0 16px 8px; padding: 0 10px; height: 32px; border: 1px solid var(--border); border-radius: 8px; color: var(--faint); background: var(--panel-2); }
-#dash .ib-search input { border: 0; outline: none; background: none; flex: 1; font-size: 13px; color: var(--text); min-width: 0; }
 #dash .ib-channels { display: flex; gap: 6px; padding: 0 16px 8px; overflow-x: auto; scrollbar-width: thin; }
 #dash .ib-channels .chip { height: 26px; font-size: 12px; flex: none; }
 #dash .ib-tabs { padding: 0 16px; gap: 14px; }
