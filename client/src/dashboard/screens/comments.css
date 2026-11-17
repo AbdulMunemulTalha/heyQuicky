@@ -1,0 +1,25 @@
+#dash .comments { grid-template-columns: 300px minmax(0, 1fr) 300px; }
+#dash .cm-post { display: flex; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; background: none; text-align: left; cursor: pointer; color: var(--text); }
+#dash .cm-post.on { background: var(--accent-tint); border-left-color: var(--accent); }
+#dash .cm-post strong { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#dash .cm-post small { display: block; font-size: 11.5px; }
+#dash .cm-post .grow { min-width: 0; }
+#dash .cm-thumb { width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(135deg, #2F7D74, #7A1F2B); background-size: cover; background-position: center; flex: none; }
+#dash .cm-thumb.lg { width: 56px; height: 56px; }
+#dash .cm-head { display: flex; gap: 12px; align-items: flex-start; padding: 14px 18px; background: var(--panel); border-bottom: 1px solid var(--border); }
+#dash .cm-head h2 { font-size: 15px; font-weight: 700; }
+#dash .cm-tabs { background: var(--panel); padding: 0 18px; }
+#dash .cm-list { display: flex; flex-direction: column; gap: 10px; }
+#dash .cm-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+#dash .cm-card.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#dash .cm-card.hidden-c { opacity: .7; }
+#dash .cm-text { margin: 6px 0 6px 36px; font-size: 13.5px; background: var(--panel-2); border-radius: 10px; padding: 7px 10px; display: inline-block; }
+#dash .cm-actions { display: flex; gap: 14px; margin-left: 36px; }
+#dash .cm-actions button { border: 0; background: none; padding: 0; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
+#dash .cm-actions button:hover { color: var(--accent); }
+#dash .cm-reply { margin: 8px 0 0 60px; border-left: 2px solid var(--accent-soft); padding-left: 10px; font-size: 13px; }
+#dash .cm-form { margin: 10px 0 0 36px; display: flex; flex-direction: column; gap: 8px; }
+#dash .cm-dm { gap: 12px; }
+#dash .cm-started { font-size: 12px; color: var(--accent); background: var(--accent-tint); padding: 8px 10px; border-radius: 8px; }
+@media (max-width: 1280px) { #dash .comments { grid-template-columns: 280px minmax(0, 1fr); } }
+@media (max-width: 768px) { #dash .comments { grid-template-columns: minmax(0, 1fr); } #dash .comments .ib-list { display: none; } }

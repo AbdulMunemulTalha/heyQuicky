@@ -11,18 +11,24 @@ import './dashboard.css';
 // Screens load on demand so the first paint stays small. Paths are under /app.
 const screens = {
   overview: lazy(() => import('./screens/Overview.jsx')),
+  inbox: lazy(() => import('./screens/Inbox.jsx')),
+  comments: lazy(() => import('./screens/Comments.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
 const overlays = {};
 
 const ROUTES = [
   ['/', 'overview'],
+  ['/inbox', 'inbox', { flush: true }],
+  ['/inbox/:id', 'inbox', { flush: true }],
+  ['/comments', 'comments', { flush: true }],
+  ['/comments/:postId', 'comments', { flush: true }],
 ];
 
 function pick(path) {
-  for (const [pattern, key] of ROUTES) {
+  for (const [pattern, key, opts] of ROUTES) {
     const params = match(pattern, path);
-    if (params) return { key, params };
+    if (params) return { key, params, flush: Boolean(opts?.flush) };
   }
   return { key: 'placeholder', params: {} };
 }
@@ -122,7 +128,7 @@ export function Dashboard({ onSignOut }) {
     );
   }
 
-  const { key, params } = pick(path);
+  const { key, params, flush } = pick(path);
   const Screen = screens[key];
   const Overlay = overlay && overlays[overlay.name];
 
@@ -137,7 +143,7 @@ export function Dashboard({ onSignOut }) {
             <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
             <div className="main">
               <Topbar onMenu={() => setMenuOpen(true)} />
-              <main id="main" className="content" tabIndex={-1}>
+              <main id="main" className={`content${flush ? ' flush' : ''}`} tabIndex={-1}>
                 <Suspense fallback={<div><Skeleton w="30%" h={28} /><br /><Skeleton h={160} r={12} /></div>}>
                   <Screen params={params} query={query} path={path} />
                 </Suspense>

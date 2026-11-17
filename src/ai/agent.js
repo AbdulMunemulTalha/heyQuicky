@@ -11,6 +11,8 @@ const modeOf = (workspace) => workspace?.ai_mode ?? 'suggest';
 
 function handoffActive(conversation, now = Date.now()) {
   if (!conversation.ai_handoff) return false;
+  // A person took over from the dashboard: the AI stays quiet until the chosen time (HND-02).
+  if (conversation.human_until) return now < new Date(conversation.human_until).getTime();
   const at = conversation.ai_handoff_at ? new Date(conversation.ai_handoff_at).getTime() : 0;
   return now - at < HANDOFF_LAPSE_MS;
 }
@@ -95,6 +97,9 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     if (mode === 'off') return 'off';
     // The owner switched the AI off for this channel (moderators can still ask for a suggestion).
     if (ctx.channel?.ai_enabled === false) return 'channel_off';
+    // Spam and customers the team switched the AI off for get no AI reply, so they cost nothing (TKT-03).
+    if (ctx.conversation.spam) return 'spam';
+    if (ctx.conversation.customer_id && await db.customers.exists({ _id: ctx.conversation.customer_id, ai_off: true })) return 'customer_off';
     if (ctx.lastInbound?._id !== messageId) return 'stale';
 
     let auto = mode === 'auto' && !handoffActive(ctx.conversation);
@@ -216,6 +221,30 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
       await accessible(user, conversationId);
       await db.conversations.updateOne({ _id: conversationId }, { $set: { ai_draft: null } });
       return inbox.refresh(conversationId);
+    },
+
+    // Copilot: answers a teammate's question about one customer from their chat and orders (HND-04).
+    async ask(user, conversationId, question) {
+      if (!provider) throw new InboxError(503, 'AI replies are not set up on this server');
+      const conversation = await db.conversations.findById(conversationId).lean();
+      if (!conversation || conversation.workspace_id !== user.workspace_id) throw new InboxError(404, 'Conversation not found');
+      const [messages, orders] = await Promise.all([
+        db.messages.find({ conversation_id: conversationId }).sort({ _id: -1 }).limit(40).lean(),
+        conversation.customer_id ? db.orders.find({ customer_id: conversation.customer_id }).sort({ _id: -1 }).limit(10).lean() : [],
+      ]);
+      const transcript = messages.reverse().map((m) => `${m.direction === 'in' ? 'Customer' : m.sent_by_ai ? 'AI' : 'Team'}: ${m.text}`).join('\n');
+      const orderLines = orders.map((o) => `#${o.number ?? o._id} ${o.status} ৳${o.subtotal + o.delivery_charge - (o.discount ?? 0)} ${o.items.map((i) => i.name).join(', ')}`).join('\n');
+      try {
+        const { data } = await provider.generateJson({
+          system: 'You help a shop team understand one customer. Answer briefly (1-3 sentences) from the chat and orders only. If the answer is not there, say so. Reply in the language of the question.',
+          messages: [{ role: 'user', content: `Chat:\n${transcript || '(none)'}\n\nOrders:\n${orderLines || '(none)'}\n\nQuestion: ${question}` }],
+          schema: { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false },
+          maxTokens: 600,
+        });
+        return String(data.answer ?? '').trim();
+      } catch (err) {
+        throw new InboxError(502, `The AI couldn't answer: ${err.message}`);
+      }
     },
 
     // Lets the AI answer this customer again after a handoff.

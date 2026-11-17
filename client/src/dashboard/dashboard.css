@@ -36,7 +36,7 @@
 #dash :is(ol, ul) { margin: 0; padding: 0; list-style: none; }
 #dash li::before { content: none; }
 /* style.css also has classes with these names (onboarding and the old inbox); reset them so only the rules below apply. */
-#dash :is(.card, .avatar, .badge, .check, .chip, .dot, .empty, .field, .main, .row, .sidebar, .table, .topbar, .pill) { all: revert; box-sizing: border-box; }
+#dash :is(.card, .avatar, .badge, .check, .chip, .chips, .dot, .empty, .field, .main, .row, .sidebar, .table, .topbar, .pill, .unread, .bubble, .composer, .chat, .comments, .tab-count, .num, .btn-ghost, .ok-text, .in, .out, .on, .tag, .active, .selected, .done) { all: revert; box-sizing: border-box; }
 #dash a { color: var(--accent); text-decoration: none; }
 #dash a:hover { text-decoration: underline; }
 #dash :is(h1, h2, h3) { font-family: var(--display); letter-spacing: -0.02em; color: var(--text); }

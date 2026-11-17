@@ -350,6 +350,18 @@ function defineModels(conn) {
     workspace_id: { type: Number, required: true },
     shortcut: { type: String, required: true },
     text: { type: String, required: true },
+    // Dashboard saved replies (screen 06).
+    name: { type: String, default: '' },
+    folder: { type: String, default: '' },
+    pinned: { type: Boolean, default: false },
+    scope: { type: String, enum: ['team', 'private'], default: 'team' },
+    owner_user_id: { type: Number, default: null },
+    blocks: { type: [Schema.Types.Mixed], default: [] },
+    phrases: { type: [String], default: [] },
+    auto_answer: { type: Boolean, default: false },
+    uses: { type: Number, default: 0 },
+    answered_count: { type: Number, default: 0 },
+    created_at: { type: Date, default: () => new Date() },
   }, opts);
   savedReply.index({ workspace_id: 1, shortcut: 1 }, { unique: true });
 

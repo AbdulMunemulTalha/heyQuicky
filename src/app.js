@@ -18,6 +18,7 @@ import { legalRoutes } from './routes/legal.js';
 import { dashboardRoutes } from './routes/dashboard/index.js';
 import { dashboardMounts } from './routes/dashboard/mounts.js';
 import { createAdapters } from './adapters/index.js';
+import { attachPresence } from './dashboard/presence.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 // The React dashboard, built by `npm run build`.
@@ -70,12 +71,15 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
     try {
       const user = await userForToken(db, socket.handshake.auth?.token);
       if (!user) return next(new Error('unauthorized'));
+      socket.data.user = user;
       socket.join(`workspace:${user.workspace_id}`);
       next();
     } catch (err) {
       next(err);
     }
   });
+
+  attachPresence(io);
 
   app.disable('x-powered-by');
   // Keep the raw body so webhook signatures can be checked against the exact bytes.

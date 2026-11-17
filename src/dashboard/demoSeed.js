@@ -33,7 +33,9 @@ const CHATS = [
   ['Sadia Rahman', 'messenger', 'ছবির সাথে কালার একদম মেলেনি। আমি রিটার্ন করতে চাই', 4, { handoff: 'Refund request, colour mismatch', act: true, tags: ['VIP', 'Repeat buyer', 'Dhaka'] }],
   ['Rakib Hasan', 'messenger', 'ভাই ৪২ সাইজ আছে?', 9, { handoff: 'Asked for size 42 (not in catalog)', comment: true }],
   ['Tanvir Ahmed', 'instagram', 'আচ্ছা ঠিক আছে, ধন্যবাদ', 2, { ai: true }],
-  ['Mitu Akter', 'whatsapp', '[Photo] এটার দাম কত?', 8, { ai: true, tags: ['Discount'] }],
+  ['Mitu Akter', 'whatsapp', 'আপু L সাইজ টা কবে আসবে?', 2, { reopened: true, tags: ['Discount'] }],
+  ['Imran Kabir', 'messenger', 'thank you vai, peye gechi', 300, { done: true }],
+  ['Farzana Haque', 'messenger', 'ok apu, order confirm', 180, { done: true }],
   ['Farhan Hossain', 'messenger', 'ডেলিভারি চার্জ কত ঢাকার বাইরে?', 18, { ai: true, tags: ['Hot lead'] }],
   ['Nusrat Islam', 'messenger', 'price koto apu?', 21, { ai: true }],
   ['Rafiq Uddin', 'messenger', 'ঠিক আছে ভাই, কাল পাঠিয়ে দিন', 60, { team: 'Rafi' }],
@@ -106,11 +108,14 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     const customer = await customerFor(name, '', { contact_ids: [contact.id], tags: state.tags ?? [], vip: (state.tags ?? []).includes('VIP') });
     await db.customers.updateOne({ _id: customer.id }, { $addToSet: { contact_ids: contact.id } });
     const conv = await db.insert(db.conversations, {
-      workspace_id: ws.id, channel_id: channels[platform], contact_id: contact.id, customer_id: customer.id, status: 'open',
+      workspace_id: ws.id, channel_id: channels[platform], contact_id: contact.id, customer_id: customer.id,
       assigned_user_id: state.team ? users[state.team] : state.handoff ? users.Rafi : null, unread_count: state.ai ? 0 : 1,
       last_message_at: min(ago), last_inbound_at: min(ago), last_message_preview: text,
       ai_handoff: Boolean(state.handoff), ai_handoff_reason: state.handoff ?? '', ai_handoff_at: state.handoff ? min(ago) : null,
-      act_now: Boolean(state.act), spam: Boolean(state.spam), spam_reason: state.spam ?? '', tags: state.tags ?? [],
+      act_now: Boolean(state.act), spam: Boolean(state.spam), spam_reason: state.spam ?? '',
+      tags: [...(state.tags ?? []), ...(state.reopened ? ['Back from Done'] : [])],
+      status: state.done ? 'closed' : 'open', done_at: state.done || state.reopened ? min(ago + 60) : null, done_by: state.done || state.reopened ? 'Rafi' : '',
+      reopened_at: state.reopened ? min(ago) : null,
       last_replier: state.ai ? 'ai' : state.team ? 'team' : 'customer',
     });
     const say = (direction, body, at, extra = {}) => db.insert(db.messages, { conversation_id: conv.id, direction, text: body, created_at: at, status: direction === 'in' ? 'received' : 'sent', ...extra });
@@ -119,6 +124,43 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     if (state.team) await say('out', 'ঠিক আছে ভাই, কাল সকালে পাঠিয়ে দেব।', min(ago + 5), { sender_user_id: users[state.team] });
     await say('in', text, min(ago));
     if (state.ai) await say('out', 'জি, অবশ্যই! আর কিছু জানতে চাইলে বলবেন 😊', min(Math.max(ago - 1, 0)), { sent_by_ai: true });
+    if (name === 'Sadia Rahman') {
+      await db.insert(db.notes, { workspace_id: ws.id, conversation_id: conv.id, customer_id: customer.id, author_user_id: users.Rafi, text: 'VIP — call before 6 pm. Prefers bKash.', created_at: days(3) });
+    }
+  }
+
+  for (const [shortcut, name, text, phrases, uses] of [
+    ['/delivery', 'Delivery charge', 'ঢাকার ভিতরে ডেলিভারি চার্জ ৳৭০, ঢাকার বাইরে ৳১৩০। ঢাকায় ১-২ দিন, বাইরে ৩-৫ দিন লাগে।', ['ডেলিভারি চার্জ কত?', 'delivery charge koto'], 412],
+    ['/bkash', 'How to pay (bKash)', 'বিকাশে পাঠান 01712345678 (Personal)। পাঠানোর পর TrxID টা দিন প্লিজ।', ['bkash number', 'বিকাশ নম্বর'], 188],
+    ['/size', 'Size chart', 'আমাদের সাইজ চার্টটা দেখে নিন। বুকের মাপ বললে সঠিক সাইজ বলে দেব।', ['size chart', 'সাইজ'], 146],
+    ['/exchange', 'Exchange policy', 'ডেলিভারির ৩ দিনের মধ্যে, ব্যবহার না করা ও ট্যাগসহ থাকলে এক্সচেঞ্জ করা যাবে।', ['exchange', 'বদলানো যাবে'], 39],
+    ['/refund', 'Refund', 'দুঃখিত আপু। ছবি পাঠালে আমরা দেখে রিফান্ড বা এক্সচেঞ্জ করে দেব।', ['refund', 'রিফান্ড', 'রিটার্ন'], 12],
+    ['/new', 'New collection', 'নতুন কালেকশন এই শুক্রবার আসছে! আগে জানাতে চাইলে বলুন।', ['new collection', 'নতুন'], 71],
+  ]) {
+    await db.insert(db.savedReplies, { workspace_id: ws.id, shortcut, name, text, phrases, uses, auto_answer: shortcut !== '/refund', folder: shortcut === '/bkash' ? 'Payment' : shortcut === '/size' ? 'Size' : 'Delivery' });
+  }
+
+  const posts = [
+    ['ঈদ কালেকশন — নকশি থ্রি-পিস 🌸 সব সাইজ পাওয়া যাচ্ছে', 2, ['NT-104'], 'linked', [
+      ['Tanvir Ahmed', 'price koto? M size ache?', 6, 'replied', 'জি ভাইয়া, M সাইজ আছে 😊 দাম ৳২,১৫০। ডিটেইলস ইনবক্সে পাঠিয়েছি।', 'AI'],
+      ['Rakib Hasan', 'ভাই ৪২ সাইজ আছে? আমার বউয়ের জন্য লাগবে', 9, 'needs_you'],
+      ['Mitu Akter', 'Delivery charge koto outside Dhaka?', 22, 'replied', 'আপু, ঢাকার বাইরে ৳১৩০, ৩-৫ দিনে পৌঁছাবে। ইনবক্স চেক করুন 💌', 'AI'],
+      ['Unknown profile', 'cheap copy, sobai fake 😡 017xx-xxxxxx call koren', 40, 'hidden'],
+      ['Sadia Rahman', 'কালারটা কি ছবির মতোই?', 60, 'needs_you'],
+    ]],
+    ['New colour: Rose', 9, ['NT-104'], 'linked', []],
+    ['Silk Panjabi restock', 11, ['NT-140'], 'linked', []],
+    ['Live sale replay', 12, [], 'ai_match', []],
+    ['Winter shawl preview', 14, ['WS-15'], 'linked', []],
+  ];
+  for (const [caption, daysAgo, codes, match, comments] of posts) {
+    const post = await db.insert(db.posts, { workspace_id: ws.id, channel_id: channels.messenger, external_id: `post-${ws.id}-${daysAgo}`, platform: 'facebook', caption,
+      product_ids: codes.map((c) => products[c].id), match, comment_count: comments.length ? 214 : 20 + daysAgo * 3, posted_at: days(daysAgo) });
+    for (const [author, text, ago, status, reply, by] of comments) {
+      await db.insert(db.comments, { workspace_id: ws.id, channel_id: channels.messenger, post_id: post.id, external_id: `c-${ws.id}-${daysAgo}-${ago}`,
+        author_name: author, author_external_id: `${author.replace(/\s/g, '').toLowerCase()}-${ws.id}`, text, status, public_reply: reply ?? '', replied_by: by ?? '',
+        dm_sent: Boolean(reply), hidden_reason: status === 'hidden' ? 'Phone number' : '', created_at: min(ago) });
+    }
   }
 
   for (const [number, name, phone, items, status, source, area, ago, extra] of ORDERS) {

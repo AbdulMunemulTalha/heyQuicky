@@ -3,7 +3,7 @@
 Updated after each screen. **Done** = built, wired to real data and tested. **Partial** = what's missing is listed.
 ONB rows belong to onboarding, which is frozen and was built earlier; only their dashboard-side parts are tracked here.
 
-Phase 1 progress: foundations (data model, migrations, roles, adapters, router, i18n, UI kit), shell, log-in and 01 Overview are built.
+Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15 Assign, 22 / 22b Done, bulk, typing, Spam) and 14 Comments are built.
 
 | ID | Status | Route |
 |---|---|---|
@@ -19,21 +19,21 @@ Phase 1 progress: foundations (data model, migrations, roles, adapters, router, 
 | ONB-10 | Done (onboarding) | onboarding |
 | ONB-11 | Not started (Help panel, Phase 2) | overlay |
 | ONB-12 | Not started (screen 08) | /app/catalog |
-| INB-01 | Not started (screen 02) | /app/inbox |
-| INB-02 | Not started (screen 02) | /app/inbox |
-| INB-03 | Not started (screen 22) | /app/inbox?tab=done |
-| INB-04 | Not started (Phase 2) | overlay |
+| INB-01 | Done — Messenger, Instagram, WhatsApp (and website chat channel type) in one list; reply from the dashboard | /app/inbox |
+| INB-02 | Done — Waiting / Unread / Open / Done (+ Spam) tabs with live counts, per channel and Mine/Everyone | /app/inbox |
+| INB-03 | Done — one-tap Done; the chat reopens by itself when the customer writes, with a "Back from Done" tag and a Reopened banner | /app/inbox?tab=done |
+| INB-04 | Partial — Later / snooze picker (1 h, tonight, tomorrow, next week, custom, note); snoozed chats leave the lists and come back at the time or when the customer writes. Missing: the reminder notification at wake-up | /app/inbox |
 | INB-05 | Partial — ⌘K, Ctrl+K and "/" open the search overlay; search itself comes with screen 23 | overlay |
-| INB-06 | Not started (screen 22) | /app/inbox |
-| INB-07 | Not started (screen 02) | /app/inbox |
-| INB-08 | Not started (screen 02) | /app/inbox |
-| INB-09 | Not started (Phase 2) | overlay |
-| INB-10 | Not started (screen 22) | /app/inbox |
+| INB-06 | Done — channel chips with counts, Mine/Everyone, select, bulk Done / Reopen / Assign / Tag / Not spam, Tidy up, Mark all read | /app/inbox |
+| INB-07 | Done — AI/person badge, who replied last, waiting timer, ACT NOW, needs-a-person, auto tags (Back from Done, customer tags) | /app/inbox |
+| INB-08 | Partial — side panel with AI summary, delivery record, orders, team notes, tags, AI switch. Missing: follow-ups, bookings and lead status (come with screens 05 and P2 Bookings) | /app/inbox |
+| INB-09 | Partial — team notes on a chat with @mentions that notify the teammate; the dedicated Team notes popup frame comes in Phase 2 | /app/inbox |
+| INB-10 | Done — live "Rafi is typing a reply…" bar from socket presence; replying to a chat someone else owns asks you to take over first | /app/inbox |
 | INB-11 | Not started (screen 07) | /app/agent |
 | INB-12 | Partial — responsive shell with bottom tabs (≤768 px); PWA and push come with screen 19 | /app |
 | TEAM-01 | Partial — roles model; invite screen comes with screen 10 / Phase 2 | /app/settings/team |
 | TEAM-02 | Partial — permission matrix enforced on the server (`need()`), owner overrides stored per shop; screen in Phase 2 | /app/settings/team |
-| TEAM-03 | Not started (screen 15) | overlay |
+| TEAM-03 | Done — Assign popup (frame 15): teammates with on-duty dots and open-chat counts, keep AI replying, note; the assignee gets a notification | overlay |
 | TEAM-04 | Partial — sidebar On duty / Off duty toggle saves and broadcasts; routing by duty comes with the inbox | /app (sidebar) |
 | TEAM-05 | Not started (Phase 2) | /app/settings/team |
 | TEAM-06 | Partial — audit log written for AI mode changes; screen in Phase 3 | /app/settings/audit |
@@ -63,10 +63,10 @@ Phase 1 progress: foundations (data model, migrations, roles, adapters, router, 
 | TRN-08 | Partial — "Test chat" button in the top bar opens the panel; the chat comes with screen 07 | overlay |
 | TRN-09 | Not started (Phase 3) | overlay |
 | TRN-10 | Not started (Phase 2) | /app/agent/training |
-| HND-01 | Not started | inbox / webhooks |
-| HND-02 | Not started | inbox |
-| HND-03 | Not started (screen 02) | /app/inbox |
-| HND-04 | Not started (screen 02) | /app/inbox |
+| HND-01 | Done — "." from Messenger / Business Suite pauses the AI, "." again hands back; the dot is not stored | webhooks |
+| HND-02 | Done — after a takeover or reply the AI returns by itself after 30 min (per-shop setting `auto_return_min`; its control comes with screen 07) | /app/inbox |
+| HND-03 | Done — Take over / Back to AI buttons | /app/inbox |
+| HND-04 | Partial — AI summary, "Ask about this customer" and "Draft reply with AI". Ask and draft need ANTHROPIC_API_KEY; the summary falls back to order history without it | /app/inbox |
 | HND-05 | Not started (Phase 3) | extension/ |
 | HND-06 | Partial — escalations and handoffs listed under Overview → Needs attention; push alerts come with screen 16 | /app |
 | CAT-01 | Not started (screens 08, 13) | /app/catalog |
@@ -75,11 +75,11 @@ Phase 1 progress: foundations (data model, migrations, roles, adapters, router, 
 | CAT-04 | Not started (Phase 2) | overlay |
 | CAT-05 | Not started (Phase 2) | /app/catalog/size-charts |
 | CAT-06 | Not started (Phase 2) | /app/catalog/posts |
-| CMT-01 | Not started (screen 14) | /app/comments |
+| CMT-01 | Partial — comments from Facebook and Instagram webhooks; public reply, private DM and hide from the dashboard. Missing: the AI replying to comments by itself (AI pipeline step) | /app/comments |
 | CMT-02 | Not started (Phase 2) | /app/catalog/posts |
 | CMT-03 | Not started (Phase 3) | /app/catalog/posts |
 | CMT-04 | Not started (Phase 3) | /app/catalog/posts |
-| CMT-05 | Not started (Phase 3) | /app/catalog/posts |
+| CMT-05 | Partial — spam and phone-number comments are hidden automatically when they arrive; the switches live on the P1 Posts screen | /app/comments |
 | CMT-06 | Not started (Phase 3) | /app/content |
 | ORD-01 | Not started | AI pipeline |
 | ORD-02 | Not started (screen 24) | messages |
@@ -120,7 +120,7 @@ Phase 1 progress: foundations (data model, migrations, roles, adapters, router, 
 | SR-05 | Not started (screen 06) | /app/saved-replies |
 | SR-06 | Not started (screen 06) | /app/saved-replies |
 | SR-07 | Not started (screen 06) | /app/saved-replies |
-| SR-08 | Not started (screens 02, 06) | /app/inbox |
+| SR-08 | Partial — "/" search of saved replies in the composer, suggested replies above the box, AI draft. Missing: AI adapting a saved reply while keeping numbers and links | /app/inbox |
 | SR-09 | Not started (screen 06) | /app/saved-replies |
 | SR-10 | Not started | AI pipeline |
 | FUP-01 | Not started (screen 05) | /app/growth |
@@ -133,7 +133,7 @@ Phase 1 progress: foundations (data model, migrations, roles, adapters, router, 
 | FUP-08 | Not started (Phase 3) | /app/growth/leads?tab=lost |
 | TKT-01 | Not started (Phase 2) | /app/tickets |
 | TKT-02 | Partial — ACT NOW chats listed first under Overview → Needs attention; detection and tickets come with the AI pipeline | /app |
-| TKT-03 | Not started (screen 22b) | /app/inbox?tab=spam |
+| TKT-03 | Done — first messages are checked for spam; the Spam folder gets no AI reply (৳0); Not spam, Block, and "AI for this customer" off with a note | /app/inbox?tab=spam |
 | BKG-01 | Not started (Phase 3) | /app/bookings |
 | BKG-02 | Not started (Phase 3) | /app/bookings |
 | BKG-03 | Not started (Phase 3) | /app/bookings |

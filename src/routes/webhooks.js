@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { parseWebhook, verifySignature } from '../platforms/meta.js';
+import { parseCommentChanges, ingestComment } from '../dashboard/comments.js';
 
 // One callback URL serves Messenger, Instagram and WhatsApp: configure the same
 // URL and verify token for all three products in the Meta app dashboard.
@@ -56,6 +57,14 @@ export function webhookRoutes(config, inbox, { db, emit = () => {} } = {}) {
     // One line per delivery, without message contents.
     console.log(`webhook ${req.body?.object ?? '?'}: ${messages.length} messages (${outcome.stored} stored, `
       + `${outcome.ignored} ignored, ${outcome.failed} failed), ${statuses.length} statuses`);
+    // Page and Instagram comments (screen 14).
+    for (const comment of parseCommentChanges(req.body)) {
+      try {
+        await ingestComment(db, config, comment, { emit });
+      } catch (err) {
+        console.error('comment webhook failed:', err.message);
+      }
+    }
     // Always acknowledge quickly, otherwise Meta retries and eventually disables the webhook.
     res.sendStatus(200);
     // History chunks can hold thousands of messages, so they are stored after answering Meta.

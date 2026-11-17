@@ -2,6 +2,7 @@ import { row, rows, isDuplicateKey } from './db.js';
 import { ensureAssigned, assignConversation, distributeUnassigned } from './assignment.js';
 import { messagingWindow, sendText, fetchProfileName, INVALID_TOKEN } from './platforms/meta.js';
 import { decryptSecret } from './secrets.js';
+import { looksLikeSpam } from './dashboard/spam.js';
 
 export class InboxError extends Error {
   constructor(status, message) {
@@ -111,6 +112,13 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
     }
   }
 
+  // Every chat belongs to a customer, so orders and notes follow the person across channels.
+  async function linkCustomer(conversationId, contact) {
+    let customer = await db.customers.findOne({ workspace_id: contact.workspace_id, contact_ids: contact.id }, { _id: 1 }).lean();
+    if (!customer) customer = { _id: (await db.insert(db.customers, { workspace_id: contact.workspace_id, name: contact.name ?? '', contact_ids: [contact.id] })).id };
+    await db.conversations.updateOne({ _id: conversationId }, { $set: { customer_id: customer._id } });
+  }
+
   // Inserts a message unless one with the same Meta ID is already stored.
   // Returns the new row, or null for a duplicate.
   async function insertMessage(fields) {
@@ -124,6 +132,8 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
 
   // Stores an outgoing message, sends it to Meta and records the outcome.
   async function deliver(conversation, { text, tag, sender_user_id = null, sent_by_ai = false }) {
+    await db.conversations.updateOne({ _id: conversation.id }, { $set: { last_replier: sent_by_ai ? 'ai' : 'team' } });
+    await db.conversations.updateOne({ _id: conversation.id, first_reply_at: null }, { $set: { first_reply_at: new Date() } });
     const channel = await db.channels.findById(conversation.channel_id).lean();
     const contact = row(await db.contacts.findById(conversation.contact_id).lean());
     const now = new Date();
@@ -240,10 +250,23 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       if (evt.contactName && contact.name !== evt.contactName) {
         await db.contacts.updateOne({ _id: contact.id }, { $set: { name: evt.contactName } });
       }
-      const { doc: conversation } = await db.findOrCreate(db.conversations,
+      const { doc: conversation, created: newConversation } = await db.findOrCreate(db.conversations,
         { contact_id: contact.id }, { workspace_id: channel.workspace_id, channel_id: channel._id });
+      if (newConversation || !conversation.customer_id) await linkCustomer(conversation.id, contact);
 
       const inbound = evt.direction === 'in';
+
+      // "." typed by the shop in Messenger or Business Suite pauses the AI; "." again hands back (HND-01).
+      if (!inbound && String(evt.text ?? '').trim() === '.') {
+        const paused = !conversation.ai_handoff;
+        await db.conversations.updateOne({ _id: conversation.id }, { $set: paused
+          ? { ai_handoff: true, ai_handoff_reason: 'Taken over with "." from Messenger', ai_handoff_at: new Date(), human_until: null }
+          : { ai_handoff: false, ai_handoff_reason: '', ai_handoff_at: null, human_until: null } });
+        await publish(conversation.id);
+        return { ignored: paused ? 'dot_takeover' : 'dot_handback' };
+      }
+      // Spam stays in the Spam folder; the first message of a new chat is checked automatically.
+      const spamReason = inbound && !conversation.spam && newConversation ? looksLikeSpam(evt.text) : null;
       const message = await insertMessage({
         conversation_id: conversation.id, direction: evt.direction, text: evt.text, attachments: evt.attachments,
         external_id: evt.messageId, status: inbound ? 'received' : 'sent', created_at: evt.timestamp,
@@ -253,18 +276,21 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
 
       const at = new Date(evt.timestamp);
       if (inbound) {
-        await db.conversations.updateOne({ _id: conversation.id }, {
-          $set: { status: 'open', last_message_at: at, last_inbound_at: at, last_message_preview: preview(evt.text, evt.attachments) },
-          $inc: { unread_count: 1 },
-        });
-        await ensureAssigned(db, conversation);
+        const set = { status: 'open', last_message_at: at, last_inbound_at: at, last_message_preview: preview(evt.text, evt.attachments), last_replier: 'customer' };
+        // A chat marked Done opens again by itself when the customer writes (INB-03).
+        if (conversation.status === 'closed' && conversation.done_at) Object.assign(set, { reopened_at: at });
+        if (spamReason) Object.assign(set, { spam: true, spam_reason: spamReason });
+        await db.conversations.updateOne({ _id: conversation.id }, { $set: set, $inc: { unread_count: 1 } });
+        if (set.reopened_at) await db.conversations.updateOne({ _id: conversation.id }, { $addToSet: { tags: 'Back from Done' } });
+        if (conversation.customer_id) await db.customers.updateOne({ _id: conversation.customer_id }, { $set: { last_active_at: at } });
+        if (!conversation.spam && !spamReason) await ensureAssigned(db, conversation);
       } else {
         await db.conversations.updateOne({ _id: conversation.id },
           { $set: { last_message_at: at, last_message_preview: preview(evt.text, evt.attachments) } });
       }
 
       const published = await publish(conversation.id, message.id);
-      if (inbound) {
+      if (inbound && !conversation.spam && !spamReason) {
         Promise.resolve()
           .then(() => onInbound(conversation.id, message.id))
           .catch((err) => console.error('AI agent failed', err));
