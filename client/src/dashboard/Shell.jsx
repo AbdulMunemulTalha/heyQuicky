@@ -18,7 +18,8 @@ const NAV = [
   { key: 'saved', to: '/saved-replies', icon: 'saved', label: 'nav.saved' },
   { section: 'nav.ai' },
   { key: 'agent', to: '/agent', icon: 'agent', label: 'nav.agent', badge: 'agent', tone: 'gray' },
-  { key: 'catalog', to: '/catalog', icon: 'catalog', label: 'nav.catalog', module: 'catalog' },
+  { key: 'catalog', to: '/catalog', icon: 'catalog', label: 'nav.catalog', module: 'catalog',
+    sub: [{ to: '/catalog', label: 'nav.products' }, { to: '/catalog/posts', label: 'nav.posts' }, { to: '/catalog/size-charts', label: 'nav.sizeCharts' }] },
   { section: 'nav.insights' },
   { key: 'analytics', to: '/analytics', icon: 'analytics', label: 'nav.analytics' },
 ];
@@ -99,14 +100,23 @@ export function Sidebar({ open, onClose }) {
         </nav>
       ) : (
         <nav className="nav" aria-label={t('nav.menu')}>
-          {NAV.filter((n) => !n.module || ws.modules[n.module]).map((n, i) => (n.section
-            ? <div key={n.section + i} className="nav-section">{t(n.section)}</div>
-            : (
+          {NAV.filter((n) => !n.module || ws.modules[n.module]).flatMap((n, i) => (n.section
+            ? [<div key={n.section + i} className="nav-section">{t(n.section)}</div>]
+            : [
               <Link key={n.key} to={n.to} className={`nav-item${active === n.key ? ' on' : ''}`} title={t(n.label)} aria-current={active === n.key ? 'page' : undefined}>
                 <Icon name={n.icon} size={17} /><span className="nav-label">{t(n.label)}</span>
                 {n.badge && <Badge count={badges[n.badge]} tone={n.tone} />}
-              </Link>
-            )))}
+              </Link>,
+              ...(n.sub && active === n.key ? [
+                <div key={`${n.key}-sub`} className="nav-sub">
+                  {n.sub.map((x, j) => {
+                    // The first sub-item is the section's own page; it is "on" unless a sibling page is open.
+                    const on = j === 0 ? !n.sub.slice(1).some((y) => path.startsWith(y.to)) : path.startsWith(x.to);
+                    return <Link key={x.to} to={x.to} className={`nav-subitem${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined}>{t(x.label)}</Link>;
+                  })}
+                </div>,
+              ] : []),
+            ]))}
         </nav>
       )}
 

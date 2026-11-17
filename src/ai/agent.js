@@ -42,7 +42,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     const [workspace, channel, products, savedReplies, recent] = await Promise.all([
       db.workspaces.findById(conversation.workspace_id).lean(),
       db.channels.findById(conversation.channel_id, { ai_enabled: 1 }).lean(),
-      db.products.find({ workspace_id: conversation.workspace_id }).sort({ name: 1 }).limit(300).lean(),
+      db.products.find({ workspace_id: conversation.workspace_id, archived: { $ne: true }, visibility: { $ne: 'hidden' } }).sort({ name: 1 }).limit(300).lean(),
       db.savedReplies.find({ workspace_id: conversation.workspace_id }).sort({ shortcut: 1 }).lean(),
       db.messages.find({ conversation_id: conversationId }).sort({ _id: -1 }).limit(30).lean(),
     ]);
@@ -182,7 +182,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
       if (!messages.length || messages.at(-1).role !== 'user') throw new InboxError(400, 'Write a customer message first');
       const [rawWorkspace, products, savedReplies] = await Promise.all([
         db.workspaces.findById(user.workspace_id).lean(),
-        db.products.find({ workspace_id: user.workspace_id }).sort({ name: 1 }).limit(300).lean(),
+        db.products.find({ workspace_id: user.workspace_id, archived: { $ne: true }, visibility: { $ne: 'hidden' } }).sort({ name: 1 }).limit(300).lean(),
         db.savedReplies.find({ workspace_id: user.workspace_id }).sort({ shortcut: 1 }).lean(),
       ]);
       const trained = await withTraining(db, rawWorkspace);

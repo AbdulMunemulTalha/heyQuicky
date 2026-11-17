@@ -1,0 +1,86 @@
+/* 08 Catalog */
+#dash .cat-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+#dash .cat-kpis .kpi { text-align: left; font: inherit; cursor: pointer; }
+#dash .cat-low { color: #b45309; }
+#dash .cat-ready { grid-column: 1; background: var(--accent-soft); border-color: #c9d6fb; }
+#dash .cat-ready .kpi-label { color: var(--accent); }
+#dash .cat-ready-text { color: var(--accent); font-weight: 600; font-size: 13.5px; line-height: 1.35; }
+#dash .cat-ready.ok { background: var(--green-soft); border-color: #bfe6cf; }
+#dash .cat-ready.ok .kpi-label, #dash .cat-ready.ok .cat-ready-text { color: var(--green-text); }
+#dash .cat-bar { display: flex; align-items: center; gap: 12px; margin: 16px 0 14px; flex-wrap: wrap; }
+#dash .cat-bar .chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+#dash .cat-search { width: 220px; }
+#dash .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+#dash .cat-card { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; color: inherit; height: 100%; transition: box-shadow .15s, border-color .15s; }
+#dash .cat-card:hover { text-decoration: none; border-color: #c9d1de; box-shadow: 0 4px 14px rgba(16, 24, 40, .06); }
+#dash .cat-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#dash .cat-photo { position: relative; height: 150px; background: var(--gray-soft); }
+#dash .cat-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#dash .cat-state { position: absolute; top: 10px; left: 10px; }
+#dash .cat-sale { position: absolute; top: 10px; right: 10px; background: #111; color: #fff; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+#dash .cat-vis { position: absolute; bottom: 10px; left: 10px; background: rgba(255, 255, 255, .9); font-size: 11px; padding: 2px 8px; border-radius: 6px; color: var(--muted); }
+#dash .cat-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+#dash .cat-title strong { font-size: 14px; line-height: 1.3; }
+#dash .cat-price { display: flex; gap: 6px; align-items: baseline; font-size: 14px; }
+#dash .cat-price s { font-size: 12px; }
+#dash .cat-sizes { display: flex; flex-wrap: wrap; gap: 4px; }
+#dash .cat-size { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: var(--gray-soft); color: var(--text); }
+#dash .cat-size b { font-weight: 600; }
+#dash .cat-size.out { color: var(--faint); }
+#dash .cat-foot { margin: auto 0 0; font-size: 12px; color: var(--muted); }
+#dash .cat-foot.warn { color: var(--yellow-text, #8a5a00); }
+@media (max-width: 1100px) { #dash .cat-kpis { grid-template-columns: repeat(2, 1fr); } }
+
+/* 13 Add / edit product */
+#dash .pf-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; border: 0; padding: 0; margin: 0; min-width: 0; }
+#dash .pf-dirty { margin: -8px 0 10px; }
+#dash .pf-sub { font-weight: 400; margin-left: 6px; }
+#dash .pf-money { display: flex; align-items: center; border: 1px solid var(--border-strong, var(--border)); border-radius: 8px; background: var(--panel); padding-left: 10px; }
+#dash .pf-money span { color: var(--muted); }
+#dash .pf-money input, #dash .field .pf-money input:not([type="checkbox"]):not([type="radio"]) { border: 0; background: transparent; outline: none; flex: 1; min-width: 0; height: 36px; padding: 0 8px; font: inherit; box-shadow: none; }
+#dash .pf-money:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#dash .pf-money.sm input { height: 30px; width: 70px; }
+#dash .pf-photos { display: flex; flex-wrap: wrap; gap: 10px; }
+#dash .pf-photo { position: relative; width: 84px; height: 104px; }
+#dash .pf-photo-btn { width: 100%; height: 100%; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; background: var(--gray-soft); }
+#dash .pf-photo.cover .pf-photo-btn { border: 2px solid var(--accent); }
+#dash .pf-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#dash .pf-cover { position: absolute; top: 6px; left: 6px; background: #fff; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 5px; pointer-events: none; }
+#dash .pf-photo-x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; }
+#dash .pf-photo-add { width: 84px; height: 104px; border: 1.5px dashed var(--border-strong, #cfd5df); border-radius: 10px; background: transparent; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11.5px; cursor: pointer; text-align: center; padding: 6px; }
+#dash .pf-photo-add:hover { border-color: var(--accent); color: var(--accent); }
+#dash .pf-option { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+#dash .pf-oname { width: 96px; font-weight: 600; }
+#dash .pf-values { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: center; }
+#dash .pf-values .chip-sm { display: inline-flex; align-items: center; gap: 5px; max-width: none; }
+#dash .pf-addval { width: 120px; height: 26px; }
+#dash .pf-x { border: 0; background: none; padding: 0 0 0 2px; cursor: pointer; color: var(--muted); font-size: 13px; line-height: 1; }
+#dash .pf-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; border: 1px solid rgba(0, 0, 0, .08); }
+#dash .pf-table { margin: 6px 0 10px; border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; }
+#dash .pf-table .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#dash .pf-table th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 8px 10px; background: var(--panel-2); border-bottom: 1px solid var(--border); }
+#dash .pf-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+#dash .pf-table tr:last-child td { border-bottom: 0; }
+#dash .pf-table td .input-sm { width: 130px; }
+#dash .pf-stepper { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+#dash .pf-stepper button { width: 28px; height: 30px; border: 0; background: var(--panel-2); cursor: pointer; font-size: 14px; }
+#dash .pf-stepper input { width: 44px; height: 30px; border: 0; text-align: center; font: inherit; outline: none; background: var(--panel); }
+#dash .pf-nostock { display: flex; flex-direction: column; gap: 10px; }
+#dash .pf-vis { display: flex; flex-direction: column; gap: 8px; }
+#dash .pf-vis-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+#dash .pf-vis-opt.on { border-color: var(--accent); background: var(--accent-soft); }
+#dash .pf-vis-opt input { margin-top: 3px; accent-color: var(--accent); }
+#dash .pf-vis-opt span { display: flex; flex-direction: column; gap: 2px; }
+#dash .pf-vis-opt small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+#dash .pf-ai { font-size: 10.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 6px; }
+#dash .pf-upsells { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#dash .pf-upsells .chip-sm { display: inline-flex; align-items: center; gap: 4px; max-width: none; }
+#dash .pf-posts { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+#dash .pf-posts .grow { display: flex; flex-direction: column; min-width: 0; }
+#dash .pf-posts strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .pf-post-img { width: 40px; height: 40px; border-radius: 8px; flex: none; }
+#dash .pf-linkbtn { width: 100%; justify-content: center; }
+#dash .pf-pick { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; max-height: 340px; overflow-y: auto; }
+#dash .pf-pick button { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); cursor: pointer; font: inherit; }
+#dash .pf-pick button:hover { border-color: var(--accent); }
+@media (max-width: 1100px) { #dash .pf-grid { grid-template-columns: minmax(0, 1fr); } }

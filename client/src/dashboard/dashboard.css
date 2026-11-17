@@ -378,3 +378,14 @@
 #dash .of-zone { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); cursor: pointer; text-align: left; color: var(--text); }
 #dash .of-zone small { color: var(--muted); font-size: 11.5px; }
 #dash .of-zone.on-z { border-color: var(--accent); background: var(--accent-tint); box-shadow: 0 0 0 1px var(--accent); }
+
+/* Shared layout helpers used by several screens (moved out of orders.css, which loads lazily). */
+#dash .od-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+#dash .of-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#dash .of-two .row input { flex: 1; min-width: 0; }
+@media (max-width: 768px) { #dash .of-two { grid-template-columns: 1fr; } }
+#dash .nav-sub { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 4px 27px; }
+#dash .nav-subitem { text-decoration: none; padding: 5px 10px; border-radius: 7px; font-size: 13px; color: var(--muted); }
+#dash .nav-subitem:hover { background: var(--hover); text-decoration: none; }
+#dash .nav-subitem.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+@media (min-width: 769px) and (max-width: 1024px) { #dash .nav-sub { display: none; } }

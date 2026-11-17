@@ -54,11 +54,29 @@ const AUDIENCE = { women: 'women', girls: 'girls', men: 'men', kids: 'kids', eve
 
 const taka = (n) => `৳${Number(n).toLocaleString('en-IN')}`;
 
+// Sizes/colours that are counted show what is left, so the AI never offers a sold-out size (CAT-02).
+function availability(p) {
+  const list = p.variant_list ?? [];
+  if (!list.length || !list.some((v) => v.stock !== null && v.stock !== undefined)) return null;
+  const label = (v) => Object.values(v.options ?? {}).join(' / ');
+  const left = list.filter((v) => v.stock === null || v.stock === undefined || v.stock > 0);
+  const out = list.filter((v) => v.stock === 0);
+  let text = left.length ? `available: ${left.map((v) => (v.stock > 0 && v.stock <= 2 ? `${label(v)} (only ${v.stock} left)` : label(v))).join(', ')}` : '';
+  if (out.length) text += `${text ? '; ' : ''}sold out: ${out.map(label).join(', ')} (suggest the nearest size or colour)`;
+  const prices = new Set(list.map((v) => v.price ?? p.price));
+  if (prices.size > 1) text += `; prices: ${list.map((v) => `${label(v)} ${taka(v.price ?? p.price)}`).join(', ')}`;
+  return text;
+}
+
 function productLine(p) {
   const parts = [`${p.name}: ${taka(p.price)}`];
+  if (p.compare_at > p.price) parts.push(`was ${taka(p.compare_at)}`);
   if (p.variants) parts.push(`options: ${p.variants}`);
-  parts.push(p.in_stock ? 'in stock' : 'OUT OF STOCK');
+  const avail = p.in_stock ? availability(p) : null;
+  parts.push(p.in_stock ? (avail ?? 'in stock') : 'OUT OF STOCK');
+  if (p.visibility === 'ai_only') parts.push('chat only (not on the website)');
   if (p.description) parts.push(p.description);
+  if (p.ai_notes) parts.push(`notes: ${p.ai_notes}`);
   return `- ${parts.join('; ')}`;
 }
 

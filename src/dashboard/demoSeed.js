@@ -93,6 +93,14 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     await db.insert(db.coupons, { workspace_id: ws.id, code, type, value, min_order: min, audience, used, max_uses: code === 'EID10' ? 200 : null, ends_at: new Date('2026-12-31') });
   }
 
+  const charts = {};
+  for (const [key, name, columns, rows] of [
+    ['three', 'Three-piece · women (inches)', ['Size', 'Chest', 'Length', 'Hip'], [['S', '36', '42', '38'], ['M', '38', '43', '40'], ['L', '40', '44', '42'], ['XL', '42', '45', '44']]],
+    ['kurti', 'Kurti · women (inches)', ['Size', 'Chest', 'Length'], [['S', '36', '40'], ['M', '38', '41'], ['L', '40', '42']]],
+    ['panjabi', 'Panjabi · men (inches)', ['Size', 'Chest', 'Length'], [['M', '40', '42'], ['L', '42', '43'], ['XL', '44', '44']]],
+  ]) charts[key] = (await db.insert(db.sizeCharts, { workspace_id: ws.id, name, unit: 'inch', columns, rows })).id;
+  const chartFor = { 'NT-104': 'three', 'NT-131': 'three', 'NT-152': 'kurti', 'NT-140': 'panjabi' };
+
   const products = {};
   for (const p of PRODUCTS) {
     const variants = Object.entries(p.sizes).map(([size, stock]) => ({ sku: `${p.code}-${size}`, options: { Size: size }, price: p.price, stock }));
@@ -100,7 +108,7 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
       workspace_id: ws.id, code: p.code, name: p.name, price: p.price, compare_at: p.compare_at ?? null, category: p.category, colour: p.colour,
       options: [{ name: 'Size', values: Object.keys(p.sizes) }], variant_list: variants, variants: Object.keys(p.sizes).join(', '),
       in_stock: variants.some((v) => v.stock > 0), sold_count: p.sold, restock_waiting: p.waiting ?? 0, ai_tags: p.tags ?? [],
-      description: `${p.name} — soft fabric, made in Bangladesh.`,
+      description: `${p.name} — soft fabric, made in Bangladesh.`, size_chart_id: charts[chartFor[p.code]] ?? null,
     });
     products[p.code] = doc;
   }

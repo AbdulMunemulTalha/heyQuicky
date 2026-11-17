@@ -279,6 +279,14 @@ export function defineDashboardModels(conn) {
   });
   comment.index({ external_id: 1 }, { unique: true });
 
+  // Size charts the AI sends when someone asks "what size am I?" (CAT-05). The editor comes in Phase 2.
+  const sizeChart = S({
+    name: { type: String, required: true },
+    unit: { type: String, default: 'inch' },
+    columns: { type: [String], default: [] },
+    rows: { type: [[String]], default: [] },
+  });
+
   const post = S({
     channel_id: { type: Number, required: true },
     external_id: { type: String, required: true },
@@ -314,6 +322,7 @@ export function defineDashboardModels(conn) {
 
   return {
     files: conn.model('File', file, 'files'),
+    sizeCharts: conn.model('SizeChart', sizeChart, 'size_charts'),
     coupons: conn.model('Coupon', coupon, 'coupons'),
     customers: conn.model('Customer', customer, 'customers'),
     notes: conn.model('Note', note, 'notes'),
