@@ -19,9 +19,12 @@ const screens = {
   customers: lazy(() => import('./screens/Customers.jsx')),
   growth: lazy(() => import('./screens/Growth.jsx')),
   saved: lazy(() => import('./screens/SavedReplies.jsx')),
+  agent: lazy(() => import('./screens/Agent.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
-const overlays = {};
+const overlays = {
+  testChat: lazy(() => import('./screens/TestChat.jsx')),
+};
 
 const ROUTES = [
   ['/', 'overview'],
@@ -37,6 +40,7 @@ const ROUTES = [
   ['/customers/:id', 'customers'],
   ['/growth', 'growth'],
   ['/saved-replies', 'saved'],
+  ['/agent', 'agent'],
 ];
 
 function pick(path) {

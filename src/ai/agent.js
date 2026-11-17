@@ -1,4 +1,5 @@
 import { tryAutoAnswer, hasAutoAnswers } from '../dashboard/autoAnswer.js';
+import { withTraining, recordUnanswered } from '../dashboard/training.js';
 import { INTENTS, REPLY_SCHEMA, buildSystemPrompt, toModelMessages } from './prompt.js';
 import { InboxError } from '../inbox.js';
 
@@ -47,7 +48,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     ]);
     const messages = recent.reverse();
     const lastInbound = messages.findLast((m) => m.direction === 'in') ?? null;
-    return { conversation, workspace, channel, products, savedReplies, messages, lastInbound };
+    // The knowledge book, taught answers and rules ride along with the shop information.
+    return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, messages, lastInbound };
   }
 
   async function generate(ctx) {
@@ -125,6 +127,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     }
 
     if (answer.handoff) await setHandoff(conversationId, answer.handoff_reason || 'The AI asked for a person to take over');
+    // A question the shop information didn't cover goes to "Questions it couldn't answer" (TRN-04).
+    if (answer.handoff && /^unanswered:/i.test(answer.handoff_reason ?? '')) await recordUnanswered(db, ctx.workspace._id, ctx.lastInbound?.text);
     if (answer.reply) {
       const sent = await inbox.sendAiReply(conversationId, answer.reply);
       if (!sent) {
@@ -168,7 +172,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     respond,
 
     // Practice chat during onboarding: the owner plays a customer. Nothing is stored or sent to Meta.
-    async practice(user, turns) {
+    async practice(user, turns, { extraNotes = '' } = {}) {
       if (!provider) throw new InboxError(503, 'AI replies are not set up on this server yet');
       if (!Array.isArray(turns) || !turns.length || turns.length > 30) throw new InboxError(400, 'Send the practice conversation');
       const messages = turns.map((t) => ({
@@ -176,11 +180,16 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
         content: String(t?.content ?? '').trim().slice(0, 1000),
       })).filter((t) => t.content);
       if (!messages.length || messages.at(-1).role !== 'user') throw new InboxError(400, 'Write a customer message first');
-      const [workspace, products, savedReplies] = await Promise.all([
+      const [rawWorkspace, products, savedReplies] = await Promise.all([
         db.workspaces.findById(user.workspace_id).lean(),
         db.products.find({ workspace_id: user.workspace_id }).sort({ name: 1 }).limit(300).lean(),
         db.savedReplies.find({ workspace_id: user.workspace_id }).sort({ shortcut: 1 }).lean(),
       ]);
+      const trained = await withTraining(db, rawWorkspace);
+      // A draft answer being previewed in "Teach the answer" is added on top, without saving it.
+      const workspace = extraNotes ? { ...trained, shop_notes: `${trained.shop_notes ?? ''}
+
+${extraNotes}` } : trained;
       const turnsForModel = toModelMessages(messages.map((m) => ({ direction: m.role === 'user' ? 'in' : 'out', text: m.content })));
       if (!turnsForModel) throw new InboxError(400, 'Write a customer message first');
       try {

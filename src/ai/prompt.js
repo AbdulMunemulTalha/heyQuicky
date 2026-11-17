@@ -130,7 +130,7 @@ Hand off, and in "reply" tell the customer briefly, in their language, that some
 - they say they paid, or send a bKash/Nagad transaction ID;
 - they complain, ask for a refund, return or exchange, or the product was damaged or wrong;
 - they ask for a person, are angry, or the conversation is going badly;
-- the question isn't answered by the shop information;
+- the question isn't answered by the shop information (then start handoff_reason with "Unanswered:" so the shop can teach you the answer);
 - the latest message is only an image, video, voice note or sticker you can't see.
 When the customer wants to buy and hasn't yet given their details, don't hand off yet: ask for their name, phone number and full address, plus: ${orderFieldsLine(workspace)}. Ask for what's missing in one or two messages, not one question at a time. Hand off once they send them.
 

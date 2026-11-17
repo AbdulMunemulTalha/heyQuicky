@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { publish } from './training.js';
 import { hashPassword } from '../auth.js';
 import { addCredit } from './credit.js';
 
@@ -66,7 +67,7 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     ai_address: 'auto', address: 'House 12, Road 4, Mirpur 10, Dhaka', bkash_number: '01712345678', nagad_number: '01712345678',
     delivery_inside_dhaka: 70, delivery_outside_dhaka: 130, delivery_inside_days: '1-2 days', delivery_outside_days: '3-5 days',
     went_live_at: days(20), trial_started_at: days(20), order_seq: 1052, ai_version: 24,
-    settings: { sandbox, persona: { role: 'Page moderator', delay: '3-6 seconds' } },
+    settings: { sandbox, persona: { role: 'Page moderator', delay: '3-6' } },
   });
   const hash = hashPassword(password);
   const users = {};
@@ -237,6 +238,17 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     ['ঢাকার বাইরে কন্ডিশনে চার্জ লাগবে?', 14, 'Courier condition charge'], ['শোরুম কোথায়?', 9, 'Physical shop / visit']]) {
     await db.insert(db.unanswered, { workspace_id: ws.id, question, key: question.toLowerCase(), topic, count, last_asked_at: min(count * 3) });
   }
+
+  // What the AI knows, and its published versions (screen 07).
+  for (const [kind, title, text] of [
+    ['delivery', 'Delivery', 'ঢাকার ভেতরে ১-২ দিন, চার্জ ৳৮০। ঢাকার বাইরে ২-৪ দিন, চার্জ ৳১৩০। ক্যাশ অন ডেলিভারি আছে।'],
+    ['exchange', 'Exchange', 'Exchange within 3 days if unused and with the tag. Size exchange is free inside Dhaka.'],
+    ['hours', 'Hours', 'Replies 10am-11pm every day. Orders after 6pm ship the next day.'],
+    ['payment', 'Advance', 'Outside Dhaka orders over ৳3,000 need ৳200 advance by bKash or Nagad.'],
+  ]) await db.insert(db.knowledge, { workspace_id: ws.id, kind, title, text, source: 'owner' });
+  await db.workspaces.updateOne({ _id: ws.id }, { $set: { ai_version: 22 } });
+  await publish(db, { workspace_id: ws.id, name: 'Talha' }, 'Knowledge: Advance', 'knowledge');
+  await publish(db, { workspace_id: ws.id, name: 'Talha' }, 'Persona updated', 'persona');
 
   for (const [method, amount, trx, from, ago] of [['bkash', 300, 'BKH8X2K9QP', '01819-22•••', 2], ['nagad', 500, '73KQ9P2M', '01934-55•••', 14], ['bkash', 250, 'BKH77QZ1LA', '01611-34•••', 38]]) {
     await db.insert(db.payments, { workspace_id: ws.id, method, amount, expected: method === 'bkash' && amount === 250 ? 300 : amount, trx_id: trx, from_number: from, created_at: min(ago) });

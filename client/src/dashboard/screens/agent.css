@@ -1,0 +1,37 @@
+#dash .ag-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+#dash .ag-version { height: 28px; padding: 0 12px; font-size: 12px; }
+#dash .ag-persona { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px; }
+#dash .ag-persona div { display: flex; flex-direction: column; gap: 2px; }
+#dash .ag-persona dt { font-size: 11.5px; color: var(--muted); }
+#dash .ag-persona dd { margin: 0; font-size: 13.5px; font-weight: 600; }
+#dash .ag-channels { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+#dash .ag-ch { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 15px; border: 1px solid var(--border); background: var(--panel); font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--muted); }
+#dash .ag-ch.on-c { background: var(--green-soft); border-color: #bfe6cf; color: var(--green-text); }
+#dash .ag-ch:disabled { cursor: default; }
+#dash .ag-unanswered .ag-q { padding: 12px 18px; border-top: 1px solid var(--border); }
+#dash .ag-unanswered .ag-q:first-child { border-top: 0; }
+#dash .ag-q.open { background: var(--panel-2); }
+#dash .ag-teach { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+#dash .ag-preview { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+#dash .ag-preview .bubble { background: var(--gray-soft); padding: 9px 12px; border-radius: 12px; font-size: 13px; align-self: flex-start; max-width: 90%; }
+#dash .ag-add { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+#dash .ag-knowledge { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+#dash .ag-knowledge li { display: flex; gap: 8px; align-items: flex-start; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+#dash .ag-knowledge li:last-child { border-bottom: 0; }
+#dash .ag-week { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+#dash .ag-week strong { display: block; font: 700 20px/1.2 var(--display); }
+#dash .ag-week small { color: var(--muted); font-size: 11.5px; }
+#dash .ag-test { position: sticky; top: 76px; }
+#dash .testchat { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+#dash .tc-msgs { display: flex; flex-direction: column; gap: 8px; min-height: 280px; max-height: 460px; overflow-y: auto; padding: 4px; }
+#dash .testchat.compact .tc-msgs { min-height: 320px; }
+#dash .tc-msgs .msg { display: flex; flex-direction: column; max-width: 85%; }
+#dash .tc-msgs .msg.out { align-self: flex-end; align-items: flex-end; }
+#dash .tc-msgs .msg.in { align-self: flex-start; }
+#dash .tc-msgs .bubble { padding: 8px 12px; border-radius: 14px; font-size: 13px; white-space: pre-wrap; }
+#dash .tc-msgs .msg.out .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+#dash .tc-msgs .msg.in .bubble { background: var(--gray-soft); border-bottom-left-radius: 4px; }
+#dash .tc-meta { font-size: 11px; color: var(--faint); margin-top: 2px; }
+#dash .tc-hint { color: var(--faint); font-size: 12.5px; text-align: center; margin: auto 0; }
+#dash .tc-form { display: flex; gap: 8px; }
+@media (max-width: 1100px) { #dash .ag-grid { grid-template-columns: minmax(0, 1fr); } #dash .ag-test { position: static; } #dash .ag-persona { grid-template-columns: repeat(2, 1fr); } }
