@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { defineDashboardModels } from './dashboard/models.js';
 
 const { Schema } = mongoose;
 
@@ -9,7 +10,9 @@ const numericId = { type: Number };
 const createdAt = { type: Date, default: () => new Date() };
 const opts = { versionKey: false };
 
-const PLATFORMS = ['messenger', 'instagram', 'whatsapp'];
+const PLATFORMS = ['messenger', 'instagram', 'whatsapp', 'web'];
+export const ORDER_PIPELINE = ['pending', 'on_hold', 'approved', 'processing', 'ready_to_ship', 'in_transit', 'delivered',
+  'cancelled', 'returned', 'confirmed', 'shipped'];
 
 // Onboarding, in order. 'done' means the shop is set up.
 // 'account' = editing the sign-up details again; 'shop', 'products', 'payments', 'team' and 'test'
@@ -59,6 +62,19 @@ function defineModels(conn) {
     ai_mode: { type: String, enum: ['off', 'suggest', 'auto'], default: 'suggest' },
     // Policies, FAQs and anything else the owner wants the AI to know.
     shop_notes: { type: String, default: '' },
+    // Dashboard settings (SLA, modules, delivery zones, spend caps, permissions…), see src/dashboard/settings.js.
+    settings: { type: Schema.Types.Mixed, default: {} },
+    // AI credit in taka. Starts with the free trial credit when the shop goes live.
+    credit_balance: { type: Number, default: 0 },
+    plan: { type: String, default: 'starter' },
+    plan_renews_at: { type: Date, default: null },
+    trial_started_at: { type: Date, default: null },
+    went_live_at: { type: Date, default: null },
+    // Brands that belong to the same owner (brand switcher): the workspace id of the first one.
+    brand_group: { type: Number, default: null, index: true },
+    order_seq: { type: Number, default: 1000 },
+    ticket_seq: { type: Number, default: 100 },
+    ai_version: { type: Number, default: 0 },
     created_at: createdAt,
   }, opts);
 
@@ -71,10 +87,23 @@ function defineModels(conn) {
     // Stored lowercased so sign-in ignores case; see normalizeEmail.
     email: { type: String, required: true, unique: true },
     password_hash: { type: String, required: true },
-    role: { type: String, enum: ['owner', 'moderator'], required: true },
+    // owner > admin > moderator > agent; what each may do is in src/dashboard/permissions.js.
+    role: { type: String, enum: ['owner', 'admin', 'moderator', 'agent'], required: true },
     is_active: { type: Boolean, default: true },
     is_online: { type: Boolean, default: false },
     last_assigned_at: { type: Date, default: null },
+    // Dashboard profile.
+    display_name: { type: String, default: '' },
+    avatar: { type: String, default: '' },
+    language: { type: String, enum: ['en', 'bn'], default: 'en' },
+    theme: { type: String, enum: ['light', 'dark', 'system'], default: 'light' },
+    // Only on-duty members get handoffs and alerts.
+    on_duty: { type: Boolean, default: true },
+    notify_prefs: { type: Schema.Types.Mixed, default: null },
+    google_sub: { type: String, default: null },
+    two_step: { type: Boolean, default: false },
+    invite_pending: { type: Boolean, default: false },
+    password_changed_at: { type: Date, default: null },
     created_at: createdAt,
   }, opts);
 
@@ -83,6 +112,11 @@ function defineModels(conn) {
     user_id: { type: Number, required: true, index: true },
     // MongoDB deletes expired sessions on its own (TTL index).
     expires_at: { type: Date, required: true, expires: 0 },
+    // Shown under Profile → Where you're logged in.
+    device: { type: String, default: '' },
+    location: { type: String, default: '' },
+    last_seen: { type: Date, default: () => new Date() },
+    created_at: { type: Date, default: () => new Date() },
   }, opts);
 
   // A connected Facebook Page, Instagram professional account or WhatsApp number.
@@ -148,6 +182,24 @@ function defineModels(conn) {
       }, { _id: false }),
       default: null,
     },
+    // Dashboard inbox. status 'closed' is shown as Done.
+    customer_id: { type: Number, default: null, index: true },
+    snooze_until: { type: Date, default: null },
+    snooze_note: { type: String, default: '' },
+    spam: { type: Boolean, default: false },
+    spam_reason: { type: String, default: '' },
+    reopened_at: { type: Date, default: null },
+    done_by: { type: String, default: '' },
+    done_at: { type: Date, default: null },
+    act_now: { type: Boolean, default: false },
+    tags: { type: [String], default: [] },
+    // A person took over: the AI stays quiet until this time, then picks the chat up again.
+    human_until: { type: Date, default: null },
+    taken_over_by: { type: Number, default: null },
+    last_replier: { type: String, default: '' }, // ai | team | customer
+    first_reply_at: { type: Date, default: null },
+    source_post_id: { type: Number, default: null },
+    summary: { type: String, default: '' },
     created_at: createdAt,
   }, opts);
   conversation.index({ workspace_id: 1, status: 1, last_message_at: -1 });
@@ -165,6 +217,12 @@ function defineModels(conn) {
     external_id: { type: String, default: null },
     status: { type: String, enum: ['pending', 'sent', 'delivered', 'read', 'failed', 'received'], default: 'sent' },
     error: { type: String, default: null },
+    // Rich messages: product_card, carousel, quick_replies, order_summary, receipt, delivery_card, size_chart.
+    kind: { type: String, default: 'text' },
+    payload: { type: Schema.Types.Mixed, default: null },
+    quoted_id: { type: Number, default: null },
+    transcript: { type: String, default: '' },
+    ai_reply_id: { type: Number, default: null },
     created_at: createdAt,
   }, opts);
   // Meta retries webhooks; the unique ID is what makes storing them idempotent.
@@ -187,9 +245,33 @@ function defineModels(conn) {
     discount: { type: Number, default: 0 },
     advance_paid: { type: Number, default: 0 },
     cod_amount: { type: Number, required: true },
-    payment_method: { type: String, enum: ['cod', 'bkash', 'nagad', 'rocket', 'bank'], default: 'cod' },
-    status: { type: String, enum: ['confirmed', 'shipped', 'delivered', 'cancelled', 'returned'], default: 'confirmed' },
+    payment_method: { type: String, enum: ['cod', 'bkash', 'nagad', 'rocket', 'bank', 'gateway', 'paid'], default: 'cod' },
+    // The pipeline: pending → on_hold → approved → processing → ready_to_ship → in_transit → delivered / cancelled / returned.
+    // 'confirmed' and 'shipped' are the older names for approved and in_transit.
+    status: { type: String, enum: ORDER_PIPELINE, default: 'confirmed' },
     note: { type: String, default: '' },
+    // Dashboard order fields.
+    number: { type: Number, default: null },
+    customer_id: { type: Number, default: null, index: true },
+    source: { type: String, default: 'team' }, // ai | team | product_page | website
+    taken_by: { type: String, default: '' }, // 'ai' or a user name
+    product_items: { type: [Schema.Types.Mixed], default: undefined }, // [{ product_id, variant, name, qty, price, sku }]
+    district: { type: String, default: '' },
+    thana: { type: String, default: '' },
+    zone: { type: String, default: '' },
+    coupon_code: { type: String, default: '' },
+    advance: { type: Schema.Types.Mixed, default: null }, // { amount, method, trx_id, verified, requested }
+    paid_in_full: { type: Boolean, default: false },
+    cancel_reason: { type: String, default: '' },
+    change_request: { type: Schema.Types.Mixed, default: null }, // { field, old, new, at, status }
+    details_changed: { type: Boolean, default: false },
+    hold_reason: { type: String, default: '' },
+    risk: { type: Schema.Types.Mixed, default: null },
+    courier: { type: String, default: '' },
+    consignment_id: { type: String, default: '' },
+    bill_token: { type: String, default: null, index: true },
+    draft: { type: Boolean, default: false },
+    send_confirmation: { type: Boolean, default: true },
     created_at: createdAt,
     updated_at: createdAt,
   }, opts);
@@ -225,6 +307,25 @@ function defineModels(conn) {
     variants: { type: String, default: '' },
     description: { type: String, default: '' },
     in_stock: { type: Boolean, default: true },
+    // Dashboard catalog.
+    code: { type: String, default: '' },
+    compare_at: { type: Number, default: null },
+    category: { type: String, default: '' },
+    photos: { type: [String], default: [] },
+    video: { type: String, default: '' },
+    colour: { type: String, default: '' }, // swatch shown when there is no photo
+    options: { type: [{ _id: false, name: String, values: [String] }], default: [] },
+    // [{ sku, options: { Size, Colour }, price, stock (null = not counted), reserved }]
+    variant_list: { type: [Schema.Types.Mixed], default: [] },
+    ai_notes: { type: String, default: '' },
+    ai_tags: { type: [String], default: [] },
+    visibility: { type: String, enum: ['everywhere', 'ai_only', 'hidden'], default: 'everywhere' },
+    size_chart_id: { type: Number, default: null },
+    upsell_ids: { type: [Number], default: [] },
+    archived: { type: Boolean, default: false },
+    sold_count: { type: Number, default: 0 },
+    restock_waiting: { type: Number, default: 0 },
+    updated_at: { type: Date, default: () => new Date() },
     created_at: createdAt,
   }, opts);
 
@@ -267,6 +368,7 @@ function defineModels(conn) {
     savedReplies: conn.model('SavedReply', savedReply, 'saved_replies'),
     products: conn.model('Product', product, 'products'),
     leads: conn.model('Lead', lead, 'leads'),
+    ...defineDashboardModels(conn),
   };
 }
 

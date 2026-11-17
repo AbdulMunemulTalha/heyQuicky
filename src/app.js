@@ -15,6 +15,9 @@ import { apiRoutes } from './routes/api.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { connectRoutes } from './routes/connect.js';
 import { legalRoutes } from './routes/legal.js';
+import { dashboardRoutes } from './routes/dashboard/index.js';
+import { dashboardMounts } from './routes/dashboard/mounts.js';
+import { createAdapters } from './adapters/index.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 // The React dashboard, built by `npm run build`.
@@ -50,7 +53,7 @@ function leadsCsvRoute(db, config) {
   };
 }
 
-export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiProvider } = {}) {
+export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiProvider, adapters = createAdapters(process.env, { fetchImpl }) } = {}) {
   const app = express();
   const server = createServer(app);
   const io = new Server(server);
@@ -82,6 +85,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.use(webhookRoutes(config, inbox, { db, emit }));
   app.use(connectRoutes(db, config, { fetchImpl, emit, importer }));
   app.use(legalRoutes(config));
+  app.use('/api/dash', dashboardRoutes(db, config, { adapters, inbox, orders, agent, importer, emit, io, fetchImpl, mounts: dashboardMounts }));
   app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent, { fetchImpl }));
   // The dashboard is a single page; its assets live under /app/assets.
   app.use('/app', express.static(clientDir, { index: false }));
@@ -91,8 +95,13 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
     }
     res.sendFile('index.html', { root: clientDir });
   });
+  // Dashboard deep links (/app/orders/1051 …) load the same single page.
+  app.get('/app/{*rest}', (_req, res, next) => {
+    if (!existsSync(join(clientDir, 'index.html'))) return next();
+    res.sendFile('index.html', { root: clientDir });
+  });
   app.get('/bn', (_req, res) => res.sendFile('bn.html', { root: PUBLIC_DIR }));
   app.use(express.static(PUBLIC_DIR));
 
-  return { app, server, io, inbox, orders, importer, agent };
+  return { app, server, io, inbox, orders, importer, agent, adapters };
 }

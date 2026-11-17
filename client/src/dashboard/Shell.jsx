@@ -1,0 +1,208 @@
+import { useState } from 'react';
+import { Link, navigate, useLocation } from './lib/router.jsx';
+import { useT } from './lib/i18n.js';
+import { useDash } from './lib/context.js';
+import { dash } from './lib/api.js';
+import { Icon, BrandMark } from './ui/icons.jsx';
+import { Avatar, Badge, toast } from './ui/kit.jsx';
+
+// Main navigation (Sidebar frame). `module` hides an item when the shop switched that module off (UX-07).
+const NAV = [
+  { section: 'nav.work' },
+  { key: 'overview', to: '/', icon: 'overview', label: 'nav.overview' },
+  { key: 'inbox', to: '/inbox', icon: 'inbox', label: 'nav.inbox', badge: 'inbox', tone: 'yellow' },
+  { key: 'orders', to: '/orders', icon: 'orders', label: 'nav.orders', badge: 'orders', tone: 'gray' },
+  { key: 'customers', to: '/customers', icon: 'customers', label: 'nav.customers' },
+  { section: 'nav.grow' },
+  { key: 'growth', to: '/growth', icon: 'growth', label: 'nav.growth', module: 'growth' },
+  { key: 'saved', to: '/saved-replies', icon: 'saved', label: 'nav.saved' },
+  { section: 'nav.ai' },
+  { key: 'agent', to: '/agent', icon: 'agent', label: 'nav.agent', badge: 'agent', tone: 'gray' },
+  { key: 'catalog', to: '/catalog', icon: 'catalog', label: 'nav.catalog', module: 'catalog' },
+  { section: 'nav.insights' },
+  { key: 'analytics', to: '/analytics', icon: 'analytics', label: 'nav.analytics' },
+];
+
+// Settings navigation, shown in the sidebar on settings pages.
+export const SETTINGS_NAV = [
+  { key: 'billing', to: '/settings', icon: 'card', label: 'settingsNav.billing' },
+  { key: 'plan', to: '/settings/plan', icon: 'sparkle', label: 'settingsNav.plan' },
+  { key: 'channels', to: '/settings/channels', icon: 'chat', label: 'settingsNav.channels' },
+  { key: 'team', to: '/settings/team', icon: 'customers', label: 'settingsNav.team' },
+  { key: 'payments', to: '/settings/payments', icon: 'card', label: 'settingsNav.payments', module: 'payments' },
+  { key: 'courier', to: '/settings/courier', icon: 'truck', label: 'settingsNav.courier', module: 'courier' },
+  { key: 'integrations', to: '/settings/integrations', icon: 'bolt', label: 'settingsNav.integrations' },
+  { key: 'modules', to: '/settings/modules', icon: 'overview', label: 'settingsNav.modules' },
+  { key: 'notifications', to: '/settings/notifications', icon: 'bell', label: 'settingsNav.notifications' },
+  { key: 'audit', to: '/settings/audit', icon: 'info', label: 'settingsNav.audit' },
+];
+
+export function activeKey(path) {
+  const first = path.split('/')[1] ?? '';
+  const map = { '': 'overview', inbox: 'inbox', comments: 'inbox', orders: 'orders', tickets: 'customers', customers: 'customers',
+    growth: 'growth', coupons: 'growth', content: 'growth', 'saved-replies': 'saved', agent: 'agent', catalog: 'catalog',
+    analytics: 'analytics', payments: 'orders', bookings: 'customers', settings: 'settings', profile: 'profile' };
+  return map[first] ?? '';
+}
+
+function aiStatus(t, ws) {
+  const n = ws.channels.length;
+  const channels = t(n === 1 ? 'shell.channel' : 'shell.channels', { n });
+  if (ws.aiMode === 'auto') return { text: `${t('shell.aiLive')} · ${channels}`, cls: '' };
+  if (ws.aiMode === 'suggest') return { text: `${t('shell.practiceMode')} · ${channels}`, cls: 'practice' };
+  return { text: `${t('shell.aiOff')} · ${channels}`, cls: 'off' };
+}
+
+export function Sidebar({ open, onClose }) {
+  const t = useT();
+  const { me, badges, openOverlay, setMe } = useDash();
+  const { path } = useLocation();
+  const active = activeKey(path);
+  const settings = path.startsWith('/settings');
+  const ws = me.workspace;
+  const status = aiStatus(t, ws);
+  const creditPct = Math.min(100, Math.round((ws.credit / Math.max(ws.credit, 500)) * 100));
+  const settingsKey = path === '/settings' ? 'billing' : path.split('/')[2];
+
+  async function toggleDuty() {
+    const onDuty = !me.user.onDuty;
+    setMe((m) => ({ ...m, user: { ...m.user, onDuty } }));
+    try {
+      await dash('/duty', { method: 'POST', body: { onDuty } });
+    } catch (err) {
+      setMe((m) => ({ ...m, user: { ...m.user, onDuty: !onDuty } }));
+      toast(err.message, 'red');
+    }
+  }
+
+  return (
+    <aside className={`sidebar${open ? ' open' : ''}`} aria-label={t('nav.menu')} onClick={(e) => { if (e.target.closest('a')) onClose?.(); }}>
+      <Link to="/" className="logo"><BrandMark size={26} />heyquicky</Link>
+      <button type="button" className="brand-switch" onClick={() => openOverlay('brands')} aria-label={t('shell.switchBrand')}>
+        <Avatar name={ws.name} size={30} tone="peach" />
+        <span className="grow">
+          <span className="brand-name">{ws.name}</span><br />
+          <span className={`brand-status ${status.cls}`}>{status.text}</span>
+        </span>
+        <Icon name="updown" size={15} className="muted" />
+      </button>
+
+      {settings ? (
+        <nav className="nav" aria-label={t('nav.settings')}>
+          <Link to="/" className="nav-back">← {t('settingsNav.back')}</Link>
+          <div className="nav-section">{t('settingsNav.title')}</div>
+          {SETTINGS_NAV.filter((n) => !n.module || ws.modules[n.module]).map((n) => (
+            <Link key={n.key} to={n.to} className={`nav-item${settingsKey === n.key ? ' on' : ''}`} aria-current={settingsKey === n.key ? 'page' : undefined}>
+              <Icon name={n.icon} size={17} />{t(n.label)}
+            </Link>
+          ))}
+        </nav>
+      ) : (
+        <nav className="nav" aria-label={t('nav.menu')}>
+          {NAV.filter((n) => !n.module || ws.modules[n.module]).map((n, i) => (n.section
+            ? <div key={n.section + i} className="nav-section">{t(n.section)}</div>
+            : (
+              <Link key={n.key} to={n.to} className={`nav-item${active === n.key ? ' on' : ''}`} aria-current={active === n.key ? 'page' : undefined}>
+                <Icon name={n.icon} size={17} />{t(n.label)}
+                {n.badge && <Badge count={badges[n.badge]} tone={n.tone} />}
+              </Link>
+            )))}
+        </nav>
+      )}
+
+      <div className="side-foot">
+        <div className="credit-card">
+          <div className="row"><span>{t('shell.aiCredit')}</span>
+            {me.can.includes('billing') && <Link to="/settings/plan">{t('shell.topUp')}</Link>}</div>
+          <strong className="credit-amount">{t.money(ws.credit, 2)}</strong>
+          <div className="meter" aria-hidden="true"><span style={{ width: `${creditPct}%` }} /></div>
+          <small>{t('shell.repliesLeft', { n: t.num(ws.repliesLeft) })}</small>
+        </div>
+        <div className="side-settings">
+          <Link to="/settings" className={`nav-item${active === 'settings' ? ' on' : ''}`}><Icon name="settings" size={17} />{t('nav.settings')}</Link>
+          <button type="button" className="icon-btn" aria-label={t('help.title')} onClick={() => openOverlay('help')}><Icon name="help" size={16} /></button>
+        </div>
+        <div className="row">
+          <Link to="/profile" className="me-row" style={{ flex: 1 }}>
+            <Avatar name={me.user.name} src={me.user.avatar} size={30} tone="dark" />
+            <span>
+              <span className="me-name" style={{ color: 'var(--text)' }}>{me.user.name}</span><br />
+              <span className="me-role">{t(`role.${me.user.role}`)} · {t('shell.profileLink')}</span>
+            </span>
+          </Link>
+          <button type="button" className={`pill ${me.user.onDuty ? 'pill-green' : 'pill-gray'}`} style={{ border: 0, cursor: 'pointer', height: 24 }}
+            onClick={toggleDuty} aria-pressed={me.user.onDuty}>
+            {me.user.onDuty ? t('shell.onDuty') : t('shell.offDuty')}
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export function Topbar({ onMenu }) {
+  const t = useT();
+  const { me, setMe, badges, openOverlay, setLanguage } = useDash();
+  const ws = me.workspace;
+  const canSwitch = me.user.role === 'owner' || me.user.role === 'admin';
+  const [busy, setBusy] = useState(false);
+
+  async function setMode(mode) {
+    if (mode === ws.aiMode || !canSwitch) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(t(mode === 'auto' ? 'shell.goLiveConfirm' : 'shell.practiceConfirm'))) return;
+    setBusy(true);
+    try {
+      const { aiMode } = await dash('/ai-mode', { method: 'POST', body: { mode } });
+      setMe((m) => ({ ...m, workspace: { ...m.workspace, aiMode } }));
+    } catch (err) {
+      toast(err.message, 'red');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <header className="topbar">
+      <button type="button" className="icon-btn mobile-only" onClick={onMenu} aria-label={t('nav.menu')}><Icon name="menu" /></button>
+      <button type="button" className="search-trigger" onClick={() => openOverlay('search')} aria-label={t('shell.search')}>
+        <Icon name="search" size={16} /><span>{t('shell.search')}</span><kbd>⌘K</kbd>
+      </button>
+      <div className="topbar-right">
+        <div className="mode-switch hide-mobile" role="radiogroup" aria-label="AI">
+          <button type="button" role="radio" aria-checked={ws.aiMode === 'auto'} className={ws.aiMode === 'auto' ? 'on' : ''} disabled={busy || !canSwitch} onClick={() => setMode('auto')}>
+            <span className={`dot${ws.aiMode === 'auto' ? '' : ' gray'}`} />{t('shell.aiLive')}
+          </button>
+          <button type="button" role="radio" aria-checked={ws.aiMode !== 'auto'} className={ws.aiMode !== 'auto' ? 'on' : ''} disabled={busy || !canSwitch} onClick={() => setMode('suggest')}>
+            {t('shell.practice')}
+          </button>
+        </div>
+        <button type="button" className="btn hide-mobile" onClick={() => openOverlay('testChat')}><Icon name="chat" size={15} />{t('shell.testChat')}</button>
+        <button type="button" className={`btn hide-mobile${t.lang === 'en' ? ' bn' : ''}`} onClick={() => setLanguage(t.lang === 'en' ? 'bn' : 'en')} lang={t.lang === 'en' ? 'bn' : 'en'}>
+          {t('shell.otherLang')}
+        </button>
+        <button type="button" className="icon-btn" onClick={() => openOverlay('notifications')} aria-label={`${t('shell.notifications')}${badges.alerts ? ` (${badges.alerts})` : ''}`}>
+          <Icon name="bell" size={16} /><Badge count={badges.alerts} tone="yellow" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+// Bottom tabs on phones (frame 19): Inbox, Orders, Alerts, More.
+export function MobileTabs({ onMore }) {
+  const t = useT();
+  const { badges, openOverlay } = useDash();
+  const { path } = useLocation();
+  const key = activeKey(path);
+  return (
+    <nav className="mobile-tabs" aria-label={t('nav.menu')}>
+      <Link to="/inbox" className={key === 'inbox' ? 'on' : ''}><Icon name="chat" size={20} />{t('nav.inbox')}<Badge count={badges.inbox} /></Link>
+      <Link to="/orders" className={key === 'orders' ? 'on' : ''}><Icon name="orders" size={20} />{t('nav.orders')}<Badge count={badges.orders} /></Link>
+      <button type="button" onClick={() => openOverlay('notifications')}><Icon name="bell" size={20} />{t('nav.alerts')}<Badge count={badges.alerts} /></button>
+      <button type="button" onClick={onMore}><Icon name="menu" size={20} />{t('nav.more')}</button>
+    </nav>
+  );
+}
+
+export { navigate };

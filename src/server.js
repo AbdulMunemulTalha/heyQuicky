@@ -3,6 +3,7 @@ import { openDb } from './db.js';
 import { existsSync } from 'node:fs';
 import { createApp } from './app.js';
 import { migrateSqlite } from './migrateSqlite.js';
+import { runMigrations } from './dashboard/migrations.js';
 
 const config = loadConfig();
 
@@ -21,6 +22,7 @@ if (config.sqliteImportPath && existsSync(config.sqliteImportPath) && !(await db
   const counts = await migrateSqlite(config.sqliteImportPath, db, { log: (line) => console.log(`  ${line}`) });
   console.log(`Done: ${Object.values(counts).reduce((a, b) => a + b, 0)} records copied.`);
 }
+await runMigrations(db, { log: (line) => console.log(line) });
 const { server, inbox } = createApp(db, config);
 
 server.listen(config.port, () => {

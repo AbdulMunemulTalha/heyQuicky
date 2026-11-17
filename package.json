@@ -16,7 +16,9 @@
     "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
     "migrate:sqlite": "node --disable-warning=ExperimentalWarning scripts/migrate-from-sqlite.js",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\"",
-    "ai:try": "node scripts/ai-try.js"
+    "ai:try": "node scripts/ai-try.js",
+    "seed:demo": "node --disable-warning=ExperimentalWarning scripts/seed-demo.js",
+    "migrate": "node --disable-warning=ExperimentalWarning scripts/migrate.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

@@ -3,9 +3,9 @@ import { io } from 'socket.io-client';
 import { api, session } from './api.js';
 import { describeConnectResult, takeFacebookRedirect } from './connect.js';
 import { ConnectContext, SocketContext } from './components/common.jsx';
-import { Auth } from './components/Auth.jsx';
+import { Login } from './dashboard/screens/Login.jsx';
 import { Onboarding, STEPS, stepIndex } from './components/Onboarding.jsx';
-import { Inbox } from './components/Inbox.jsx';
+import { Dashboard } from './dashboard/Dashboard.jsx';
 import { ConnectFlow } from './components/ConnectFlow.jsx';
 
 export function App() {
@@ -86,7 +86,7 @@ export function App() {
   }
 
   if (me === undefined) return null;
-  if (me === null) return <Auth onSignedIn={loadMe} />;
+  if (me === null) return <Login onSignedIn={loadMe} />;
 
   return (
     <SocketContext.Provider value={socket}>
@@ -96,7 +96,7 @@ export function App() {
             onSaveExit={() => pauseSetup(true)} onSignOut={signOutEverywhere} />
         ) : (
           <>
-            <Inbox me={me} setMe={setMe} onSignOut={signOut} settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} />
+            <Dashboard onSignOut={signOut} />
             {setupOpen && (
               <button type="button" className="resume-setup" onClick={() => pauseSetup(false)}>
                 Finish setting up · step {stepIndex(me.workspace.onboardingStep) + 1} of {STEPS.length} →
