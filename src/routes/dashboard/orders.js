@@ -6,7 +6,7 @@ import { riskFor } from '../../dashboard/risk.js';
 import { STAGES, NEXT, stage, orderTotal, changeStatus, bookCourier } from '../../dashboard/orderOps.js';
 
 const SOURCES = ['ai', 'team', 'product_page', 'website'];
-const ZONES = ['inside_dhaka', 'outside_dhaka'];
+const ZONES = ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'];
 const RANGES = { today: 0, '7d': 6, '30d': 29, all: null };
 // Database values for one pipeline stage (older orders use 'confirmed' / 'shipped').
 const statusIn = (s) => (s === 'pending' ? ['pending', 'confirmed'] : s === 'in_transit' ? ['in_transit', 'shipped'] : [s]);

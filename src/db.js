@@ -238,7 +238,7 @@ function defineModels(conn) {
     customer_name: { type: String, required: true },
     phone: { type: String, required: true },
     address: { type: String, required: true },
-    area: { type: String, enum: ['inside_dhaka', 'outside_dhaka'], required: true },
+    area: { type: String, enum: ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'], required: true },
     items: { type: [{ _id: false, name: String, qty: Number, price: Number }], required: true },
     subtotal: { type: Number, required: true },
     delivery_charge: { type: Number, required: true },

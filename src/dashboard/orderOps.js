@@ -23,7 +23,7 @@ export const CANCEL_REASONS = ['customer_cancelled', 'fake_order', 'out_of_stock
 export const orderTotal = (o) => (o.subtotal ?? 0) + (o.delivery_charge ?? 0) - (o.discount ?? 0);
 
 // Puts an order's items back in stock (cancel with "Put the items back") or takes them out.
-async function adjustStock(db, order, sign) {
+export async function adjustStock(db, order, sign) {
   for (const item of order.product_items ?? []) {
     if (!item.product_id) continue;
     const product = await db.products.findById(item.product_id).lean();

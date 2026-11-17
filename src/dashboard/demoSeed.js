@@ -87,6 +87,11 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
   // Couriers are connected without keys, so booking runs in test mode in development.
   for (const courier of ['steadfast', 'pathao']) await db.insert(db.courierAccounts, { workspace_id: ws.id, courier, connected: true, auto_book: courier === 'steadfast' });
 
+  for (const [code, type, value, min, audience, used] of [['EID10', 'percent', 10, 1500, 'everyone', 112], ['FREEDEL', 'free_delivery', 0, 2000, 'everyone', 64],
+    ['THANKS10', 'percent', 10, 0, 'after_review', 38], ['VIP300', 'amount', 300, 1000, 'vip', 41], ['COMEBACK', 'amount', 150, 0, 'broadcast', 24]]) {
+    await db.insert(db.coupons, { workspace_id: ws.id, code, type, value, min_order: min, audience, used, max_uses: code === 'EID10' ? 200 : null, ends_at: new Date('2026-12-31') });
+  }
+
   const products = {};
   for (const p of PRODUCTS) {
     const variants = Object.entries(p.sizes).map(([size, stock]) => ({ sku: `${p.code}-${size}`, options: { Size: size }, price: p.price, stock }));
@@ -187,7 +192,7 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
       created_at: min(ago), updated_at: min(Math.max(ago - 30, 0)),
     });
     await db.insert(db.orderEvents, { workspace_id: ws.id, order_id: order.id, type: 'status', to: 'pending', by: source === 'ai' ? 'ai' : 'user', text: source === 'ai' ? 'Nusrat (AI) took the order in Messenger' : 'Order created', created_at: min(ago) });
-    if (extra.cid) await db.insert(db.consignments, { workspace_id: ws.id, order_id: order.id, courier: extra.courier, consignment_id: extra.cid, tracking_code: extra.cid, status, created_at: min(ago - 60) });
+    if (extra.cid) await db.insert(db.consignments, { workspace_id: ws.id, order_id: order.id, courier: extra.courier.toLowerCase(), consignment_id: extra.cid, tracking_code: extra.cid, status, created_at: min(ago - 60) });
     await db.customers.updateOne({ _id: customer.id }, { $inc: { 'stats.orders': 1, 'stats.spent': status === 'delivered' ? subtotal : 0, 'stats.delivered': status === 'delivered' ? 1 : 0, 'stats.cancelled': status === 'cancelled' ? 1 : 0 } });
   }
 

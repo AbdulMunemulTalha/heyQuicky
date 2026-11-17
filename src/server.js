@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { createApp } from './app.js';
 import { migrateSqlite } from './migrateSqlite.js';
 import { runMigrations } from './dashboard/migrations.js';
+import { startCourierSync } from './routes/dashboard/orderDetail.js';
 
 const config = loadConfig();
 
@@ -23,7 +24,9 @@ if (config.sqliteImportPath && existsSync(config.sqliteImportPath) && !(await db
   console.log(`Done: ${Object.values(counts).reduce((a, b) => a + b, 0)} records copied.`);
 }
 await runMigrations(db, { log: (line) => console.log(line) });
-const { server, inbox } = createApp(db, config);
+const { server, inbox, io } = createApp(db, config);
+// Parcels on the way are checked with their courier every 30 minutes (CRR-02).
+startCourierSync(db, config, { emit: (ws, event, payload) => io.to(`workspace:${ws}`).emit(event, payload) });
 
 server.listen(config.port, () => {
   inbox.fillMissingNames().catch((err) => console.warn('name backfill failed:', err.message));

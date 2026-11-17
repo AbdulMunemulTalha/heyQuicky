@@ -291,7 +291,24 @@ export function defineDashboardModels(conn) {
   });
   post.index({ channel_id: 1, external_id: 1 }, { unique: true });
 
+  // Discount codes (ORD-05). The AI and the order form apply them; usage is counted here.
+  const coupon = S({
+    code: { type: String, required: true },
+    type: { type: String, enum: ['percent', 'amount', 'free_delivery'], required: true },
+    value: { type: Number, default: 0 },
+    min_order: { type: Number, default: 0 },
+    max_uses: { type: Number, default: null },
+    used: { type: Number, default: 0 },
+    starts_at: { type: Date, default: null },
+    ends_at: { type: Date, default: null },
+    audience: { type: String, default: 'everyone' },
+    ai_may_mention: { type: Boolean, default: true },
+    active: { type: Boolean, default: true },
+  });
+  coupon.index({ workspace_id: 1, code: 1 }, { unique: true });
+
   return {
+    coupons: conn.model('Coupon', coupon, 'coupons'),
     customers: conn.model('Customer', customer, 'customers'),
     notes: conn.model('Note', note, 'notes'),
     orderEvents: conn.model('OrderEvent', orderEvent, 'order_events'),

@@ -3,7 +3,7 @@
 Updated after each screen. **Done** = built, wired to real data and tested. **Partial** = what's missing is listed.
 ONB rows belong to onboarding, which is frozen and was built earlier; only their dashboard-side parts are tracked here.
 
-Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments and 03 Orders are built.
+Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments, 03 Orders, 11 Order detail (+ 11b, 11c) and 12 New / edit order are built.
 
 | ID | Status | Route |
 |---|---|---|
@@ -85,22 +85,22 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | ORD-02 | Not started (screen 24) | messages |
 | ORD-03 | Not started (screen 20) | /b/:token |
 | ORD-04 | Not started (Phase 2) | /p/:shop/:product |
-| ORD-05 | Not started (Phase 2) | /app/coupons |
+| ORD-05 | Partial — coupons (% off, ৳ off, free delivery, minimum order, dates, max uses) apply in the order form and are counted; the Coupons screen comes in Phase 2 | /app/orders/new |
 | ORD-06 | Not started | AI pipeline |
-| ORD-07 | Not started (screen 11) | /app/orders/:n |
-| ORD-08 | Not started | AI pipeline |
-| ORD-09 | Not started (screen 12) | /app/orders/new |
-| ORD-10 | Partial — `bdPhone` / `phoneProblem` accept Bangla digits and +880 and explain the error (tested); used by the order form in screen 12 | server util |
-| ORD-11 | Not started (screen 24) | messages |
+| ORD-07 | Done — the customer's change request (address or phone) shows on the order with old → new, Keep old / Accept change; the decision is logged | /app/orders/:n |
+| ORD-08 | Partial — delivery zones with days (incl. Dhaka suburbs) on orders and the form; the AI telling the customer comes with the AI pipeline | /app/orders/:n |
+| ORD-09 | Done — New order form (screen 12): phone check, address split into district/thana/zone, product search with sizes and stock, payment (COD, bKash advance + TrxID, paid), coupon, note, draft, edit; prices come from the catalog and stock is reserved | /app/orders/new |
+| ORD-10 | Done — Bangladeshi phone validation in the order form and on the server: 11 digits, 013–019, Bangla digits and +880 accepted, with a clear message | /app/orders/new |
+| ORD-11 | Partial — orders created from a chat send a confirmation with items, delivery time and cash to collect; the designed Messenger card comes with screen 24 | /app/orders/new |
 | OMS-01 | Done — every order (AI, team, product page, website) with KPI tiles: today, to confirm, ready to ship, COD to collect, returns · 7 days; live updates | /app/orders |
 | OMS-02 | Done — pipeline Pending → On hold → Approved → Processing → Ready to ship → In transit → Delivered / Cancelled with only valid moves; inline status menu; every move written to the order history | /app/orders |
 | OMS-03 | Done — status tabs with counts, source, zone and date filters, search by name, phone (Bangla digits too) or #number, pagination, CSV export | /app/orders |
 | OMS-04 | Done — "N orders" / VIP repeat-buyer badge and "Details updated" flag | /app/orders |
 | OMS-05 | Not started (Phase 2) | /app/orders/money |
-| OMS-06 | Partial — cancel needs a reason (5 reasons) and can put items back in stock, from the list; the order-detail version comes with screen 11 | /app/orders |
+| OMS-06 | Done — cancel with one of five reasons, optionally putting items back in stock, from the list or the order (frame 11c) | /app/orders/:n |
 | OMS-07 | Not started (Phase 2) | /app/orders/money |
-| CRR-01 | Partial — one-click and bulk booking with Steadfast and Pathao (real APIs when the shop adds keys, test mode otherwise); printable label sheet. Missing: fully automatic booking and the key entry in Settings → Couriers (screen 10) | /app/orders |
-| CRR-02 | Not started (screen 11) | /app/orders/:n |
+| CRR-01 | Partial — one-click and bulk booking (list, order detail, or "Book right away" when creating) with Steadfast and Pathao; real APIs once the shop adds keys, test mode otherwise; label sheet. Missing: auto-booking on approve and key entry in Settings → Couriers (screen 10) | /app/orders |
+| CRR-02 | Partial — tracking timeline on the order (frame 11b), Refresh, and a background check of every parcel on the way every 30 minutes that moves the order to Delivered / Returned. Missing: courier webhooks (polling covers it until then) | /app/orders/:n |
 | CRR-03 | Not started (Phase 2) | /app/settings/delivery-updates |
 | CRR-04 | Not started | AI pipeline |
 | CRR-05 | Not started (Phase 2) | /app/settings/delivery-updates |
@@ -108,9 +108,9 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CRR-07 | Not started (Phase 3) | /app/settings/courier |
 | PAY-01 | Not started (Phase 2) | /app/payments |
 | PAY-02 | Not started (Phase 3) | /app/payments?tab=gateway |
-| PAY-03 | Not started (Phase 2) | /app/payments?tab=rules |
+| PAY-03 | Partial — "Ask for ৳300 bKash advance" sends your bKash number in the customer's chat and records the request; automatic advance rules come in Phase 2 | /app/orders/:n |
 | CRM-01 | Not started (screen 04) | /app/customers |
-| CRM-02 | Partial — courier fraud-check adapter (fake mode until a data source is chosen); shown in screens 04/11/12 | adapter |
+| CRM-02 | Partial — courier check on the order and the order form (cached a day per customer). Fake data until a fraud-check service is chosen (FRAUDCHECK_API_URL) | /app/orders/:n |
 | CRM-03 | Partial — COD risk score (own returns + courier record + amount + zone) shown as Low / Medium / High on orders; segments screen in Phase 2 | /app/orders |
 | CRM-04 | Not started (Phase 2) | /app/customers/segments |
 | SR-01 | Not started (screen 06) | /app/saved-replies |

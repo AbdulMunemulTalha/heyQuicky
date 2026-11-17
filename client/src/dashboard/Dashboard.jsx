@@ -14,6 +14,8 @@ const screens = {
   inbox: lazy(() => import('./screens/Inbox.jsx')),
   comments: lazy(() => import('./screens/Comments.jsx')),
   orders: lazy(() => import('./screens/Orders.jsx')),
+  orderDetail: lazy(() => import('./screens/OrderDetail.jsx')),
+  orderForm: lazy(() => import('./screens/OrderForm.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
 const overlays = {};
@@ -25,6 +27,9 @@ const ROUTES = [
   ['/comments', 'comments', { flush: true }],
   ['/comments/:postId', 'comments', { flush: true }],
   ['/orders', 'orders'],
+  ['/orders/new', 'orderForm'],
+  ['/orders/:n/edit', 'orderForm'],
+  ['/orders/:n', 'orderDetail'],
 ];
 
 function pick(path) {

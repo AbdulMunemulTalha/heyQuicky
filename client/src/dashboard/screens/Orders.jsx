@@ -115,7 +115,7 @@ export default function Orders({ query }) {
           <Select label={t('ord.source')} value={filters.source} onChange={(v) => setQuery({ source: v || null, page: null })}
             options={[['', t('common.all')], ['ai', 'AI'], ['team', t('ord.src.team')], ['product_page', t('ord.src.product_page')], ['website', t('ord.src.website')]]} />
           <Select label={t('ord.zone')} value={filters.zone} onChange={(v) => setQuery({ zone: v || null, page: null })}
-            options={[['', t('common.all')], ['inside_dhaka', t('zone.inside_dhaka')], ['outside_dhaka', t('zone.outside_dhaka')]]} />
+            options={[['', t('common.all')], ['inside_dhaka', t('zone.inside_dhaka')], ['dhaka_suburbs', t('zone.dhaka_suburbs')], ['outside_dhaka', t('zone.outside_dhaka')]]} />
           <Select value={filters.range} onChange={(v) => setQuery({ range: v === '7d' ? null : v, page: null })}
             options={[['today', t('range.today')], ['7d', t('range.7d')], ['30d', t('range.30d')], ['all', t('range.all')]]} />
           <span className="grow" />
