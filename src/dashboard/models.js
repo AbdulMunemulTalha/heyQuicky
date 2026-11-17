@@ -309,7 +309,11 @@ export function defineDashboardModels(conn) {
   });
   coupon.index({ workspace_id: 1, code: 1 }, { unique: true });
 
+  // Uploaded photos and voice notes (kept in MongoDB, the one store that survives redeploys).
+  const file = new Schema({ _id: String, workspace_id: ws, type: String, size: Number, name: String, data: Buffer, created_at: createdAt }, opts);
+
   return {
+    files: conn.model('File', file, 'files'),
     coupons: conn.model('Coupon', coupon, 'coupons'),
     customers: conn.model('Customer', customer, 'customers'),
     notes: conn.model('Note', note, 'notes'),

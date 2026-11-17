@@ -1,3 +1,4 @@
+import { tryAutoAnswer, hasAutoAnswers } from '../dashboard/autoAnswer.js';
 import { INTENTS, REPLY_SCHEMA, buildSystemPrompt, toModelMessages } from './prompt.js';
 import { InboxError } from '../inbox.js';
 
@@ -90,6 +91,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
   // Answers the customer message `messageId`, unless something newer arrived.
   // Returns what happened, for logs and tests.
   async function respond(conversationId, messageId) {
+    // Saved replies set to answer automatically go first: no AI call, no cost, and no credit needed (SR-02/10).
+    if (await tryAutoAnswer(db, inbox, conversationId, messageId)) return 'saved_reply';
     if (!provider) return 'not_configured';
     const ctx = await loadContext(conversationId);
     if (!ctx) return 'gone';
@@ -135,8 +138,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
 
   // Waits a moment before answering, because customers often send several
   // short messages in a row; only the last one gets a reply.
-  function onInbound(conversationId, messageId) {
-    if (!provider) return Promise.resolve('not_configured');
+  async function onInbound(conversationId, messageId) {
+    if (!provider && !(await hasAutoAnswers(db, conversationId))) return 'not_configured';
     const previous = pending.get(conversationId);
     if (previous) {
       clearTimeout(previous.timer);

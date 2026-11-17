@@ -3,7 +3,7 @@
 Updated after each screen. **Done** = built, wired to real data and tested. **Partial** = what's missing is listed.
 ONB rows belong to onboarding, which is frozen and was built earlier; only their dashboard-side parts are tracked here.
 
-Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments, 03 Orders, 11 Order detail (+ 11b, 11c), 12 New / edit order, 04 Customers and 05 Follow-ups, leads & broadcasts are built.
+Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 22b), 14 Comments, 03 Orders, 11 Order detail (+ 11b, 11c), 12 New / edit order, 04 Customers, 05 Follow-ups, leads & broadcasts and 06 Saved replies are built.
 
 | ID | Status | Route |
 |---|---|---|
@@ -113,16 +113,16 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CRM-02 | Partial — "Before you ship" on the customer, the order and the order form, cached a day. Uses sample data until a fraud-check service is chosen (FRAUDCHECK_API_URL) | /app/customers |
 | CRM-03 | Partial — COD risk score (own returns + courier record + amount + zone) shown as Low / Medium / High on orders; segments screen in Phase 2 | /app/orders |
 | CRM-04 | Not started (Phase 2) | /app/customers/segments |
-| SR-01 | Not started (screen 06) | /app/saved-replies |
-| SR-02 | Not started (screen 06) | /app/saved-replies |
-| SR-03 | Not started (screen 06) | /app/saved-replies |
-| SR-04 | Not started (screen 06) | /app/saved-replies |
-| SR-05 | Not started (screen 06) | /app/saved-replies |
-| SR-06 | Not started (screen 06) | /app/saved-replies |
-| SR-07 | Not started (screen 06) | /app/saved-replies |
-| SR-08 | Partial — "/" search of saved replies in the composer, suggested replies above the box, AI draft. Missing: AI adapting a saved reply while keeping numbers and links | /app/inbox |
-| SR-09 | Not started (screen 06) | /app/saved-replies |
-| SR-10 | Not started | AI pipeline |
+| SR-01 | Done — library with shortcuts, folders, whole team / only me, pin to top, usage counts, "answered free this week" | /app/saved-replies |
+| SR-02 | Done — auto-answer before the AI: customer phrases matched while ignoring emoji, ???, salam, bhai/apu, word order and Bangla vs English digits; no AI call, ৳0; paused when a teammate takes over or the customer is off / blocked / spam | /app/saved-replies |
+| SR-03 | Done — "Found in your chats": real customer phrasings from the last 60 days that are related but not yet covered, added in one tap | /app/saved-replies |
+| SR-04 | Done — "would have answered N messages from M customers in the last 14 days" updates as phrases change | /app/saved-replies |
+| SR-05 | Partial — extra messages, photos and voice notes (uploaded, kept in MongoDB, served at /files/…), product blocks and blanks. Missing: sending photos/voice as Messenger attachments and product cards as designed cards (screen 24) — sent as links/text for now | /app/saved-replies |
+| SR-06 | Done — product blocks read the live price; hidden, archived or sold-out products stop the reply from going out by itself | /app/saved-replies |
+| SR-07 | Done — {name}, {order_number}, {order_total}, {cod}, {delivery_charge}, {tracking} filled from the customer's own details; if any is missing the reply is not sent on its own | /app/saved-replies |
+| SR-08 | Partial — "/" search in the composer, suggested replies above the box, AI draft. Missing: AI adapting a saved reply while keeping numbers and links | /app/inbox |
+| SR-09 | Done — warns when a phone or bKash number in a reply doesn't have 11 digits (Bangla digits too) | /app/saved-replies |
+| SR-10 | Done — auto-answers need no AI key or credit and record ৳0 cost | AI pipeline |
 | FUP-01 | Done — chats where the customer asked and went quiet are watched: hot (delivery, address, quantity, size) gets reminders at 3 h and 20 h, warm (price only) at 20 h; at most 2, only inside the 24 h window, never in chats a teammate owns; replies and orders stop them; on/off switch; runs every 5 minutes | /app/growth |
 | FUP-02 | Partial — optional 10% offer on the last reminder (switch on screen 05). Missing: an expiring per-customer offer the AI honours only until it ends (P2) | /app/growth |
 | FUP-03 | Done — interested customers are captured automatically with the product, interest and when to follow up; To chase / Contacted; Open chat, WhatsApp, copy number, Log call (Ordered / Call later / No answer / Not interested) | /app/growth?tab=leads |
