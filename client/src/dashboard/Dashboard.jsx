@@ -23,6 +23,7 @@ const screens = {
   catalog: lazy(() => import('./screens/Catalog.jsx')),
   product: lazy(() => import('./screens/ProductForm.jsx')),
   analytics: lazy(() => import('./screens/Analytics.jsx')),
+  settings: lazy(() => import('./screens/Settings.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
 const overlays = {
@@ -50,6 +51,11 @@ const ROUTES = [
   ['/catalog/new', 'product'],
   ['/catalog/:id', 'product'],
   ['/analytics', 'analytics'],
+  ['/settings', 'settings'],
+  ['/settings/channels', 'settings'],
+  ['/settings/courier', 'settings'],
+  ['/settings/payments', 'settings'],
+  ['/settings/team', 'settings'],
 ];
 
 function pick(path) {

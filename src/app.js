@@ -20,6 +20,7 @@ import { dashboardMounts } from './routes/dashboard/mounts.js';
 import { createAdapters } from './adapters/index.js';
 import { attachPresence } from './dashboard/presence.js';
 import { fileRoute } from './routes/dashboard/savedReplies.js';
+import { adminRoutes } from './routes/admin.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 // The React dashboard, built by `npm run build`.
@@ -87,6 +88,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
   app.get('/admin/leads.csv', leadsCsvRoute(db, config));
+  app.use(adminRoutes(db, config));
   app.get('/files/:id', fileRoute(db));
   app.use(webhookRoutes(config, inbox, { db, emit }));
   app.use(connectRoutes(db, config, { fetchImpl, emit, importer }));

@@ -21,6 +21,13 @@ export function loadConfig(env = process.env) {
     tokenKey: parseKey(env.TOKEN_ENCRYPTION_KEY),
     // Password for /admin/leads.csv (sign-up leads for follow-up). Empty turns the page off.
     adminToken: cleanSecret(env.ADMIN_TOKEN),
+    // Manual AI-credit top-ups: HeyQuicky's own bKash / Nagad numbers shops send money to.
+    // Empty hides that method; top-ups are credited only after an admin approves the TrxID.
+    topup: {
+      bkash: (env.TOPUP_BKASH_NUMBER || '').trim(),
+      nagad: (env.TOPUP_NAGAD_NUMBER || '').trim(),
+      supportWhatsapp: (env.SUPPORT_WHATSAPP || '').trim(),
+    },
     // Shown on the privacy policy, terms and data deletion pages.
     legal: {
       operator: env.OPERATOR_NAME || 'Quicky',

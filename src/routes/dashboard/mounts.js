@@ -10,6 +10,7 @@ import { savedReplyRoutes } from './savedReplies.js';
 import { agentRoutes } from './agent.js';
 import { catalogRoutes } from './catalog.js';
 import { analyticsRoutes } from './analytics.js';
+import { settingsRoutes } from './settingsRoutes.js';
 
 // Dashboard feature routers, mounted under /api/dash in this order. Each is (db, config, ctx) => Router.
-export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes];
+export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes, settingsRoutes];

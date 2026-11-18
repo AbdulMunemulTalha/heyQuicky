@@ -7,12 +7,12 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 
 | ID | Status | Route |
 |---|---|---|
-| ONB-01 | Done (onboarding); Settings → Channels reuse comes with screen 10 | onboarding |
+| ONB-01 | Done — onboarding, and Settings → Channels lists every channel with its AI switch and opens the same Meta / WhatsApp connect flow for missing ones | onboarding, /app/settings/channels |
 | ONB-02 | Done (onboarding) | onboarding |
 | ONB-03 | Done (onboarding) | onboarding |
 | ONB-04 | Done (onboarding); editing in AI agent comes with screen 07 | onboarding |
 | ONB-05 | Done (onboarding) | onboarding |
-| ONB-06 | Done (onboarding); zone editing comes with screen 10 | onboarding |
+| ONB-06 | Done — onboarding, and Settings → Delivery & courier edits charges and days for inside Dhaka, suburbs and outside Dhaka | onboarding, /app/settings/courier |
 | ONB-07 | Done — Overview go-live checklist (7 items, live counts) | /app |
 | ONB-08 | Partial — top-bar AI live / Practice switch works, trial clock starts at first go-live; trial credit amount waits on pricing (`TRIAL_CREDIT`) | /app (top bar) |
 | ONB-09 | Not started (Phase 3) — the seed it will use exists (`src/dashboard/demoSeed.js`, sandbox mode) | /app/demo |
@@ -31,10 +31,10 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | INB-10 | Done — live "Rafi is typing a reply…" bar from socket presence; replying to a chat someone else owns asks you to take over first | /app/inbox |
 | INB-11 | Not started (screen 07) | /app/agent |
 | INB-12 | Partial — responsive shell with bottom tabs (≤768 px); PWA and push come with screen 19 | /app |
-| TEAM-01 | Partial — roles model; invite screen comes with screen 10 / Phase 2 | /app/settings/team |
+| TEAM-01 | Done — Settings → Team: invite by name, email and role (admin only by the owner), temporary password shown once and emailed when email is set up, change role, remove (chats go back to the queue, sessions end), restore | /app/settings/team |
 | TEAM-02 | Partial — permission matrix enforced on the server (`need()`), owner overrides stored per shop; screen in Phase 2 | /app/settings/team |
 | TEAM-03 | Done — Assign popup (frame 15): teammates with on-duty dots and open-chat counts, keep AI replying, note; the assignee gets a notification | overlay |
-| TEAM-04 | Partial — sidebar On duty / Off duty toggle saves and broadcasts; routing by duty comes with the inbox | /app (sidebar) |
+| TEAM-04 | Partial — sidebar On duty / Off duty toggle saves and broadcasts; Settings → Team shows who is on duty; routing by duty comes with the inbox | /app (sidebar), /app/settings/team |
 | TEAM-05 | Not started (Phase 2) | /app/settings/team |
 | TEAM-06 | Partial — audit log written for AI mode changes; screen in Phase 3 | /app/settings/audit |
 | TEAM-07 | Not started (Phase 3) | /app/settings/team |
@@ -105,10 +105,10 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CRR-04 | Not started | AI pipeline |
 | CRR-05 | Not started (Phase 2) | /app/settings/delivery-updates |
 | CRR-06 | Not started (Phase 3) | /app/settings/delivery-updates |
-| CRR-07 | Not started (Phase 3) | /app/settings/courier |
+| CRR-07 | Partial — Settings → Delivery & courier: connect Steadfast, Pathao, RedX, Paperfly or eCourier with the shop's own keys (stored encrypted, refused in production without TOKEN_ENCRYPTION_KEY), auto-book (one courier), disconnect; test mode until real keys and DRY_RUN off | /app/settings/courier |
 | PAY-01 | Not started (Phase 2) | /app/payments |
 | PAY-02 | Not started (Phase 3) | /app/payments?tab=gateway |
-| PAY-03 | Partial — "Ask for ৳300 bKash advance" sends your bKash number in the customer's chat and records the request; automatic advance rules come in Phase 2 | /app/orders/:n |
+| PAY-03 | Partial — "Ask for ৳300 bKash advance" in the order; Settings → Payments saves the shop's bKash / Nagad numbers and the advance rules (high risk, outside Dhaka over ৳X, amount); the AI applies the rules in Phase 2 | /app/orders/:n, /app/settings/payments |
 | CRM-01 | Done — customers list (search by name, phone in Bangla or English digits, tag; All / Repeat buyers / VIP / High risk; CSV) and a profile with orders, delivered / returned / cancelled, delivered %, one timeline across Messenger, Instagram, WhatsApp, comments and orders, team notes and tags | /app/customers |
 | CRM-02 | Partial — "Before you ship" on the customer, the order and the order form, cached a day. Uses sample data until a fraud-check service is chosen (FRAUDCHECK_API_URL) | /app/customers |
 | CRM-03 | Partial — COD risk score (own returns + courier record + amount + zone) shown as Low / Medium / High on orders; segments screen in Phase 2 | /app/orders |
@@ -151,12 +151,12 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | INT-02 | Not started (Phase 2) | /app/settings/integrations |
 | INT-03 | Not started (Phase 3) | /s/:shop |
 | INT-04 | Not started (Phase 3) | /app/settings/integrations |
-| BIL-01 | Partial — credit ledger (`credit_ledger`), balance in the sidebar with replies-left estimate; charging per reply comes with the AI pipeline | /app (sidebar) |
-| BIL-02 | Not started (screen 10) | /app/settings |
-| BIL-03 | Not started (screen 10) | /app/settings |
+| BIL-01 | Partial — Settings → Billing: balance, replies-left estimate, this month's AI replies and cost, saved replies free; charging per reply comes with the AI pipeline | /app/settings |
+| BIL-02 | Partial — "Cost of every reply" table and CSV for this month; costs fill in once the AI pipeline records each reply | /app/settings |
+| BIL-03 | Partial — cache savings line for the month; real numbers once the AI pipeline records cache usage | /app/settings |
 | BIL-04 | Partial — trial starts at first go-live; amount waits on pricing | /app |
-| BIL-05 | Not started (screen 10) | /app/settings |
-| BIL-06 | Not started (screen 10) | /app/settings |
+| BIL-05 | Partial — manual top-up: shop sends bKash / Nagad to TOPUP_BKASH_NUMBER / TOPUP_NAGAD_NUMBER and enters the TrxID; credit is added only after an admin approves it (GET /admin/topups, POST /admin/topups/:id/approve, ADMIN_TOKEN). Gateway checkout and card wait on payment accounts | /app/settings |
+| BIL-06 | Partial — monthly spend cap and low-credit alert saved; enforced once per-reply charging is on (AI pipeline) | /app/settings |
 | UX-01 | Partial — full Bangla for the shell, log-in and Overview with Bangla digits and ৳ grouping; a test fails if any English string lacks a Bangla one; other screens add theirs as they're built | /app |
 | UX-02 | Partial — dark theme variables and `user.theme`; Profile switch in Phase 2, frame in Phase 3 | /app |
 | UX-03 | Not started (Phase 2) | overlay |

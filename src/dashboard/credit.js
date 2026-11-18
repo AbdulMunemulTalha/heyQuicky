@@ -25,3 +25,26 @@ export async function averageReplyCost(db, workspaceId) {
   ]);
   return agg?.n ? agg.avg : Number(process.env.AI_REPLY_ESTIMATE || 0.133);
 }
+
+// Manual top-ups (BIL-05) until a payment gateway is connected: the owner sends bKash / Nagad to
+// HeyQuicky's number and enters the TrxID; the entry stays pending (no credit yet) until an admin
+// approves it with ADMIN_TOKEN. Nothing is ever credited without that approval.
+export const TOPUP_MIN = 100;
+export const TOPUP_MAX = 100_000;
+
+export async function requestTopup(db, workspaceId, { amount, method, trxId }) {
+  const ws = await db.workspaces.findById(workspaceId, { credit_balance: 1 }).lean();
+  return db.insert(db.credit, { workspace_id: workspaceId, type: 'top_up', amount, balance_after: ws?.credit_balance ?? 0, method, ref: trxId, status: 'pending' });
+}
+
+export async function approveTopup(db, entryId) {
+  const entry = await db.credit.findOneAndUpdate({ _id: entryId, type: 'top_up', status: 'pending' }, { $set: { status: 'approving' } }, { new: true, lean: true });
+  if (!entry) return null;
+  const ws = await db.workspaces.findOneAndUpdate({ _id: entry.workspace_id }, { $inc: { credit_balance: entry.amount } }, { new: true, lean: true });
+  await db.credit.updateOne({ _id: entry._id }, { $set: { status: 'done', balance_after: ws.credit_balance } });
+  return { ...entry, status: 'done', balance_after: ws.credit_balance };
+}
+
+export async function rejectTopup(db, entryId) {
+  return db.credit.findOneAndUpdate({ _id: entryId, type: 'top_up', status: 'pending' }, { $set: { status: 'rejected' } }, { new: true, lean: true });
+}
