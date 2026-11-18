@@ -106,6 +106,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
       courierRate: check?.rate ?? null, courierTotal: check?.total ?? 0, codAmount: priced.cod, outsideDhaka: zone === 'outside_dhaka' });
     const draft = Boolean(req.body?.draft);
     const { order_seq: number } = await db.workspaces.findOneAndUpdate({ _id: ws._id }, { $inc: { order_seq: 1 } }, { new: true, lean: true });
+    const billToken = randomBytes(9).toString('base64url');
     const order = await db.insert(db.orders, {
       workspace_id: ws._id, number, customer_id: customer._id, conversation_id: conversationId, created_by_user_id: req.user.id,
       customer_name: who.name, phone: who.phone, address: [who.address, who.areaName].filter(Boolean).join(', '), district: who.district, thana: who.thana,
@@ -115,7 +116,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
       payment_method: pay.method === 'paid' ? 'paid' : pay.method === 'bkash_advance' ? 'bkash' : 'cod',
       advance: priced.advance ? { amount: priced.advance, method: 'bkash', trx_id: String(pay.trxId ?? '').trim().slice(0, 30), verified: Boolean(pay.trxId) } : null,
       note: String(req.body?.note ?? '').slice(0, 500), status: draft ? 'pending' : 'approved', draft, risk,
-      source: SOURCES[req.body?.source] ?? 'team', taken_by: req.user.name, bill_token: randomBytes(9).toString('base64url'),
+      source: SOURCES[req.body?.source] ?? 'team', taken_by: req.user.name, bill_token: billToken,
       send_confirmation: req.body?.sendConfirmation !== false,
     });
     if (!draft) await adjustStock(db, { product_items: priced.lines }, -1, { notify });
@@ -136,7 +137,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
 
     // Confirmation in Messenger (ORD-11) when the order came from a chat.
     if (!draft && conversationId && req.body?.sendConfirmation !== false) {
-      const text = `✅ অর্ডার #${number} কনফার্ম হয়েছে\n${priced.lines.map((l) => `${l.name}${l.variant ? ` (${l.variant})` : ''} × ${l.qty} — ৳${l.price * l.qty}`).join('\n')}\nডেলিভারি: ৳${priced.delivery} (${priced.zone.days})\n${priced.cod ? `ক্যাশ অন ডেলিভারি: ৳${priced.cod}` : 'পেমেন্ট সম্পূর্ণ'}`;
+      const text = `✅ অর্ডার #${number} কনফার্ম হয়েছে\n${priced.lines.map((l) => `${l.name}${l.variant ? ` (${l.variant})` : ''} × ${l.qty} — ৳${l.price * l.qty}`).join('\n')}\nডেলিভারি: ৳${priced.delivery} (${priced.zone.days})\n${priced.cod ? `ক্যাশ অন ডেলিভারি: ৳${priced.cod}` : 'পেমেন্ট সম্পূর্ণ'}\nবিল ও ট্র্যাকিং: ${config.publicUrl || `${req.protocol}://${req.get('host')}`}/b/${billToken}`;
       await inbox.sendReply(req.user, conversationId, text).catch((err) => console.warn('confirmation not sent:', err.message));
     }
     let booked = null;
@@ -179,6 +180,10 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
   // Screen 11: everything about one order.
   router.get('/orders/:id', auth, async (req, res) => {
     const order = await loadOrder(req, { byNumber: true });
+    if (!order.bill_token) {
+      order.bill_token = randomBytes(9).toString('base64url');
+      await db.orders.updateOne({ _id: order._id, bill_token: null }, { $set: { bill_token: order.bill_token } });
+    }
     const ws = await db.workspaces.findById(req.user.workspace_id).lean();
     const showPhones = can(req.user, 'see_phones', ws);
     const customer = order.customer_id ? await db.customers.findById(order.customer_id).lean() : null;
@@ -205,7 +210,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
     const s = stage(order.status);
     res.json({
       id: order._id, number: order.number ?? order._id, status: s, next: NEXT[s] ?? [], at: order.created_at, source: order.source, takenBy: order.taken_by,
-      draft: Boolean(order.draft), holdReason: order.hold_reason, cancelReason: order.cancel_reason,
+      draft: Boolean(order.draft), holdReason: order.hold_reason, cancelReason: order.cancel_reason, cancelRequestedAt: order.cancel_requested_at ?? null,
       items: (order.product_items?.length ? order.product_items : order.items.map((i) => ({ name: i.name, qty: i.qty, price: i.price }))).map((i) => {
         const p = products.get(i.product_id);
         const v = p?.variant_list?.find((x) => x.sku === i.sku);

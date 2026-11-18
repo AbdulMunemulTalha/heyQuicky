@@ -1301,4 +1301,8 @@ export default {
   'cat.thisProduct': "This product",
   'pwa.install': "Install the app",
   'pwa.installed': "HeyQuicky is on your home screen",
+  'od.bill': "Customer's bill",
+  'od.billHint': "Copies the bill link and opens what the customer sees",
+  'od.cancelAsked': "The customer asked to cancel {ago}",
+  'od.cancelAskedSub': "from their bill page. Call them before it ships.",
 };

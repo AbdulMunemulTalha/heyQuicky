@@ -68,6 +68,7 @@ export default function OrderDetail({ params }) {
         </div>
         <div className="page-actions">
           <Button onClick={printLabel}>{t('od.printLabel')}</Button>
+          {o.billToken && <Button onClick={() => copyBill(`${window.location.origin}/b/${o.billToken}`)} title={t('od.billHint')}>{t('od.bill')}</Button>}
           {can('edit_orders') && ['pending', 'on_hold', 'approved', 'processing'].includes(o.status) && <Button onClick={() => navigate(`/orders/${o.number}/edit`)}>{t('od.edit')}</Button>}
           <span className="od-main-actions">
           {can('cancel_orders') && o.next.includes('cancelled') && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t('ord.cancelOrder')}</Button>}
@@ -88,6 +89,10 @@ export default function OrderDetail({ params }) {
             </li>
           ))}
         </ol>
+      )}
+
+      {o.cancelRequestedAt && ['pending', 'approved', 'on_hold', 'processing'].includes(o.status) && (
+        <div className="alert-bar alert-red"><Icon name="alert" size={16} /><div className="grow"><strong>{t('od.cancelAsked', { ago: t.agoLong(o.cancelRequestedAt) })}</strong> {t('od.cancelAskedSub')}</div></div>
       )}
 
       {o.changeRequest && (
@@ -277,4 +282,10 @@ function AdvanceDialog({ t, o, onClose, onSend }) {
       <div className="field"><label htmlFor="adv">{t('od.advanceAmount')}</label><input id="adv" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))} /></div>
     </Modal>
   );
+}
+
+// "Customer's bill": copies the link to share in chat and opens it to check what the customer sees.
+function copyBill(url) {
+  navigator.clipboard?.writeText(url).catch(() => {});
+  window.open(url, '_blank', 'noopener');
 }

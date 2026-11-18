@@ -1295,4 +1295,8 @@ export default {
   'cat.thisProduct': "এই প্রোডাক্ট",
   'pwa.install': "অ্যাপটি ইনস্টল করুন",
   'pwa.installed': "HeyQuicky আপনার হোম স্ক্রিনে যোগ হয়েছে",
+  'od.bill': "কাস্টমারের বিল",
+  'od.billHint': "বিলের লিংক কপি হবে আর কাস্টমার যা দেখেন তা খুলবে",
+  'od.cancelAsked': "কাস্টমার {ago} বাতিল করতে চেয়েছেন",
+  'od.cancelAskedSub': "তাদের বিল পেজ থেকে। পাঠানোর আগে কল করুন।",
 };
