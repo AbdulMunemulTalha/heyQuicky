@@ -23,6 +23,7 @@ import { fileRoute } from './routes/dashboard/savedReplies.js';
 import { adminRoutes } from './routes/admin.js';
 import { createNotifier } from './dashboard/notify.js';
 import { billRoutes } from './routes/bill.js';
+import { createPostbackHandler } from './dashboard/postbacks.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 // The React dashboard, built by `npm run build`.
@@ -71,6 +72,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   const provider = aiProvider === undefined ? createAiProvider(config.ai) : aiProvider;
   const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs, notify });
   inbox.setInboundHandler(agent.onInbound);
+  inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit }));
 
   io.use(async (socket, next) => {
     try {

@@ -1,6 +1,7 @@
 import { row, rows, isDuplicateKey } from './db.js';
 import { ensureAssigned, assignConversation, distributeUnassigned } from './assignment.js';
-import { messagingWindow, sendText, fetchProfileName, INVALID_TOKEN } from './platforms/meta.js';
+import { messagingWindow, sendText, sendRich, fetchProfileName, INVALID_TOKEN } from './platforms/meta.js';
+import { toPlatform, parsePostback } from './platforms/rich.js';
 import { decryptSecret } from './secrets.js';
 import { looksLikeSpam } from './dashboard/spam.js';
 
@@ -59,6 +60,8 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
 
   // Called with (conversationId, messageId) after a live customer message is stored.
   let onInbound = () => {};
+  // Button taps on cards ("Yes, confirm", a rating…). Returns true when handled, so the AI doesn't answer it too.
+  let onPostback = async () => false;
 
   async function publish(conversationId, messageId) {
     const conversation = await getConversation(conversationId);
@@ -131,7 +134,8 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
   }
 
   // Stores an outgoing message, sends it to Meta and records the outcome.
-  async function deliver(conversation, { text, tag, sender_user_id = null, sent_by_ai = false }) {
+  async function deliver(conversation, { text, tag, sender_user_id = null, sent_by_ai = false, rich = null }) {
+    if (rich) text = rich.text;
     await db.conversations.updateOne({ _id: conversation.id }, { $set: { last_replier: sent_by_ai ? 'ai' : 'team' } });
     await db.conversations.updateOne({ _id: conversation.id, first_reply_at: null }, { $set: { first_reply_at: new Date() } });
     const channel = await db.channels.findById(conversation.channel_id).lean();
@@ -139,17 +143,18 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
     const now = new Date();
     const message = await db.insert(db.messages, {
       conversation_id: conversation.id, direction: 'out', sender_user_id, sent_by_ai, text, status: 'pending', created_at: now,
+      ...(rich ? { kind: rich.kind, payload: rich.payload } : {}),
     });
     await db.conversations.updateOne({ _id: conversation.id },
       { $set: { last_message_at: now, last_message_preview: preview(text, []), unread_count: 0 } });
     await publish(conversation.id, message.id);
 
     try {
-      const { externalId } = await sendText({
-        channel: { ...row(channel), access_token: decryptSecret(channel.access_token, config.tokenKey) },
-        contact, text, tag,
-        graphVersion: config.meta.graphVersion, dryRun: config.dryRun, fetchImpl,
-      });
+      const target = { ...row(channel), access_token: decryptSecret(channel.access_token, config.tokenKey) };
+      const outgoing = rich ? toPlatform(channel.platform, rich) : null;
+      const { externalId } = outgoing
+        ? await sendRich({ channel: target, contact, message: outgoing, tag, graphVersion: config.meta.graphVersion, dryRun: config.dryRun, fetchImpl })
+        : await sendText({ channel: target, contact, text, tag, graphVersion: config.meta.graphVersion, dryRun: config.dryRun, fetchImpl });
       await db.messages.updateOne({ _id: message.id }, { $set: { status: 'sent', external_id: externalId } });
     } catch (err) {
       await db.messages.updateOne({ _id: message.id }, { $set: { status: 'failed', error: err.message } });
@@ -270,6 +275,7 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       const message = await insertMessage({
         conversation_id: conversation.id, direction: evt.direction, text: evt.text, attachments: evt.attachments,
         external_id: evt.messageId, status: inbound ? 'received' : 'sent', created_at: evt.timestamp,
+        ...(evt.postback ? { kind: 'postback', payload: { postback: evt.postback } } : {}),
       });
       // Another delivery of the same message got here first.
       if (!message) return { ignored: 'duplicate' };
@@ -290,9 +296,10 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       }
 
       const published = await publish(conversation.id, message.id);
+      const tapped = inbound && evt.postback ? parsePostback(evt.postback) : null;
       if (inbound && !conversation.spam && !spamReason) {
         Promise.resolve()
-          .then(() => onInbound(conversation.id, message.id))
+          .then(async () => { if (tapped && await onPostback(conversation.id, message.id, tapped)) return; await onInbound(conversation.id, message.id); })
           .catch((err) => console.error('AI agent failed', err));
       }
       // Look the name up in the background so the webhook is answered quickly.
@@ -374,6 +381,31 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
       if (!window.ok) return null;
       return deliver(conversation, { text, tag: window.tag, sent_by_ai: true });
+    },
+
+    // A rich message from a teammate (product cards, order summary, delivery update, review request).
+    async sendRich(user, conversationId, rich) {
+      const conversation = await requireConversation(user, conversationId);
+      if (conversation.assigned_user_id && conversation.assigned_user_id !== user.id && user.role !== 'owner') {
+        throw new InboxError(403, `This customer is handled by ${conversation.assigned_user_name}`);
+      }
+      const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
+      if (!window.ok) throw new InboxError(422, window.reason);
+      if (!conversation.assigned_user_id) await assignConversation(db, conversationId, user.id);
+      return deliver(conversation, { rich, tag: window.tag, sender_user_id: user.id });
+    },
+
+    // A rich message sent by the system or the AI (e.g. the answer to a button tap). Null when the window has closed.
+    async sendAiRich(conversationId, rich) {
+      const conversation = await getConversation(conversationId);
+      if (!conversation) return null;
+      const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
+      if (!window.ok) return null;
+      return deliver(conversation, { rich, tag: window.tag, sent_by_ai: true });
+    },
+
+    setPostbackHandler(fn) {
+      onPostback = fn;
     },
 
     // Pushes the latest state of a conversation to the dashboard.

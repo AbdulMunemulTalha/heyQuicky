@@ -1,0 +1,33 @@
+/* Screen 24: rich messages as the customer sees them in Messenger. */
+#dash .rm-carousel { display: flex; gap: 8px; overflow-x: auto; max-width: min(560px, 100%); padding-bottom: 4px; scroll-snap-type: x mandatory; }
+#dash .rm-card { flex: 0 0 190px; scroll-snap-align: start; background: #fff; border: 1px solid #e3e5ea; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; color: #101217; }
+#dash .rm-img { height: 120px; position: relative; }
+#dash .rm-off { position: absolute; top: 8px; left: 8px; background: #f4c430; color: #111; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+#dash .rm-off.gray { background: #e5e7eb; color: #4b5160; left: auto; right: 8px; }
+#dash .rm-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+#dash .rm-body strong { font-size: 13.5px; line-height: 1.3; }
+#dash .rm-body s { font-size: 11.5px; }
+#dash .rm-body small { font-size: 11px; }
+#dash .rm-buttons { display: flex; flex-direction: column; border-top: 1px solid #eceef2; margin-top: auto; }
+#dash .rm-btn { text-align: center; padding: 7px 8px; font-size: 12.5px; font-weight: 600; color: #2B4BFF; border-top: 1px solid #eceef2; }
+#dash .rm-btn:first-child { border-top: 0; }
+#dash .rm-quick { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+#dash .rm-text { white-space: pre-wrap; }
+#dash .rm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+#dash .rm-chip { border: 1px solid #2B4BFF; color: #2B4BFF; background: #fff; border-radius: 16px; padding: 3px 12px; font-size: 12.5px; font-weight: 600; }
+#dash .rm-summary { width: 260px; max-width: 100%; background: #fff; border: 1px solid #e3e5ea; border-radius: 14px; overflow: hidden; color: #101217; }
+#dash .rm-sum-head { background: #f5f6f3; padding: 8px 12px; font-weight: 700; font-size: 13.5px; }
+#dash .rm-sum-body { padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
+#dash .rm-line { display: flex; justify-content: space-between; gap: 10px; }
+#dash .rm-total { font-weight: 700; font-size: 14px; border-top: 1px solid #eee; padding-top: 6px; margin-top: 2px; }
+#dash .rm-summary .rm-buttons { flex-direction: row; }
+#dash .rm-summary .rm-btn { flex: 1; border-top: 0; border-left: 1px solid #eceef2; }
+#dash .rm-summary .rm-btn:first-child { border-left: 0; }
+#dash .bubble.rm-wrap { background: transparent !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
+#dash .tapped { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+#dash .sp-preview { margin-top: 10px; padding: 10px; background: var(--panel-2); border-radius: 12px; }
+#dash .sp-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+#dash .sp-item.on { border-color: var(--accent); background: var(--accent-soft); }
+#dash .sp-item .grow { display: flex; flex-direction: column; min-width: 0; }
+#dash .sp-item strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dash .sp-thumb { width: 36px; height: 36px; border-radius: 8px; flex: none; }

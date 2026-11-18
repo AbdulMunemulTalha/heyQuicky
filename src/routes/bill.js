@@ -2,6 +2,7 @@ import { Router, urlencoded } from 'express';
 import { bdPhone, asciiDigits } from '../dashboard/util.js';
 import { orderTotal } from '../dashboard/orderOps.js';
 import { zonesFor } from '../dashboard/orderBuild.js';
+import { trackingUrl } from '../platforms/rich.js';
 
 // Screen 20 / ORD-03: the customer's bill — a public page behind an unguessable link (/b/:token),
 // Bangla first, readable on any phone without JavaScript. Shows the live status, lets the customer
@@ -9,11 +10,6 @@ import { zonesFor } from '../dashboard/orderBuild.js';
 
 const STEPS = ['pending', 'approved', 'ready_to_ship', 'in_transit', 'delivered'];
 const STAGE = { confirmed: 'pending', shipped: 'in_transit', processing: 'ready_to_ship', on_hold: 'pending' };
-const TRACK = {
-  steadfast: (c) => `https://steadfast.com.bd/t/${encodeURIComponent(c)}`,
-  pathao: (c) => `https://merchant.pathao.com/tracking?consignment_id=${encodeURIComponent(c)}`,
-  redx: (c) => `https://redx.com.bd/track-global-parcel/?trackingId=${encodeURIComponent(c)}`,
-};
 const OPEN = ['pending', 'confirmed', 'approved', 'on_hold', 'processing'];
 
 const T = {
@@ -165,7 +161,7 @@ export function billRoutes(db, config, { notify = null } = {}) {
     const flash = { change: t.changeSent, pay: t.paySent, cancel: t.cancelSent, 'err-phone': t.badPhone, 'err-trx': t.badTrx, 'err-address': t.badAddress, 'err-dup': t.dupTrx }[done];
     const advanceAmount = order.advance?.amount || ws?.settings?.advance?.amount || 300;
     const courier = order.courier ? String(order.courier).toLowerCase() : '';
-    const track = courier && order.consignment_id ? TRACK[courier]?.(order.consignment_id) : '';
+    const track = trackingUrl(courier, order.consignment_id);
     const L = lang === 'en' ? '<input type="hidden" name="lang" value="en">' : '';
 
     const body = `

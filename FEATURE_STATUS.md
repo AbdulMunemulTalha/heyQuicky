@@ -1,4 +1,4 @@
-| ORD-11 | Partial — orders created from a chat send a confirmation with items, delivery time, cash to collect and the bill link; the designed Messenger card comes with screen 24 | /app/orders/new || ORD-03 | Done — customer bill page (frames 20, 20b): Bangla first with English, shop header, status card with estimated delivery, 5-step live timeline, items and totals with cash to collect, courier and tracking link once shipped, address / phone change request (lands on the order as ORD-07), bKash / Nagad advance by TrxID (waits in Payments), message / call the shop, "I want to cancel" (notifies, never cancels by itself); link in the chat confirmation and "Customer's bill" on the order | /b/:token || CAT-02 | Done — per-variant stock, price and SKU with bulk edit; open orders keep their reserved stock; the AI sees which sizes are left and suggests the nearest one when a size is sold out; hidden and archived products are never offered | /app/catalog/:id || CAT-01 | Done — catalog grid with stock KPIs, filters, search, AI readiness; product form with photos (upload, cover), options and variants, visibility, AI notes, add-ons, linked posts, duplicate, archive; CSV / Google Sheet import. Video, product page preview and WooCommerce sync come later | /app/catalog, /app/catalog/new, /app/catalog/:id || HND-02 | Done — the AI returns by itself after a takeover (15 min to 12 h, or never), set in the persona editor | /app/agent || TRN-08 | Done — test chat on the AI agent screen and in the top bar panel; nothing is stored or sent (needs ANTHROPIC_API_KEY) | /app/agent, overlay || TRN-05 | Partial — every publish is a version with a snapshot; "Undo last publish" restores the one before. Version history page in Phase 2 | /app/agent || TRN-04 | Partial — "Questions it couldn't answer": counted once however they are written, Teach the answer with a live preview, Turn on for customers, Hide. Full training page in Phase 2 | /app/agent || TRN-01 | Done — knowledge book: add, remove, each change published as a version; persona editor (name, role, tone, sales style, address, reply delay) | /app/agent || AI-02 | Partial — the AI uses the knowledge book and taught answers in every reply and in the test chat; voice input comes later | AI pipeline || INB-11 | Done — per-channel AI on/off pills (Messenger, Instagram, WhatsApp, Comments) on the AI agent screen | /app/agent |# Feature status
+# Feature status
 
 Updated after each screen. **Done** = built, wired to real data and tested. **Partial** = what's missing is listed.
 ONB rows belong to onboarding, which is frozen and was built earlier; only their dashboard-side parts are tracked here.
@@ -29,7 +29,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | INB-08 | Partial — side panel with AI summary, delivery record, orders, team notes, tags, AI switch. Missing: follow-ups, bookings and lead status (come with screens 05 and P2 Bookings) | /app/inbox |
 | INB-09 | Partial — team notes on a chat with @mentions that notify the teammate; the dedicated Team notes popup frame comes in Phase 2 | /app/inbox |
 | INB-10 | Done — live "Rafi is typing a reply…" bar from socket presence; replying to a chat someone else owns asks you to take over first | /app/inbox |
-| INB-11 | Not started (screen 07) | /app/agent |
+| INB-11 | Done — per-channel AI on/off pills (Messenger, Instagram, WhatsApp, Comments) on the AI agent screen and in Settings → Channels | /app/agent, /app/settings/channels |
 | INB-12 | Done — phones (frame 19): bottom tabs with badges; lean inbox list; a chat, an order or a form opens full screen; chat header with Call; order Cancel / next step pinned to the bottom; installs as an app (manifest, icons, "Install the app" in the sidebar, iPhone home-screen icon), opens offline to the saved shell, phone alerts via the same service worker (need VAPID keys) | /app |
 | TEAM-01 | Done — Settings → Team: invite by name, email and role (admin only by the owner), temporary password shown once and emailed when email is set up, change role, remove (chats go back to the queue, sessions end), restore | /app/settings/team |
 | TEAM-02 | Partial — permission matrix enforced on the server (`need()`), owner overrides stored per shop; screen in Phase 2 | /app/settings/team |
@@ -39,7 +39,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | TEAM-06 | Partial — audit log written for AI mode changes; screen in Phase 3 | /app/settings/audit |
 | TEAM-07 | Not started (Phase 3) | /app/settings/team |
 | AI-01 | Not started | AI pipeline |
-| AI-02 | Not started | AI pipeline |
+| AI-02 | Partial — the AI uses the knowledge book and taught answers in every reply and in the test chat; voice input comes later | AI pipeline |
 | AI-03 | Not started | AI pipeline |
 | AI-04 | Not started | AI pipeline |
 | AI-05 | Not started | AI pipeline |
@@ -53,26 +53,26 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | AI-13 | Not started | AI pipeline |
 | AI-14 | Not started | AI pipeline |
 | AI-15 | Not started | AI pipeline |
-| TRN-01 | Not started (screen 07) | /app/agent |
+| TRN-01 | Done — knowledge book: add, remove, each change published as a version; persona editor (name, role, tone, sales style, address, reply delay) | /app/agent |
 | TRN-02 | Not started (Phase 2) | overlay |
 | TRN-03 | Not started (Phase 2) | /app/agent/training |
-| TRN-04 | Not started (Phase 2) | /app/agent/training |
-| TRN-05 | Not started (Phase 2) | /app/agent/training |
+| TRN-04 | Partial — "Questions it couldn't answer": counted once however they are written, Teach the answer with a live preview, Turn on for customers, Hide. Full training page in Phase 2 | /app/agent |
+| TRN-05 | Partial — every publish is a version with a snapshot; "Undo last publish" restores the one before. Version history page in Phase 2 | /app/agent |
 | TRN-06 | Not started (Phase 3) | /app/agent/training |
 | TRN-07 | Not started (Phase 2) | /app/agent/training |
-| TRN-08 | Partial — "Test chat" button in the top bar opens the panel; the chat comes with screen 07 | overlay |
+| TRN-08 | Done — test chat on the AI agent screen and in the top bar panel; nothing is stored or sent (needs ANTHROPIC_API_KEY) | /app/agent, overlay |
 | TRN-09 | Not started (Phase 3) | overlay |
 | TRN-10 | Not started (Phase 2) | /app/agent/training |
 | HND-01 | Done — "." from Messenger / Business Suite pauses the AI, "." again hands back; the dot is not stored | webhooks |
-| HND-02 | Done — after a takeover or reply the AI returns by itself after 30 min (per-shop setting `auto_return_min`; its control comes with screen 07) | /app/inbox |
+| HND-02 | Done — the AI returns by itself after a takeover (15 min to 12 h, or never), set in the persona editor | /app/agent |
 | HND-03 | Done — Take over / Back to AI buttons | /app/inbox |
 | HND-04 | Partial — AI summary, "Ask about this customer" and "Draft reply with AI". Ask and draft need ANTHROPIC_API_KEY; the summary falls back to order history without it | /app/inbox |
 | HND-05 | Not started (Phase 3) | extension/ |
 | HND-06 | Done — when the AI hands a chat over, the assignee (or owner, admins and moderators) get an alert in the app and on their phone (web push; needs VAPID keys); WhatsApp alerts to the team are saved as a preference and wait on an approved message template | /app, overlay |
-| CAT-01 | Not started (screens 08, 13) | /app/catalog |
-| CAT-02 | Not started | /app/catalog |
-| CAT-03 | Not started (screen 24) | messages |
-| CAT-04 | Not started (Phase 2) | overlay |
+| CAT-01 | Done — catalog grid with stock KPIs, filters, search, AI readiness; product form with photos (upload, cover), options and variants, visibility, AI notes, add-ons, linked posts, duplicate, archive; CSV / Google Sheet import. Video, product page preview and WooCommerce sync come later | /app/catalog, /app/catalog/new, /app/catalog/:id |
+| CAT-02 | Done — per-variant stock, price and SKU with bulk edit; open orders keep their reserved stock; the AI sees which sizes are left and suggests the nearest one when a size is sold out; hidden and archived products are never offered | /app/catalog/:id |
+| CAT-03 | Done — product cards (screen 24): photo or colour, discount badge, price with old price, code and sizes left, "এটা চাই" and "সাইজ চার্ট" buttons; sent as a Messenger / Instagram carousel (up to 10), as a priced list on WhatsApp; hidden products never go out | messages |
+| CAT-04 | Done — "Product" in the composer opens a picker: search, choose up to 10, see the cards exactly as the customer will, send | overlay |
 | CAT-05 | Not started (Phase 2) | /app/catalog/size-charts |
 | CAT-06 | Not started (Phase 2) | /app/catalog/posts |
 | CMT-01 | Partial — comments from Facebook and Instagram webhooks; public reply, private DM and hide from the dashboard. Missing: the AI replying to comments by itself (AI pipeline step) | /app/comments |
@@ -82,8 +82,8 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CMT-05 | Partial — spam and phone-number comments are hidden automatically when they arrive; the switches live on the P1 Posts screen | /app/comments |
 | CMT-06 | Not started (Phase 3) | /app/content |
 | ORD-01 | Not started | AI pipeline |
-| ORD-02 | Not started (screen 24) | messages |
-| ORD-03 | Not started (screen 20) | /b/:token |
+| ORD-02 | Done — the order summary card in chat (items, delivery, cash to collect, name and address) with "হ্যাঁ, কনফার্ম" and "পরিবর্তন করুন" (bill page); tapping confirm approves the order, thanks the customer and alerts the shop | messages |
+| ORD-03 | Done — customer bill page (frames 20, 20b): Bangla first with English, shop header, status card with estimated delivery, 5-step live timeline, items and totals with cash to collect, courier and tracking link once shipped, address / phone change request (lands on the order as ORD-07), bKash / Nagad advance by TrxID (waits in Payments), message / call the shop, "I want to cancel" (notifies, never cancels by itself); link in the chat confirmation and "Customer's bill" on the order | /b/:token |
 | ORD-04 | Not started (Phase 2) | /p/:shop/:product |
 | ORD-05 | Partial — coupons (% off, ৳ off, free delivery, minimum order, dates, max uses) apply in the order form and are counted; the Coupons screen comes in Phase 2 | /app/orders/new |
 | ORD-06 | Not started | AI pipeline |
@@ -91,7 +91,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | ORD-08 | Partial — delivery zones with days (incl. Dhaka suburbs) on orders and the form; the AI telling the customer comes with the AI pipeline | /app/orders/:n |
 | ORD-09 | Done — New order form (screen 12): phone check, address split into district/thana/zone, product search with sizes and stock, payment (COD, bKash advance + TrxID, paid), coupon, note, draft, edit; prices come from the catalog and stock is reserved | /app/orders/new |
 | ORD-10 | Done — Bangladeshi phone validation in the order form and on the server: 11 digits, 013–019, Bangla digits and +880 accepted, with a clear message | /app/orders/new |
-| ORD-11 | Partial — orders created from a chat send a confirmation with items, delivery time and cash to collect; the designed Messenger card comes with screen 24 | /app/orders/new |
+| ORD-11 | Done — orders made from a chat send the order summary card with the bill link (text with the same details on platforms without cards); the order screen can send it again | /app/orders/new, /app/orders/:n |
 | OMS-01 | Done — every order (AI, team, product page, website) with KPI tiles: today, to confirm, ready to ship, COD to collect, returns · 7 days; live updates | /app/orders |
 | OMS-02 | Done — pipeline Pending → On hold → Approved → Processing → Ready to ship → In transit → Delivered / Cancelled with only valid moves; inline status menu; every move written to the order history | /app/orders |
 | OMS-03 | Done — status tabs with counts, source, zone and date filters, search by name, phone (Bangla digits too) or #number, pagination, CSV export | /app/orders |
@@ -102,9 +102,9 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CRR-01 | Partial — one-click and bulk booking (list, order detail, or "Book right away" when creating) with Steadfast and Pathao; real APIs once the shop adds keys, test mode otherwise; label sheet. Missing: auto-booking on approve and key entry in Settings → Couriers (screen 10) | /app/orders |
 | CRR-02 | Partial — tracking timeline on the order (frame 11b), Refresh, and a background check of every parcel on the way every 30 minutes that moves the order to Delivered / Returned. Missing: courier webhooks (polling covers it until then) | /app/orders/:n |
 | CRR-03 | Not started (Phase 2) | /app/settings/delivery-updates |
-| CRR-04 | Not started | AI pipeline |
+| CRR-04 | Partial — delivery update card (packed / on the way / delivered, courier, tracking and bill buttons) sent from the order screen; sending it automatically on each status change comes with the AI pipeline / delivery-updates settings | /app/orders/:n |
 | CRR-05 | Not started (Phase 2) | /app/settings/delivery-updates |
-| CRR-06 | Not started (Phase 3) | /app/settings/delivery-updates |
+| CRR-06 | Partial — review request card after delivery (one-tap rating); the rating is saved on the order and a low rating alerts the team; automatic sending comes with delivery-updates settings | /app/orders/:n |
 | CRR-07 | Partial — Settings → Delivery & courier: connect Steadfast, Pathao, RedX, Paperfly or eCourier with the shop's own keys (stored encrypted, refused in production without TOKEN_ENCRYPTION_KEY), auto-book (one courier), disconnect; test mode until real keys and DRY_RUN off | /app/settings/courier |
 | PAY-01 | Not started (Phase 2) | /app/payments |
 | PAY-02 | Not started (Phase 3) | /app/payments?tab=gateway |

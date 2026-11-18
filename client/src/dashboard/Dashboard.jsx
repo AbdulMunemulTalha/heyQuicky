@@ -32,6 +32,7 @@ const screens = {
 const overlays = {
   testChat: lazy(() => import('./screens/TestChat.jsx')),
   search: lazy(() => import('./screens/Search.jsx')),
+  products: lazy(() => import('./screens/SendProducts.jsx')),
   notifications: lazy(() => import('./screens/Notifications.jsx')),
 };
 

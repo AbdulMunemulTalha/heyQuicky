@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
+import { RichMessage, isRich } from '../ui/rich.jsx';
 import { navigate, setQuery } from '../lib/router.jsx';
 import { Icon } from '../ui/icons.jsx';
 import { Avatar, Button, Checkbox, Empty, ErrorState, Modal, Pill, Skeleton, Toggle, toast } from '../ui/kit.jsx';
@@ -320,9 +321,11 @@ function Messages({ t, messages, conversation }) {
         ? <li key={`s${i}`} className="msg-sep">{m.sep} · {t.time(m.at)}</li>
         : (
           <li key={m.id} className={`msg ${m.direction}${m.byAi ? ' ai' : ''}`}>
-            <div className="bubble bn-ok">
+            {m.kind === 'postback' && <div className="tapped">{t('rm.tapped')}</div>}
+            <div className={`bubble bn-ok${isRich(m.kind) && m.payload && !m.payload.item ? ' rm-wrap' : ''}`}>
               {m.attachments?.length > 0 && <span className="msg-attach">[{m.attachments[0].type ?? 'file'}]</span>}
-              {m.kind === 'order_summary' && m.payload ? <OrderCard t={t} o={m.payload} /> : m.text}
+              {m.kind === 'order_summary' && m.payload?.item ? <OrderCard t={t} o={m.payload} />
+                : isRich(m.kind) && m.payload ? <RichMessage kind={m.kind} payload={m.payload} text={m.text} /> : m.text}
             </div>
             <div className="msg-meta">
               {m.direction === 'out' && (m.byAi ? <Pill tone="blue">AI</Pill> : <span>{m.by}</span>)}

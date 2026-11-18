@@ -30,6 +30,11 @@ export default function OrderDetail({ params }) {
     return () => socket.off('order', on);
   }, [socket, load, o]);
 
+  // Screen 24: order summary, delivery update or review request as a card in the customer's chat.
+  async function sendCard(type) {
+    try { await dash(`/orders/${o.id}/message`, { method: 'POST', body: { type } }); toast(t('od.msg.sent'), 'green'); load(); } catch (e) { toast(e.message, 'red'); }
+  }
+
   async function post(path, body, ok) {
     setBusy(true);
     try {
@@ -190,11 +195,24 @@ export default function OrderDetail({ params }) {
             {o.advanceInfo?.trx_id && <p className="small muted">TrxID {o.advanceInfo.trx_id}</p>}
           </Card>
 
-          {o.chat.length > 0 && (
+          {(o.chat.length > 0 || o.hasChat) && (
             <Card title={t('od.fromChat')} action={<Link to={`/inbox/${o.customer.conversationId}`} className="small">{t('common.viewAll')}</Link>}>
-              <ol className="msgs od-chat">
-                {o.chat.map((m, i) => <li key={i} className={`msg ${m.direction}${m.byAi ? ' ai' : ''}`}><div className="bubble bn-ok">{m.text}</div></li>)}
-              </ol>
+              {o.chat.length > 0 && (
+                <ol className="msgs od-chat">
+                  {o.chat.map((m, i) => <li key={i} className={`msg ${m.direction}${m.byAi ? ' ai' : ''}`}><div className="bubble bn-ok">{m.text}</div></li>)}
+                </ol>
+              )}
+              {o.review && <p className="small">⭐ {t('od.rated', { n: t.num(o.review.rating) })}</p>}
+              {o.hasChat && can('reply') && (
+                <div className="od-send">
+                  <span className="small muted">{t('od.sendToChat')}</span>
+                  <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                    <Button size="sm" onClick={() => sendCard('summary')}>{t('od.msg.summary')}</Button>
+                    {['ready_to_ship', 'in_transit', 'delivered', 'returned'].includes(o.status) && <Button size="sm" onClick={() => sendCard('update')}>{t('od.msg.update')}</Button>}
+                    {o.status === 'delivered' && !o.review && <Button size="sm" onClick={() => sendCard('review')}>{t('od.msg.review')}</Button>}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
         </div>

@@ -422,3 +422,4 @@
 }
 @media (min-width: 769px) { #dash .od-main-actions { display: contents; } }
 #dash .install-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; margin-bottom: 8px; border-radius: 8px; border: 1px dashed var(--accent); background: var(--accent-tint); color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+#dash .od-send { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }

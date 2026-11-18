@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
+import { productCards } from '../../platforms/rich.js';
 import { can, need } from '../../dashboard/permissions.js';
 import { audit, escapeRegex, clampInt } from '../../dashboard/util.js';
 import { setting } from '../../dashboard/settings.js';
@@ -219,6 +220,26 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     const minutes = setting(req.workspace, 'auto_return_min', DEFAULT_RETURN_MIN);
     await db.conversations.updateOne({ _id: conv._id }, { $set: { human_until: minutes ? new Date(Date.now() + minutes * 60_000) : null, taken_over_by: req.user.id, unread_count: 0, act_now: false } });
     if (req.body?.savedReplyId) await db.savedReplies.updateOne({ _id: Number(req.body.savedReplyId), workspace_id: req.user.workspace_id }, { $inc: { uses: 1 } });
+    await publish(conv._id);
+    res.status(201).json(message);
+  });
+
+  // Product cards (screen 24, CAT-03/04): up to 10 products as a carousel the customer can order from.
+  router.post('/inbox/:id/products', auth, need(db, 'reply'), async (req, res) => {
+    const conv = await load(req, idOf(req));
+    const ids = [...new Set((Array.isArray(req.body?.productIds) ? req.body.productIds : []).map(Number).filter(Boolean))].slice(0, 10);
+    if (!ids.length) throw new InboxError(400, 'Pick at least one product');
+    if (conv.assigned_user_id && conv.assigned_user_id !== req.user.id && req.user.role !== 'owner') {
+      const other = await db.users.findById(conv.assigned_user_id, { name: 1 }).lean();
+      throw new InboxError(409, `${other?.name ?? 'A teammate'} is handling this chat. Take over first so the customer doesn't get two answers.`);
+    }
+    const found = await db.products.find({ _id: { $in: ids }, workspace_id: req.user.workspace_id }).lean();
+    const byId = new Map(found.map((p) => [p._id, p]));
+    const rich = productCards(ids.map((id) => byId.get(id)).filter(Boolean), { publicUrl: config.publicUrl || `${req.protocol}://${req.get('host')}` });
+    if (!rich.payload.cards.length) throw new InboxError(400, 'Those products are hidden or archived');
+    const message = await inbox.sendRich(req.user, conv._id, rich);
+    const minutes = setting(req.workspace, 'auto_return_min', DEFAULT_RETURN_MIN);
+    await db.conversations.updateOne({ _id: conv._id }, { $set: { human_until: minutes ? new Date(Date.now() + minutes * 60_000) : null, taken_over_by: req.user.id, unread_count: 0, act_now: false, ai_handoff: true, ai_handoff_at: new Date(), ai_handoff_reason: 'A team member replied' } });
     await publish(conv._id);
     res.status(201).json(message);
   });

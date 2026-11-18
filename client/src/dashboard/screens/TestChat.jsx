@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { Button, Drawer } from '../ui/kit.jsx';
+import { RichMessage } from '../ui/rich.jsx';
 
 // Test chat (TRN-08): chat as a customer. Nothing is stored or sent to anyone.
 export function TestChat({ compact = false }) {
@@ -24,7 +25,7 @@ export function TestChat({ compact = false }) {
     setError('');
     try {
       const out = await dash('/agent/test', { method: 'POST', body: { turns: next.map(({ role, content: c }) => ({ role, content: c })) } });
-      setTurns([...next, { role: 'assistant', content: out.reply || '…', meta: out.handoff ? t('ag.wouldHandOff', { r: out.handoff_reason }) : out.intent ? t('ag.intent', { i: out.intent }) : '' }]);
+      setTurns([...next, { role: 'assistant', content: out.reply || '…', rich: out.rich ?? null, meta: out.handoff ? t('ag.wouldHandOff', { r: out.handoff_reason }) : out.intent ? t('ag.intent', { i: out.intent }) : '' }]);
     } catch (err) {
       setError(err.message);
     } finally { setBusy(false); }
@@ -36,7 +37,7 @@ export function TestChat({ compact = false }) {
         {turns.length === 0 && <li className="tc-hint">{t('ag.testHint')}</li>}
         {turns.map((m, i) => (
           <li key={i} className={`msg ${m.role === 'user' ? 'out' : 'in'}`}>
-            <div className="bubble bn-ok">{m.content}</div>
+            <div className={`bubble bn-ok${m.rich ? ' rm-wrap' : ''}`}>{m.rich ? <RichMessage kind={m.rich.kind} payload={m.rich.payload} text={m.content} /> : m.content}</div>
             {m.meta && <small className="tc-meta">{m.meta}</small>}
           </li>
         ))}

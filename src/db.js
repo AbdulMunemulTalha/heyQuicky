@@ -272,7 +272,8 @@ function defineModels(conn) {
     courier: { type: String, default: '' },
     consignment_id: { type: String, default: '' },
     bill_token: { type: String, default: null, index: true },
-    cancel_requested_at: { type: Date, default: null }, // the customer asked to cancel from the bill page
+    cancel_requested_at: { type: Date, default: null },
+    review: { type: Schema.Types.Mixed, default: null }, // { rating 1-5, at } from the review card in chat // the customer asked to cancel from the bill page
     draft: { type: Boolean, default: false },
     send_confirmation: { type: Boolean, default: true },
     created_at: createdAt,

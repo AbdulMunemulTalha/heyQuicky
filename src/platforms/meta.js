@@ -19,6 +19,15 @@ function toIso(ts) {
 function parseMessaging(platform, entry, { appId }) {
   const out = [];
   for (const event of entry.messaging ?? []) {
+    // A tap on a card button (postback) arrives without a message; it is stored as the customer's reply.
+    if (event.postback && !event.message) {
+      out.push({
+        platform, channelExternalId: String(entry.id), contactExternalId: String(event.sender?.id), contactName: null, direction: 'in',
+        messageId: event.postback.mid || `pb_${event.sender?.id}_${event.timestamp}`, text: event.postback.title ?? '', attachments: [],
+        postback: event.postback.payload ?? '', timestamp: toIso(event.timestamp),
+      });
+      continue;
+    }
     const msg = event.message;
     if (!msg?.mid || msg.is_deleted) continue;
     const isEcho = Boolean(msg.is_echo);
@@ -34,6 +43,7 @@ function parseMessaging(platform, entry, { appId }) {
       messageId: msg.mid,
       text: msg.text ?? '',
       attachments: (msg.attachments ?? []).map((a) => ({ type: a.type, url: a.payload?.url ?? null })),
+      ...(msg.quick_reply?.payload ? { postback: msg.quick_reply.payload } : {}),
       timestamp: toIso(event.timestamp),
     });
   }
@@ -63,6 +73,7 @@ function whatsappMessage(m, { phoneNumberId, contactId, direction, name = null }
     direction,
     messageId: m.id,
     text: whatsappText(m),
+    ...(m.type === 'interactive' ? { postback: m.interactive?.button_reply?.id ?? m.interactive?.list_reply?.id ?? '' } : m.type === 'button' ? { postback: m.button?.payload ?? '' } : {}),
     attachments: WHATSAPP_MEDIA.includes(m.type) ? [{ type: m.type, mediaId: m[m.type]?.id ?? null }]
       : m.type === 'media_placeholder' ? [{ type: 'media', mediaId: null }] : [],
     timestamp: toIso(m.timestamp),
@@ -221,6 +232,23 @@ export async function sendText({ channel, contact, text, tag, graphVersion, dryR
   }
 
   const payload = { recipient: { id: contact.external_id }, message: { text } };
+  if (tag) Object.assign(payload, { messaging_type: 'MESSAGE_TAG', tag });
+  else payload.messaging_type = 'RESPONSE';
+  const data = await graphPost(`${base}/me/messages`, channel.access_token, payload, fetchImpl);
+  return { externalId: data.message_id ?? null };
+}
+
+// Rich messages (screen 24): a Send API message object for Messenger / Instagram, or a WhatsApp body.
+export async function sendRich({ channel, contact, message, tag, graphVersion, dryRun, fetchImpl = globalThis.fetch }) {
+  if (dryRun || !channel.access_token) return { externalId: `dry_${randomBytes(8).toString('hex')}` };
+  const base = `https://graph.facebook.com/${graphVersion}`;
+  if (channel.platform === 'whatsapp') {
+    const data = await graphPost(`${base}/${channel.external_id}/messages`, channel.access_token, {
+      messaging_product: 'whatsapp', recipient_type: 'individual', to: contact.external_id, ...message,
+    }, fetchImpl);
+    return { externalId: data.messages?.[0]?.id ?? null };
+  }
+  const payload = { recipient: { id: contact.external_id }, message };
   if (tag) Object.assign(payload, { messaging_type: 'MESSAGE_TAG', tag });
   else payload.messaging_type = 'RESPONSE';
   const data = await graphPost(`${base}/me/messages`, channel.access_token, payload, fetchImpl);

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomBytes } from 'node:crypto';
 import { InboxError } from '../../inbox.js';
+import { orderSummary, deliveryUpdate, reviewRequest, trackingUrl } from '../../platforms/rich.js';
 import { can, need } from '../../dashboard/permissions.js';
 import { audit, bdPhone, escapeRegex } from '../../dashboard/util.js';
 import { riskFor } from '../../dashboard/risk.js';
@@ -137,8 +138,9 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
 
     // Confirmation in Messenger (ORD-11) when the order came from a chat.
     if (!draft && conversationId && req.body?.sendConfirmation !== false) {
-      const text = `✅ অর্ডার #${number} কনফার্ম হয়েছে\n${priced.lines.map((l) => `${l.name}${l.variant ? ` (${l.variant})` : ''} × ${l.qty} — ৳${l.price * l.qty}`).join('\n')}\nডেলিভারি: ৳${priced.delivery} (${priced.zone.days})\n${priced.cod ? `ক্যাশ অন ডেলিভারি: ৳${priced.cod}` : 'পেমেন্ট সম্পূর্ণ'}\nবিল ও ট্র্যাকিং: ${config.publicUrl || `${req.protocol}://${req.get('host')}`}/b/${billToken}`;
-      await inbox.sendReply(req.user, conversationId, text).catch((err) => console.warn('confirmation not sent:', err.message));
+      const saved = await db.orders.findById(order.id).lean();
+      const rich = orderSummary(saved, { billUrl: `${config.publicUrl || `${req.protocol}://${req.get('host')}`}/b/${billToken}` });
+      await inbox.sendRich(req.user, conversationId, rich).catch((err) => console.warn('confirmation not sent:', err.message));
     }
     let booked = null;
     if (!draft && req.body?.bookNow && can(req.user, 'book_couriers', ws)) {
@@ -232,8 +234,29 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
       couriers: couriers.map((c) => ({ key: c.courier, name: COURIERS[c.courier]?.name ?? c.courier, rate: rate.get(c.courier) ?? rate.get(COURIERS[c.courier]?.name) ?? null, autoBook: c.auto_book })),
       events: events.map((e) => ({ id: e._id, type: e.type, text: e.text, from: e.from, to: e.to, by: e.by, who: e.user_id ? users.get(e.user_id) ?? '' : e.by === 'ai' ? 'AI' : e.by === 'courier' ? 'Courier' : '', at: e.created_at })),
       chat: chat.map((m) => ({ direction: m.direction, text: m.text, byAi: m.sent_by_ai, at: m.created_at })),
-      bkash: ws.bkash_number, billToken: order.bill_token,
+      bkash: ws.bkash_number, billToken: order.bill_token, hasChat: Boolean(order.conversation_id), review: order.review ?? null,
     });
+  });
+
+  // Screen 24: send the order summary again, a delivery update, or a review request to the customer's chat.
+  router.post('/orders/:id/message', auth, need(db, 'reply'), async (req, res) => {
+    const order = await loadOrder(req);
+    if (!order.conversation_id) throw new InboxError(409, 'This order has no chat to send to');
+    const base = config.publicUrl || `${req.protocol}://${req.get('host')}`;
+    const billUrl = order.bill_token ? `${base}/b/${order.bill_token}` : '';
+    const type = req.body?.type;
+    let rich;
+    if (type === 'summary') rich = orderSummary(order, { billUrl });
+    else if (type === 'update') rich = deliveryUpdate(order, { trackUrl: trackingUrl(order.courier, order.consignment_id), billUrl });
+    else if (type === 'review') {
+      if (order.status !== 'delivered') throw new InboxError(409, 'Ask for a review once the order is delivered');
+      rich = reviewRequest(order);
+    } else throw new InboxError(400, 'Unknown message');
+    const message = await inbox.sendRich(req.user, order.conversation_id, rich);
+    await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'note', by: 'user', user_id: req.user.id,
+      text: `${req.user.name} sent the ${{ summary: 'order summary', update: 'delivery update', review: 'review request' }[type]} in chat` });
+    emit(order.workspace_id, 'order', { id: order._id });
+    res.status(201).json({ id: message.id, status: message.status });
   });
 
   // ORD-07: the customer asked to change something after confirming. Accept applies it; keep closes the request.
