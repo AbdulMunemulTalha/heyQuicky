@@ -134,6 +134,7 @@ export function defineDashboardModels(conn) {
     actions: { type: [Mixed], default: [] },
     read_at: { type: Date, default: null },
     dismissed: { type: Boolean, default: false },
+    ref: { type: String, default: '' }, // de-duplicates repeats of the same event
   });
   notification.index({ user_id: 1, created_at: -1 });
 

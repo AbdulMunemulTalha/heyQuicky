@@ -4,7 +4,6 @@ import { InboxError } from '../../inbox.js';
 import { can, need } from '../../dashboard/permissions.js';
 import { audit, bdPhone, escapeRegex } from '../../dashboard/util.js';
 import { riskFor } from '../../dashboard/risk.js';
-import { addNotification } from '../../dashboard/notify.js';
 import { decryptSecret } from '../../secrets.js';
 import { COURIERS, courierClient, toPipeline } from '../../adapters/couriers.js';
 import { NEXT, stage, orderTotal, changeStatus, bookCourier, adjustStock } from '../../dashboard/orderOps.js';
@@ -13,7 +12,7 @@ import { zonesFor, priceOrder, cleanCustomer } from '../../dashboard/orderBuild.
 const SOURCES = { phone: 'team', messenger: 'team', instagram: 'team', whatsapp: 'team', walk_in: 'team', website: 'website' };
 
 // Screens 11 (order detail and its on-hold / in-transit / cancel states) and 12 (new / edit order).
-export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fetchImpl }) {
+export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fetchImpl, notify }) {
   const router = Router();
 
   async function loadOrder(req, { byNumber = false } = {}) {
@@ -119,12 +118,21 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
       source: SOURCES[req.body?.source] ?? 'team', taken_by: req.user.name, bill_token: randomBytes(9).toString('base64url'),
       send_confirmation: req.body?.sendConfirmation !== false,
     });
-    if (!draft) await adjustStock(db, { product_items: priced.lines }, -1);
+    if (!draft) await adjustStock(db, { product_items: priced.lines }, -1, { notify });
     if (priced.couponCode) await db.coupons.updateOne({ workspace_id: ws._id, code: priced.couponCode }, { $inc: { used: 1 } });
     await db.customers.updateOne({ _id: customer._id }, { $inc: { 'stats.orders': draft ? 0 : 1 } });
     await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: order.id, type: 'status', to: draft ? 'pending' : 'approved', by: 'user', user_id: req.user.id,
       text: draft ? `${req.user.name} saved a draft` : `${req.user.name} created the order (${req.body?.source ?? 'team'})` });
     await audit(db, req.user, `Created order #${number}`, { where: 'Orders' });
+    if (!draft) {
+      const total = priced.subtotal + priced.delivery - priced.discount;
+      await notify?.({ workspaceId: ws._id, event: 'order', title: `New order #${number}`, body: `${who.name} · ৳${total.toLocaleString('en-IN')} · taken by ${req.user.name}`,
+        link: `/orders/${number}`, ref: `order:${order.id}`, amount: total, exceptUserId: req.user.id });
+      if (risk?.level === 'high') {
+        await notify?.({ workspaceId: ws._id, event: 'escalation', title: `Order #${number} needs a look.`, body: `High return risk (${risk.score}%). ${risk.action}.`,
+          link: `/orders/${number}`, ref: `risk:${order.id}`, exceptUserId: req.user.id });
+      }
+    }
 
     // Confirmation in Messenger (ORD-11) when the order came from a chat.
     if (!draft && conversationId && req.body?.sendConfirmation !== false) {
@@ -151,7 +159,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
     if (!order.draft) await adjustStock(db, order, +1);
     const wasDraft = order.draft;
     const draft = Boolean(req.body?.draft) && order.draft;
-    if (!draft) await adjustStock(db, { product_items: priced.lines }, -1);
+    if (!draft) await adjustStock(db, { product_items: priced.lines }, -1, { notify });
     const changed = who.address !== order.address || who.phone !== order.phone;
     await db.orders.updateOne({ _id: order._id }, { $set: {
       customer_name: who.name, phone: who.phone, address: [who.address, who.areaName].filter(Boolean).join(', '), district: who.district, thana: who.thana, area: zone, zone,
@@ -250,7 +258,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
     const ev = await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'note', by: 'user', user_id: req.user.id, text });
     const team = await db.users.find({ workspace_id: order.workspace_id, is_active: true }, { name: 1 }).lean();
     for (const u of team.filter((x) => x._id !== req.user.id && new RegExp(`@${escapeRegex(x.name)}\\b`, 'i').test(text))) {
-      await addNotification(db, emit, { workspaceId: order.workspace_id, userId: u._id, type: 'mention', category: 'orders', title: `${req.user.name} mentioned you`, body: `on order #${order.number}: "${text.slice(0, 80)}"`, link: `/orders/${order.number}` });
+      await notify({ workspaceId: order.workspace_id, userIds: [u._id], event: 'mention', title: `${req.user.name} mentioned you`, body: `on order #${order.number}: "${text.slice(0, 80)}"`, link: `/orders/${order.number}` });
     }
     res.status(201).json({ id: ev.id, text, who: req.user.name, at: ev.created_at, type: 'note' });
   });
@@ -280,7 +288,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
   // Asks the courier for the latest status now (CRR-02); a background job does this every 30 minutes too.
   router.post('/orders/:id/track', auth, async (req, res) => {
     const order = await loadOrder(req);
-    res.json(await syncConsignment(db, config, order, { emit, fetchImpl }));
+    res.json(await syncConsignment(db, config, order, { emit, fetchImpl, notify }));
   });
 
   router.post('/orders/:id/deliver', auth, need(db, 'edit_orders'), async (req, res) => {
@@ -293,7 +301,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
 }
 
 // Pulls one consignment's status from its courier and moves the order along if it changed.
-export async function syncConsignment(db, config, order, { emit = () => {}, fetchImpl } = {}) {
+export async function syncConsignment(db, config, order, { emit = () => {}, fetchImpl, notify = null } = {}) {
   const c = await db.consignments.findOne({ order_id: order._id }).sort({ created_at: -1 }).lean();
   if (!c) throw new InboxError(409, 'This order has no courier booking yet');
   const account = await db.courierAccounts.findOne({ workspace_id: order.workspace_id, courier: c.courier }).lean();
@@ -307,16 +315,20 @@ export async function syncConsignment(db, config, order, { emit = () => {}, fetc
     const to = toPipeline(status);
     if (to !== stage(order.status) && NEXT[stage(order.status)]?.includes(to)) {
       await changeStatus(db, null, order, to, { emit, by: 'courier', text: `${COURIERS[c.courier]?.name}: ${status}`, reason: to === 'cancelled' ? 'other' : '' });
+      if (to === 'returned') {
+        await notify?.({ workspaceId: order.workspace_id, event: 'courier', title: `Order #${order.number ?? order._id} is coming back.`,
+          body: `${COURIERS[c.courier]?.name ?? c.courier} marked it ${status.replace(/_/g, ' ')}. Call ${order.customer_name} or rebook it.`, link: `/orders/${order.number ?? order._id}`, ref: `courier:${order._id}:${status}` });
+      }
     }
   }
   return { status };
 }
 
 // Background courier sync for every parcel on the way (started by the server, not in tests).
-export function startCourierSync(db, config, { emit, fetchImpl, everyMs = 30 * 60_000 } = {}) {
+export function startCourierSync(db, config, { emit, fetchImpl, notify = null, everyMs = 30 * 60_000 } = {}) {
   const run = async () => {
     const orders = await db.orders.find({ status: { $in: ['in_transit', 'shipped'] }, consignment_id: { $ne: '' } }).limit(500).lean();
-    for (const o of orders) await syncConsignment(db, config, o, { emit, fetchImpl }).catch((err) => console.warn(`courier sync #${o.number}:`, err.message));
+    for (const o of orders) await syncConsignment(db, config, o, { emit, fetchImpl, notify }).catch((err) => console.warn(`courier sync #${o.number}:`, err.message));
   };
   const timer = setInterval(() => run().catch(() => {}), everyMs);
   timer.unref();

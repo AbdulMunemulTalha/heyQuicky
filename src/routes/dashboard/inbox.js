@@ -3,7 +3,6 @@ import { InboxError } from '../../inbox.js';
 import { can, need } from '../../dashboard/permissions.js';
 import { audit, escapeRegex, clampInt } from '../../dashboard/util.js';
 import { setting } from '../../dashboard/settings.js';
-import { addNotification } from '../../dashboard/notify.js';
 import { stageOf } from './overview.js';
 
 const TABS = ['waiting', 'unread', 'open', 'done', 'spam', 'snoozed'];
@@ -33,7 +32,7 @@ export function tabFilter(tab, now = new Date()) {
   }
 }
 
-export function inboxRoutes(db, config, { auth, inbox, agent, emit }) {
+export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
   const router = Router();
 
   const scopeFilter = (user, workspace, scope) => {
@@ -240,7 +239,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit }) {
     if (note) await db.insert(db.notes, { workspace_id: conv.workspace_id, conversation_id: conv._id, author_user_id: req.user.id, text: note });
     const [row] = await hydrate([await db.conversations.findById(conv._id).lean()]);
     if (assignee && assignee._id !== req.user.id) {
-      await addNotification(db, emit, { workspaceId: conv.workspace_id, userId: assignee._id, type: 'handoff', category: 'chats',
+      await notify({ workspaceId: conv.workspace_id, userIds: [assignee._id], event: 'handoff',
         title: `${req.user.name} assigned ${row.name} to you`, body: note || row.preview, link: `/inbox/${conv._id}` });
     }
     await audit(db, req.user, `Assigned ${row.name} to ${assignee?.name ?? 'nobody'}`, { where: 'Inbox' });
@@ -313,7 +312,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit }) {
     const note = await db.insert(db.notes, { workspace_id: conv.workspace_id, conversation_id: conv._id, customer_id: conv.customer_id, author_user_id: req.user.id, text, mentions });
     const [row] = await hydrate([conv]);
     for (const userId of mentions.filter((id) => id !== req.user.id)) {
-      await addNotification(db, emit, { workspaceId: conv.workspace_id, userId, type: 'mention', category: 'chats', title: `${req.user.name} mentioned you`, body: `in ${row.name}: "${text.slice(0, 80)}"`, link: `/inbox/${conv._id}` });
+      await notify({ workspaceId: conv.workspace_id, userIds: [userId], event: 'mention', title: `${req.user.name} mentioned you`, body: `in ${row.name}: "${text.slice(0, 80)}"`, link: `/inbox/${conv._id}` });
     }
     res.status(201).json({ id: note.id, text, by: req.user.name, at: note.created_at });
   });

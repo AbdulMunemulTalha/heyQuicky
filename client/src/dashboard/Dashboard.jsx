@@ -1,11 +1,11 @@
-import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { SocketContext } from '../components/common.jsx';
 import { dash, setUnauthorizedHandler } from './lib/api.js';
 import { I18n, makeT } from './lib/i18n.js';
 import { Dash } from './lib/context.js';
 import { match, useLocation } from './lib/router.jsx';
 import { Sidebar, Topbar, MobileTabs } from './Shell.jsx';
-import { Drawer, Empty, ErrorState, Skeleton, Toasts } from './ui/kit.jsx';
+import { Drawer, Empty, ErrorState, Skeleton, Toasts, toast } from './ui/kit.jsx';
 import './dashboard.css';
 
 // Screens load on demand so the first paint stays small. Paths are under /app.
@@ -24,10 +24,12 @@ const screens = {
   product: lazy(() => import('./screens/ProductForm.jsx')),
   analytics: lazy(() => import('./screens/Analytics.jsx')),
   settings: lazy(() => import('./screens/Settings.jsx')),
+  notifySettings: lazy(() => import('./screens/NotificationSettings.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
 const overlays = {
   testChat: lazy(() => import('./screens/TestChat.jsx')),
+  notifications: lazy(() => import('./screens/Notifications.jsx')),
 };
 
 const ROUTES = [
@@ -56,6 +58,7 @@ const ROUTES = [
   ['/settings/courier', 'settings'],
   ['/settings/payments', 'settings'],
   ['/settings/team', 'settings'],
+  ['/settings/notifications', 'notifySettings'],
 ];
 
 function pick(path) {
@@ -106,8 +109,12 @@ export function Dashboard({ onSignOut }) {
     events.forEach((e) => socket.on(e, refreshBadges));
     const onWorkspace = (patch) => setMe((m) => (m ? { ...m, workspace: { ...m.workspace, ...patch } } : m));
     socket.on('workspace', onWorkspace);
-    return () => { events.forEach((e) => socket.off(e, refreshBadges)); socket.off('workspace', onWorkspace); };
+    const onNotification = (n) => { if (n.userId === meId.current) toast(n.title, 'dark'); };
+    socket.on('notification', onNotification);
+    return () => { events.forEach((e) => socket.off(e, refreshBadges)); socket.off('workspace', onWorkspace); socket.off('notification', onNotification); };
   }, [socket, refreshBadges]);
+  const meId = useRef(null);
+  meId.current = me?.user?.id ?? null;
 
   useEffect(() => {
     const on = () => setOffline(false);

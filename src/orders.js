@@ -117,7 +117,7 @@ async function withCreator(db, docs) {
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export function createOrders(db, inbox, { emit = () => {} } = {}) {
+export function createOrders(db, inbox, { emit = () => {}, notify = null } = {}) {
   async function getOrder(id) {
     const doc = Number.isInteger(id) ? await db.orders.findById(id).lean() : null;
     return doc ? (await withCreator(db, [doc]))[0] : null;
@@ -172,6 +172,8 @@ export function createOrders(db, inbox, { emit = () => {} } = {}) {
         cod_amount: o.codAmount, payment_method: o.paymentMethod, note: o.note,
       });
       const order = publish(await getOrder(inserted.id));
+      await notify?.({ workspaceId: user.workspace_id, event: 'order', title: `New order #${inserted.id}`, body: `${o.customerName} · ৳${(o.subtotal + o.deliveryCharge - o.discount).toLocaleString('en-IN')} · taken by ${user.name}`,
+        link: `/orders/${inserted.id}`, ref: `order:${inserted.id}`, amount: o.subtotal });
 
       // The order is saved even if Meta won't take the message (e.g. outside the 24h window).
       let summaryError = null;

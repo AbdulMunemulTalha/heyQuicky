@@ -68,7 +68,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | HND-03 | Done — Take over / Back to AI buttons | /app/inbox |
 | HND-04 | Partial — AI summary, "Ask about this customer" and "Draft reply with AI". Ask and draft need ANTHROPIC_API_KEY; the summary falls back to order history without it | /app/inbox |
 | HND-05 | Not started (Phase 3) | extension/ |
-| HND-06 | Partial — escalations and handoffs listed under Overview → Needs attention; push alerts come with screen 16 | /app |
+| HND-06 | Done — when the AI hands a chat over, the assignee (or owner, admins and moderators) get an alert in the app and on their phone (web push; needs VAPID keys); WhatsApp alerts to the team are saved as a preference and wait on an approved message template | /app, overlay |
 | CAT-01 | Not started (screens 08, 13) | /app/catalog |
 | CAT-02 | Not started | /app/catalog |
 | CAT-03 | Not started (screen 24) | messages |
@@ -165,7 +165,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | UX-06 | Partial — keyboard shortcuts open search; commands come with screen 23 | overlay |
 | UX-07 | Partial — sidebar hides switched-off modules (`workspace.settings.modules`); Modules screen in Phase 2 | /app |
 | UX-08 | Partial — log in by email or phone (Bangla digits too), wrong-password state, forgot → 6-digit code by email or SMS → new password (logs out other devices), "keep me logged in", Continue with Google. Missing: Google needs `GOOGLE_CLIENT_ID`; real email/SMS need `RESEND_API_KEY` / `SMS_API_URL` | /app/login |
-| UX-09 | Partial — bell with live unread count; panel comes with screen 16 | overlay |
+| UX-09 | Done — bell panel (frame 16): All / Orders / Chats / System with counts, New and Earlier, one-tap actions (Take over, View order, Review, Restock), dismiss, mark all read, live updates and a toast; "Notify me about" (16b) per event for App / Phone / WhatsApp with quiet hours, also on Settings → Notifications | overlay, /app/settings/notifications |
 | UX-10 | Partial — brand list in `/dash/me` and the sidebar switcher button; switcher panel in Phase 2 | overlay |
 | UX-11 | Partial — language and theme saved per user; Profile screen in Phase 2 | /app/profile |
 | UX-12 | Partial — Empty / Error / Forbidden / Not found / Offline / Skeleton components and the offline bar; applied to each screen as it's built (Overview done) | all |

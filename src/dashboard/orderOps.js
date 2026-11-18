@@ -23,7 +23,7 @@ export const CANCEL_REASONS = ['customer_cancelled', 'fake_order', 'out_of_stock
 export const orderTotal = (o) => (o.subtotal ?? 0) + (o.delivery_charge ?? 0) - (o.discount ?? 0);
 
 // Puts an order's items back in stock (cancel with "Put the items back") or takes them out.
-export async function adjustStock(db, order, sign) {
+export async function adjustStock(db, order, sign, { notify = null } = {}) {
   for (const item of order.product_items ?? []) {
     if (!item.product_id) continue;
     const product = await db.products.findById(item.product_id).lean();
@@ -31,6 +31,13 @@ export async function adjustStock(db, order, sign) {
     const list = (product.variant_list ?? []).map((v) => (v.sku === item.sku && v.stock !== null && v.stock !== undefined
       ? { ...v, stock: Math.max(0, v.stock + sign * (item.qty ?? 1)) } : v));
     await db.products.updateOne({ _id: product._id }, { $set: { variant_list: list, in_stock: list.some((v) => v.stock === null || v.stock === undefined || v.stock > 0) } });
+    const before = (product.variant_list ?? []).find((v) => v.sku === item.sku);
+    const after = list.find((v) => v.sku === item.sku);
+    if (notify && sign < 0 && before?.stock > 0 && after?.stock === 0) {
+      const label = Object.values(after.options ?? {}).join(' / ') || item.variant || '';
+      await notify({ workspaceId: product.workspace_id, event: 'stock', title: `Low stock: ${product.name}${label ? ` ${label}` : ''}`,
+        body: 'is sold out. The AI stopped offering it.', link: `/catalog/${product._id}`, ref: `stock:${product._id}:${item.sku}` });
+    }
   }
 }
 

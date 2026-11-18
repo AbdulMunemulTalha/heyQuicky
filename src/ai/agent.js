@@ -31,7 +31,7 @@ function normalize(data) {
 // The Bangla/Banglish chat agent. In "suggest" mode it drafts a reply for the
 // moderator; in "auto" mode it answers the customer itself and hands anything it
 // shouldn't handle to a person. `provider` is null when AI isn't configured.
-export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = console } = {}) {
+export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = console, notify = null } = {}) {
   // conversationId -> { timer, resolve } for the reply waiting to be written.
   const pending = new Map();
   let lastError = null;
@@ -67,8 +67,12 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
   }
 
   async function setHandoff(conversationId, reason) {
-    await db.conversations.updateOne({ _id: conversationId },
-      { $set: { ai_handoff: true, ai_handoff_reason: reason, ai_handoff_at: new Date() } });
+    const conv = await db.conversations.findOneAndUpdate({ _id: conversationId },
+      { $set: { ai_handoff: true, ai_handoff_reason: reason, ai_handoff_at: new Date() } }, { new: true, lean: true });
+    if (!notify || !conv) return;
+    const contact = await db.contacts.findById(conv.contact_id, { name: 1 }).lean();
+    await notify({ workspaceId: conv.workspace_id, event: 'handoff', title: `${contact?.name || 'A customer'} needs a person.`, body: String(reason ?? '').replace(/^Unanswered:\s*/i, 'The AI could not answer: ').slice(0, 200),
+      link: `/inbox/${conv._id}`, ref: `handoff:${conv._id}`, userIds: conv.assigned_user_id ? [conv.assigned_user_id] : null });
   }
 
   async function saveDraft(conversationId, answer, forMessageId) {

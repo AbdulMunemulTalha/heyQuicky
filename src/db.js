@@ -91,6 +91,8 @@ function defineModels(conn) {
     role: { type: String, enum: ['owner', 'admin', 'moderator', 'agent'], required: true },
     is_active: { type: Boolean, default: true },
     is_online: { type: Boolean, default: false },
+    // "Notify me about" (frame 16b): { events: { order: { app, phone, whatsapp } … }, quiet }. Empty = defaults.
+    notify_prefs: { type: Schema.Types.Mixed, default: null },
     last_assigned_at: { type: Date, default: null },
     // Dashboard profile.
     display_name: { type: String, default: '' },

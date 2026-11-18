@@ -24,7 +24,8 @@
     "@anthropic-ai/sdk": "^1.6.0",
     "express": "^5.2.1",
     "mongoose": "^8.24.8",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.2.0",

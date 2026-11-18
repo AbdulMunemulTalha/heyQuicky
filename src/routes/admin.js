@@ -16,7 +16,7 @@ export function adminAuth(config, realm = 'HeyQuicky admin') {
 }
 
 // Manual AI-credit top-ups (BIL-05): check the TrxID in HeyQuicky's bKash / Nagad account, then approve or reject.
-export function adminRoutes(db, config) {
+export function adminRoutes(db, config, { notify = null } = {}) {
   const router = Router();
   const guard = adminAuth(config);
 
@@ -29,12 +29,14 @@ export function adminRoutes(db, config) {
   router.post('/admin/topups/:id/approve', guard, async (req, res) => {
     const entry = await approveTopup(db, Number(req.params.id));
     if (!entry) return res.status(404).json({ error: 'No pending top-up with that id' });
+    await notify?.({ workspaceId: entry.workspace_id, event: 'credit', title: `AI credit added: ৳${entry.amount.toLocaleString('en-IN')}`, body: `Your ${entry.method} top-up (TrxID ${entry.ref}) was approved.`, link: '/settings', ref: `topup:${entry._id}` });
     res.json({ id: entry._id, balance: entry.balance_after });
   });
 
   router.post('/admin/topups/:id/reject', guard, async (req, res) => {
     const entry = await rejectTopup(db, Number(req.params.id));
     if (!entry) return res.status(404).json({ error: 'No pending top-up with that id' });
+    await notify?.({ workspaceId: entry.workspace_id, event: 'credit', title: 'Top-up not approved', body: `We couldn't find the ${entry.method} payment with TrxID ${entry.ref}. Check it and send it again.`, link: '/settings', ref: `topup:${entry._id}` });
     res.json({ id: entry._id, status: 'rejected' });
   });
 
