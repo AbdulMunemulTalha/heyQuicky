@@ -30,7 +30,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | INB-09 | Partial — team notes on a chat with @mentions that notify the teammate; the dedicated Team notes popup frame comes in Phase 2 | /app/inbox |
 | INB-10 | Done — live "Rafi is typing a reply…" bar from socket presence; replying to a chat someone else owns asks you to take over first | /app/inbox |
 | INB-11 | Not started (screen 07) | /app/agent |
-| INB-12 | Partial — responsive shell with bottom tabs (≤768 px); PWA and push come with screen 19 | /app |
+| INB-12 | Done — phones (frame 19): bottom tabs with badges; lean inbox list; a chat, an order or a form opens full screen; chat header with Call; order Cancel / next step pinned to the bottom; installs as an app (manifest, icons, "Install the app" in the sidebar, iPhone home-screen icon), opens offline to the saved shell, phone alerts via the same service worker (need VAPID keys) | /app |
 | TEAM-01 | Done — Settings → Team: invite by name, email and role (admin only by the owner), temporary password shown once and emailed when email is set up, change role, remove (chats go back to the queue, sessions end), restore | /app/settings/team |
 | TEAM-02 | Partial — permission matrix enforced on the server (`need()`), owner overrides stored per shop; screen in Phase 2 | /app/settings/team |
 | TEAM-03 | Done — Assign popup (frame 15): teammates with on-duty dots and open-chat counts, keep AI replying, note; the assignee gets a notification | overlay |

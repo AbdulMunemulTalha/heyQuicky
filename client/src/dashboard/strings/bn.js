@@ -1293,4 +1293,6 @@ export default {
   'nt.ev.access': "অ্যাক্সেসের অনুরোধ",
   'nt.evHint.access': "কোনো টিমমেট একটি পেজ দেখতে চাইলে",
   'cat.thisProduct': "এই প্রোডাক্ট",
+  'pwa.install': "অ্যাপটি ইনস্টল করুন",
+  'pwa.installed': "HeyQuicky আপনার হোম স্ক্রিনে যোগ হয়েছে",
 };

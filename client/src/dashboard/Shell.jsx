@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, navigate, useLocation } from './lib/router.jsx';
 import { useT } from './lib/i18n.js';
 import { useDash } from './lib/context.js';
 import { dash } from './lib/api.js';
 import { Icon, BrandMark } from './ui/icons.jsx';
 import { Avatar, Badge, toast } from './ui/kit.jsx';
+import { canInstall, installApp, onInstallChange } from './lib/pwa.js';
 
 // Main navigation (Sidebar frame). `module` hides an item when the shop switched that module off (UX-07).
 const NAV = [
@@ -121,6 +122,7 @@ export function Sidebar({ open, onClose }) {
       )}
 
       <div className="side-foot">
+        <InstallButton t={t} />
         <div className="credit-card">
           <div className="row"><span>{t('shell.aiCredit')}</span>
             {me.can.includes('billing') && <Link to="/settings/plan">{t('shell.topUp')}</Link>}</div>
@@ -216,3 +218,15 @@ export function MobileTabs({ onMore }) {
 }
 
 export { navigate };
+
+// "Install the app" when the browser offers it (Android Chrome, desktop Chrome / Edge). iPhone uses Share → Add to Home Screen.
+function InstallButton({ t }) {
+  const [can, setCan] = useState(canInstall());
+  useEffect(() => onInstallChange(setCan), []);
+  if (!can) return null;
+  return (
+    <button type="button" className="install-btn" onClick={() => installApp().then((ok) => ok && toast(t('pwa.installed'), 'green'))}>
+      <Icon name="bolt" size={15} /><span className="nav-label">{t('pwa.install')}</span>
+    </button>
+  );
+}

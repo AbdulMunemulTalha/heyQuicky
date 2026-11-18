@@ -263,6 +263,9 @@ function Chat({ id, t, me, onChanged, tab }) {
             <h2>{c.name}</h2>
             <p className="muted small">{[PLATFORM[c.platform], c.channelName, c.vip && 'VIP'].filter(Boolean).join(' · ')}</p>
           </div>
+          {data.customer?.phones?.[0] && !data.customer.phones[0].includes('•') && (
+            <a className="icon-btn call-mobile" href={`tel:${data.customer.phones[0]}`} aria-label={t('od.call')}><Icon name="phone" size={16} /></a>
+          )}
           {c.spam ? (
             <>
               <Button size="sm" onClick={() => act('spam', { spam: false }, t('inbox.movedBack'))}>{t('inbox.notSpam')}</Button>
@@ -272,7 +275,7 @@ function Chat({ id, t, me, onChanged, tab }) {
             <div className="chat-actions">
               {c.status === 'open' && c.needsPerson && !mineTakeover && <Pill tone="yellow">{t('inbox.waitingForPerson')}</Pill>}
               {c.status === 'open' && can('reply') && (mineTakeover
-                ? <Button size="sm" onClick={() => act('release', {}, t('inbox.backToAiDone'))} title={c.humanUntil ? t('inbox.autoReturn', { time: t.time(c.humanUntil) }) : undefined}>{t('inbox.backToAi')}</Button>
+                ? <Button size="sm" className="keep-mobile" onClick={() => act('release', {}, t('inbox.backToAiDone'))} title={c.humanUntil ? t('inbox.autoReturn', { time: t.time(c.humanUntil) }) : undefined}>{t('inbox.backToAi')}</Button>
                 : <Button size="sm" variant="dark" onClick={() => act('takeover', {}, t('inbox.tookOver'))}>{t('inbox.takeOver')}</Button>)}
               <Button size="sm" onClick={() => setAssignOpen(true)}>{t('inbox.assign')}</Button>
               {c.status === 'open' && <Button size="sm" onClick={() => setSnoozeOpen(true)}>{t('inbox.later')}</Button>}

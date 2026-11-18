@@ -69,12 +69,14 @@ export default function OrderDetail({ params }) {
         <div className="page-actions">
           <Button onClick={printLabel}>{t('od.printLabel')}</Button>
           {can('edit_orders') && ['pending', 'on_hold', 'approved', 'processing'].includes(o.status) && <Button onClick={() => navigate(`/orders/${o.number}/edit`)}>{t('od.edit')}</Button>}
+          <span className="od-main-actions">
           {can('cancel_orders') && o.next.includes('cancelled') && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t('ord.cancelOrder')}</Button>}
           {can('edit_orders') && nextAction && o.next.includes(nextAction) && (
             <Button variant="primary" busy={busy} onClick={() => (nextAction === 'delivered' ? post('deliver', {}, t('od.delivered')) : post(`/orders/${o.id}/status`, { status: nextAction }, t('ord.statusChanged', { n: o.number, status: t(`status.${nextAction}`) })))}>
               {t(`od.action.${nextAction}`)}
             </Button>
           )}
+          </span>
         </div>
       </header>
 

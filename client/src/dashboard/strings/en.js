@@ -1299,4 +1299,6 @@ export default {
   'nt.ev.access': "Access requests",
   'nt.evHint.access': "A teammate asks to see a page",
   'cat.thisProduct': "This product",
+  'pwa.install': "Install the app",
+  'pwa.installed': "HeyQuicky is on your home screen",
 };

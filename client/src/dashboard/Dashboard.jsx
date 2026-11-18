@@ -6,6 +6,7 @@ import { Dash } from './lib/context.js';
 import { match, navigate, useLocation } from './lib/router.jsx';
 import { Sidebar, Topbar, MobileTabs } from './Shell.jsx';
 import { SystemBanners } from './SystemBanners.jsx';
+import { startPwa } from './lib/pwa.js';
 import { Drawer, Empty, ErrorState, Skeleton, Toasts, toast } from './ui/kit.jsx';
 import './dashboard.css';
 
@@ -96,6 +97,8 @@ export function Dashboard({ onSignOut }) {
     }
   }, []);
 
+  useEffect(() => { startPwa(); }, []);
+
   useEffect(() => {
     setUnauthorizedHandler(onSignOut);
     load();
@@ -184,10 +187,12 @@ export function Dashboard({ onSignOut }) {
   const Screen = screens[key];
   const Overlay = overlay && overlays[overlay.name];
 
+  // On phones, a chat, an order or a form opens full screen (frames 19c, 19e).
+  const focusScreen = (key === 'inbox' && Boolean(params.id)) || ['orderDetail', 'orderForm', 'product'].includes(key);
   return (
     <I18n.Provider value={t}>
       <Dash.Provider value={ctx}>
-        <div id="dash" lang={lang} data-theme={theme}>
+        <div id="dash" lang={lang} data-theme={theme} className={focusScreen ? 'focus' : undefined}>
           <a href="#main" className="skip">{t('shell.skip')}</a>
           {offline && <div className="offline-bar" role="status"><span className="dot yellow" />{t('state.offline.bar')} <span className="offline-sub">{t('state.offline.title')}</span>
             <button type="button" onClick={() => window.location.reload()}>{t('state.offline.retry')}</button></div>}

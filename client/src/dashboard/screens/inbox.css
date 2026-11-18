@@ -106,8 +106,14 @@
   #dash .inbox:not(.has-chat) .chat { display: none; }
   #dash .back-mobile { display: inline-grid; }
   #dash .msg { max-width: 86%; }
-  #dash .chat-actions .btn:not(.btn-dark) { display: none; }
+  /* Keep the takeover / Back to AI button; other header buttons live in the menu on phones. */
+  #dash .chat-actions .btn:not(.btn-dark):not(.keep-mobile) { display: none; }
+  #dash.focus .inbox { height: 100vh; height: 100dvh; }
+  /* Lean list like frame 19: no checkboxes, bulk bar or channel row on a phone. */
+  #dash .ib-check, #dash .ib-tools, #dash .ib-bulk, #dash .ib-channels { display: none; }
+  #dash .call-mobile { display: inline-grid; }
 }
+#dash .call-mobile { display: none; }
 /* Grid columns must not grow to fit the chip and tab rows (they scroll sideways instead). */
 #dash .ib-list, #dash .ib-panel, #dash .chat { min-width: 0; }
 #dash .ib-channels, #dash .ib-tabs { scrollbar-width: none; }

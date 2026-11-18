@@ -408,3 +408,17 @@
 #dash .sys-banner.tone-blue { background: var(--accent-soft); border-color: #c9d6fb; }
 #dash .sys-banner.tone-blue .sys-icon { background: var(--accent); }
 @media (max-width: 768px) { #dash .sys-banner { flex-wrap: wrap; } }
+
+/* Frame 19: phones. Detail screens go full screen; order actions stick to the bottom. */
+@media (max-width: 768px) {
+  #dash.focus .topbar, #dash.focus .mobile-tabs { display: none; }
+  #dash.focus .content { padding-bottom: 96px; }
+  #dash.focus .content.flush { padding: 0; }
+  #dash .od-main-actions { display: contents; }
+  #dash.focus .od-main-actions { display: flex; gap: 8px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: var(--panel); border-top: 1px solid var(--border); }
+  #dash.focus .od-main-actions .btn { flex: 1; justify-content: center; height: 44px; }
+  #dash .btn, #dash .icon-btn { min-height: 36px; }
+}
+@media (min-width: 769px) { #dash .od-main-actions { display: contents; } }
+#dash .install-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; margin-bottom: 8px; border-radius: 8px; border: 1px dashed var(--accent); background: var(--accent-tint); color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
