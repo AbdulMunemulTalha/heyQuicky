@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { publish } from './training.js';
 import { hashPassword } from '../auth.js';
 import { addCredit } from './credit.js';
+import { seedHistory } from './demoHistory.js';
 
 // The "Nokshi Threads" shop from the designs. Used by `npm run seed:demo` (development) and, with
 // sandbox: true, for the demo shop new owners can explore (ONB-09). Never sends anything anywhere.
@@ -54,10 +55,11 @@ const ORDERS = [
   [1046, 'Farzana Haque', '01799112233', [['NT-152', 'M', 3]], 'in_transit', 'ai', 'inside_dhaka', 300, { courier: 'Steadfast', cid: 'SF-29402' }],
   [1043, 'Imran Kabir', '01922450034', [['NT-140', 'L', 1]], 'in_transit', 'website', 'outside_dhaka', 1500, { courier: 'Pathao', cid: 'PT-88120', paid: true }],
   [1031, 'Sadia Rahman', '01712345678', [['NT-104', 'M', 1]], 'delivered', 'ai', 'inside_dhaka', 1700, { courier: 'Steadfast', cid: 'SF-29211' }],
-  [1029, 'Jahid Hasan', '01866773310', [['NT-131', 'M', 1]], 'cancelled', 'ai', 'outside_dhaka', 2900, { cancel: 'Customer cancelled in chat' }],
+  [1029, 'Jahid Hasan', '01866773310', [['NT-131', 'M', 1]], 'cancelled', 'ai', 'outside_dhaka', 2900, { cancel: 'customer_cancelled' }],
 ];
 
-export async function seedNokshi(db, { reset = false, sandbox = false, email = 'talha@nokshithreads.com', password = 'password123' } = {}) {
+// history: a month of past chats and orders for Analytics (on for `npm run seed:demo`, off in tests that count exact rows).
+export async function seedNokshi(db, { reset = false, sandbox = false, history = false, email = 'talha@nokshithreads.com', password = 'password123' } = {}) {
   const existing = await db.users.findOne({ email }).lean();
   if (existing && !reset) return { created: false, workspaceId: existing.workspace_id };
   if (existing && reset) await wipe(db, existing.workspace_id);
@@ -206,6 +208,8 @@ export async function seedNokshi(db, { reset = false, sandbox = false, email = '
     if (extra.cid) await db.insert(db.consignments, { workspace_id: ws.id, order_id: order.id, courier: extra.courier.toLowerCase(), consignment_id: extra.cid, tracking_code: extra.cid, status, created_at: min(ago - 60) });
     await db.customers.updateOne({ _id: customer.id }, { $inc: { 'stats.orders': 1, 'stats.spent': status === 'delivered' ? subtotal : 0, 'stats.delivered': status === 'delivered' ? 1 : 0, 'stats.cancelled': status === 'cancelled' ? 1 : 0 } });
   }
+
+  if (history) await seedHistory(db, { ws, products, PRODUCTS, channels, users, customerFor });
 
   // Realistic histories for the customers the designs show (orders before the ones above).
   for (const [name, stats, tags, vip] of [

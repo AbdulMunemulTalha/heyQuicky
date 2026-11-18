@@ -8,7 +8,7 @@ export const STAGE = { confirmed: 'pending', shipped: 'in_transit' };
 export const stageOf = (status) => STAGE[status] ?? status;
 
 // Per-conversation reply stats for a time range: who answered (AI, team or both) and how fast.
-async function replyStats(db, ws, from, to) {
+export async function replyStats(db, ws, from, to) {
   const convIds = await db.conversations.distinct('_id', { workspace_id: ws });
   if (!convIds.length) return [];
   return db.messages.aggregate([
@@ -27,7 +27,7 @@ async function replyStats(db, ws, from, to) {
   ]);
 }
 
-function summarize(stats) {
+export function summarize(stats) {
   const conversations = stats.length;
   const aiOnly = stats.filter((s) => s.ai > 0 && s.team === 0).length;
   const answered = stats.filter((s) => s.ai > 0 || s.team > 0).length;

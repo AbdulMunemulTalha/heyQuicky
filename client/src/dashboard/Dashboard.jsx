@@ -22,6 +22,7 @@ const screens = {
   agent: lazy(() => import('./screens/Agent.jsx')),
   catalog: lazy(() => import('./screens/Catalog.jsx')),
   product: lazy(() => import('./screens/ProductForm.jsx')),
+  analytics: lazy(() => import('./screens/Analytics.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
 const overlays = {
@@ -48,6 +49,7 @@ const ROUTES = [
   ['/catalog/size-charts', 'placeholder'],
   ['/catalog/new', 'product'],
   ['/catalog/:id', 'product'],
+  ['/analytics', 'analytics'],
 ];
 
 function pick(path) {

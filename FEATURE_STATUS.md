@@ -139,13 +139,13 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | BKG-03 | Not started (Phase 3) | /app/bookings |
 | BKG-04 | Not started (Phase 3) | /app/bookings?tab=quotes |
 | ANL-01 | Done — Overview KPIs (conversations vs yesterday, orders and revenue today, AI-handled %, first reply, needs a person), week chart, pipeline, live activity, AI spend; updates live over the socket | /app |
-| ANL-02 | Not started (screen 09) | /app/analytics |
-| ANL-03 | Partial — "Revenue per ৳1 of AI" on Overview → AI spend today; full report in screen 09 | /app |
-| ANL-04 | Not started (screen 09) | /app/analytics |
-| ANL-05 | Not started (screen 09) | /app/analytics |
-| ANL-06 | Not started (screen 09) | /app/analytics |
-| ANL-07 | Not started (screen 09) | /app/analytics |
-| ANL-08 | Not started (screen 09) | /app/analytics |
+| ANL-02 | Done — who took the orders: AI agent, product page, website and each teammate, with revenue and delivered rate (7 / 30 / 90 days) | /app/analytics |
+| ANL-03 | Done — revenue per ৳1 of AI and AI spend for the period (also on Overview for today) | /app/analytics, /app |
+| ANL-04 | Done — heatmap of customer messages by weekday (Saturday first) and hour in Dhaka time, with the share arriving 9 PM – 1 AM | /app/analytics |
+| ANL-05 | Done — median first reply overall and for chats the team answered first | /app/analytics |
+| ANL-06 | Done — cancel reasons with shares; couriers with bookings, delivered rate and COD collected (delivered orders minus verified advance) | /app/analytics |
+| ANL-07 | Done — best sellers by units; Export CSV of every section (sources by channel come later) | /app/analytics |
+| ANL-08 | Done — "N people showed interest but didn't order" links to Follow-ups → Leads | /app/analytics → /app/growth?tab=leads |
 | ANL-09 | Not started (Phase 2) | /app/settings/integrations |
 | INT-01 | Not started (Phase 3) | /app/settings/integrations |
 | INT-02 | Not started (Phase 2) | /app/settings/integrations |

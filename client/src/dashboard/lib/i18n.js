@@ -34,7 +34,8 @@ export function makeT(lang) {
     const d = decimals ?? (Math.round(Number(n) * 100) % 100 ? 2 : 0);
     return `৳${digits(groupIndian(n, d))}`;
   };
-  t.pct = (n) => `${digits(Math.round(n))}%`;
+  // 84% by default; pass decimals for small rates like 2.6%.
+  t.pct = (n, decimals = 0) => `${digits(Number(n).toFixed(decimals).replace(/\.0+$/, ''))}%`;
   const locale = lang === 'bn' ? 'bn-BD' : 'en-GB';
   t.time = (iso) => (iso ? new Date(iso).toLocaleTimeString(lang === 'bn' ? 'bn-BD' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ }) : '');
   t.date = (iso, opts = { day: 'numeric', month: 'short' }) => (iso ? new Date(iso).toLocaleDateString(locale, { ...opts, timeZone: TZ }) : '');

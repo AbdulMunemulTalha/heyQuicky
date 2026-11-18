@@ -14,6 +14,6 @@ if (config.isProduction) {
 }
 const db = await openDb(config.mongoUrl);
 await runMigrations(db);
-const result = await seedNokshi(db, { reset: process.argv.includes('--reset') });
+const result = await seedNokshi(db, { reset: process.argv.includes('--reset'), history: !process.argv.includes('--no-history') });
 console.log(result.created ? `Created Nokshi Threads (workspace ${result.workspaceId}). Log in as talha@nokshithreads.com / password123` : 'Nokshi Threads already exists (use --reset to recreate it).');
 await db.close();
