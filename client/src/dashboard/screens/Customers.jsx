@@ -103,7 +103,7 @@ function Profile({ id, t, onChanged }) {
     try { await dash(`/customers/${id}/tags`, { method: 'POST', body: { tag: v, remove } }); load(); onChanged(); } catch (err) { toast(err.message, 'red'); }
   }
 
-  if (error) return <Card><ErrorState thing={t('cu.thing')} error={error} onRetry={load} /></Card>;
+  if (error) return <Card><ErrorState thing={t('cu.thing')} error={error} onRetry={load} back={{ to: '/customers', label: t('state.backTo.customers') }} /></Card>;
   if (!c) return <Card><Skeleton h={300} /></Card>;
   const safe = c.risk.level === 'low';
   return (

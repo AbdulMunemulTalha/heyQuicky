@@ -5,6 +5,7 @@ import { I18n, makeT } from './lib/i18n.js';
 import { Dash } from './lib/context.js';
 import { match, navigate, useLocation } from './lib/router.jsx';
 import { Sidebar, Topbar, MobileTabs } from './Shell.jsx';
+import { SystemBanners } from './SystemBanners.jsx';
 import { Drawer, Empty, ErrorState, Skeleton, Toasts, toast } from './ui/kit.jsx';
 import './dashboard.css';
 
@@ -188,13 +189,14 @@ export function Dashboard({ onSignOut }) {
       <Dash.Provider value={ctx}>
         <div id="dash" lang={lang} data-theme={theme}>
           <a href="#main" className="skip">{t('shell.skip')}</a>
-          {offline && <div className="offline-bar" role="status"><span className="dot yellow" />{t('state.offline.bar')}
+          {offline && <div className="offline-bar" role="status"><span className="dot yellow" />{t('state.offline.bar')} <span className="offline-sub">{t('state.offline.title')}</span>
             <button type="button" onClick={() => window.location.reload()}>{t('state.offline.retry')}</button></div>}
           <div className="shell">
             <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
             <div className="main">
               <Topbar onMenu={() => setMenuOpen(true)} />
               <main id="main" className={`content${flush ? ' flush' : ''}`} tabIndex={-1}>
+                <SystemBanners />
                 <Suspense fallback={<div><Skeleton w="30%" h={28} /><br /><Skeleton h={160} r={12} /></div>}>
                   <Screen params={params} query={query} path={path} />
                 </Suspense>

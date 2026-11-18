@@ -75,7 +75,7 @@ export default function ProductForm({ params }) {
   };
   const setOptions = (options) => setV((x) => { setDirty(true); return { ...x, options, variants: combine(options, x.variants, x.price, x.code) }; });
 
-  if (error) return <ErrorState thing={t('cat.product')} error={error} onRetry={load} />;
+  if (error) return <ErrorState thing={t('cat.thisProduct')} error={error} onRetry={load} back={{ to: '/catalog', label: t('state.backTo.catalog') }} />;
   if (!v) return <Skeleton h={500} r={12} />;
 
   async function save() {

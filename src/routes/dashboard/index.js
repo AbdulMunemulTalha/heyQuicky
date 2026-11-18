@@ -37,12 +37,26 @@ export function dashboardRoutes(db, config, ctx) {
         repliesLeft: Math.floor((workspace.credit_balance ?? 0) / await averageReplyCost(db, workspace._id)), plan: workspace.plan ?? 'starter',
         wentLiveAt: workspace.went_live_at, modules: modulesFor(workspace),
         channels: channels.map((c) => ({ id: c._id, platform: c.platform, name: c.name, needsReconnect: Boolean(c.needs_reconnect) })),
+        // AI replies only pause at zero credit once per-reply charging is on (AI pipeline); until then the banner stays hidden.
+        creditEnforced: false,
+        // Couriers marked connected but without keys can't book for real (outside test mode).
+        couriersNeedKeys: config.dryRun ? [] : (await db.courierAccounts.find({ workspace_id: workspace._id, connected: true, credentials: { $in: ['', null] } }, { courier: 1 }).lean()).map((c) => c.courier),
       },
       brands: brands.map((b) => ({ id: b._id, name: b.name, current: b._id === workspace._id })),
       can: allowedActions(req.user, workspace),
       badges: await badges(db, req.user, workspace),
       support: { email: config.legal?.supportEmail || 'info@heyquicky.com', whatsapp: process.env.SUPPORT_WHATSAPP || '' },
     });
+  });
+
+  // "Ask for access" (frame 17, no permission): the owner gets a notification; repeats within an hour are dropped.
+  router.post('/access-requests', auth, async (req, res) => {
+    const what = String(req.body?.what ?? '').trim().slice(0, 60) || 'a page';
+    const path = String(req.body?.path ?? '').trim();
+    const link = /^\/[a-z0-9/_-]*$/i.test(path) ? path : '';
+    await ctx.notify?.({ workspaceId: req.user.workspace_id, event: 'access', title: `${req.user.name} asked for access`, body: `to ${what}. Change their role in Settings → Team.`,
+      link: '/settings/team', ref: `access:${req.user.id}:${link || what}` });
+    res.json({ ok: true });
   });
 
   router.get('/badges', auth, async (req, res) => {

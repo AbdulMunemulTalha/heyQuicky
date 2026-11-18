@@ -42,7 +42,7 @@ function Billing({ t }) {
   const { can } = useDash();
   const { d, error, load } = useData('/settings/billing');
   const [topup, setTopup] = useState(null);
-  if (!can('billing')) return <Card><p className="muted">{t('set.billingOwnerOnly')}</p></Card>;
+  if (!can('billing')) return <Card><ErrorState thing={t('set.billingThing')} error={{ status: 403 }} /></Card>;
   if (error) return <ErrorState thing={t('set.tab.billing')} error={error} onRetry={load} />;
   if (!d) return <Skeleton h={420} r={12} />;
   const m = d.topup.methods;

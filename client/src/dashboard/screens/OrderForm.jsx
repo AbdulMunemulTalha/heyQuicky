@@ -123,7 +123,7 @@ export default function OrderForm({ params, query }) {
     } finally { setBusy(false); }
   }
 
-  if (loadError) return <ErrorState thing={t('of.thing')} error={loadError} />;
+  if (loadError) return <ErrorState thing={t('od.thing')} error={loadError} back={{ to: '/orders', label: t('state.backTo.orders') }} />;
   if (!form) return <Skeleton h={400} r={12} />;
   if (!can('edit_orders')) return <ErrorState thing={t('of.thing')} error={{ status: 403, message: t('of.noAccess') }} />;
 

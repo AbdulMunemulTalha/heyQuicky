@@ -47,7 +47,7 @@ export default function OrderDetail({ params }) {
     win.document.close();
   }
 
-  if (error) return <ErrorState thing={t('od.thing')} error={error} onRetry={load} supportEmail={me.support.email} />;
+  if (error) return <ErrorState thing={t('od.thing')} error={error} onRetry={load} supportEmail={me.support.email} back={{ to: '/orders', label: t('state.backTo.orders') }} />;
   if (!o) return <div><Skeleton w={240} h={30} /><br /><Skeleton h={60} r={12} /><br /><Skeleton h={300} r={12} /></div>;
 
   const nextAction = NEXT_ACTION[o.status];

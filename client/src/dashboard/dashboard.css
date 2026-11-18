@@ -389,3 +389,22 @@
 #dash .nav-subitem:hover { background: var(--hover); text-decoration: none; }
 #dash .nav-subitem.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
 @media (min-width: 769px) and (max-width: 1024px) { #dash .nav-sub { display: none; } }
+
+/* Frame 17: the big 404, banners shown on every page, the offline note */
+#dash .state-404 .big-404 { font: 800 64px/1 var(--display); color: var(--accent); letter-spacing: -0.03em; }
+#dash .offline-sub { opacity: .75; font-weight: 400; }
+#dash .sys-banners { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+#dash .content.flush .sys-banners { margin: 10px 14px 0; }
+#dash .sys-banner { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid; font-size: 13px; }
+#dash .sys-banner .grow { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+#dash .sys-banner strong { font-size: 13.5px; }
+#dash .sys-banner .grow span { color: var(--muted); }
+#dash .sys-icon { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; color: #fff; }
+#dash .sys-banner.tone-red { background: #fdecec; border-color: #f6caca; }
+#dash .sys-banner.tone-red .sys-icon { background: #d92d20; }
+#dash .sys-banner.tone-red strong { color: #b42318; }
+#dash .sys-banner.tone-yellow { background: #fff6dc; border-color: #f5dea0; }
+#dash .sys-banner.tone-yellow .sys-icon { background: #f4c430; color: #111; }
+#dash .sys-banner.tone-blue { background: var(--accent-soft); border-color: #c9d6fb; }
+#dash .sys-banner.tone-blue .sys-icon { background: var(--accent); }
+@media (max-width: 768px) { #dash .sys-banner { flex-wrap: wrap; } }

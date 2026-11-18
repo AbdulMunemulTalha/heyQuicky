@@ -11,6 +11,7 @@ export const EVENTS = {
   stock: { category: 'system', roles: ['owner', 'admin'], app: true, phone: true, whatsapp: false },
   credit: { category: 'system', roles: ['owner'], app: true, phone: false, whatsapp: true },
   courier: { category: 'orders', roles: ['owner', 'admin', 'moderator'], app: true, phone: false, whatsapp: false },
+  access: { category: 'system', roles: ['owner'], app: true, phone: false, whatsapp: false },
 };
 export const EVENT_KEYS = Object.keys(EVENTS);
 export const BIG_ORDER = 10_000; // new orders at least this big still reach the phone in quiet hours

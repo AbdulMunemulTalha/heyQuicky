@@ -154,10 +154,11 @@ function ListColumn({ t, tab, scope, channel, list, error, reload, selectedId, o
 }
 
 function ListEmpty({ t, tab, filtered }) {
+  const { openOverlay } = useDash();
   if (filtered) return <Empty icon="search" tone="gray" title={t('inbox.noMatch')}>{t('inbox.noMatchSub')}</Empty>;
   if (tab === 'spam') return <Empty icon="check" tone="green" title={t('inbox.noSpam')} />;
   if (tab === 'waiting') return <Empty icon="check" tone="green" title={t('inbox.noWaiting')}>{t('inbox.noWaitingSub')}</Empty>;
-  return <Empty icon="inbox" title={t('inbox.emptyTitle')}>{t('inbox.emptySub')}</Empty>;
+  return <Empty icon="inbox" title={t('inbox.emptyTitle')} actions={<Button variant="primary" onClick={() => openOverlay('testChat')}>{t('inbox.sendTest')}</Button>}>{t('inbox.emptySub')}</Empty>;
 }
 
 function Row({ c, t, active, checked, onCheck, onOpen }) {

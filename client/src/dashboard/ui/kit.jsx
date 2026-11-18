@@ -1,6 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './icons.jsx';
 import { useT } from '../lib/i18n.js';
+import { useDash } from '../lib/context.js';
+import { dash } from '../lib/api.js';
+import { navigate as navigateTo } from '../lib/router.jsx';
 
 // Dashboard-only building blocks. Onboarding has its own (components/onboarding/parts.jsx) and is left alone.
 
@@ -205,22 +208,45 @@ export function Empty({ icon = 'inbox', tone = 'blue', title, children, actions 
   );
 }
 
-export function ErrorState({ thing, error, onRetry, supportEmail }) {
+// Frame 17: what went wrong, said plainly, with one next step.
+// back: { to, label } for "Back to orders" on a 404.
+export function ErrorState({ thing, error, onRetry, supportEmail, back }) {
   const t = useT();
+  const dashCtx = useDash();
+  const [asked, setAsked] = useState(false);
   if (error?.code === 'forbidden' || error?.status === 403) {
-    return <Empty icon="lock" tone="yellow" title={t('state.forbidden.title', { thing })}>{error.message}</Empty>;
+    const me = dashCtx?.me?.user;
+    async function ask() {
+      try { await dash('/access-requests', { method: 'POST', body: { what: thing, path: window.location.pathname.replace(/^\/app/, '') || '/' } }); setAsked(true); } catch (e) { toast(e.message, 'red'); }
+    }
+    return (
+      <Empty icon="lock" tone="yellow" title={t('state.forbidden.title', { thing })}
+        actions={asked ? <span className="small muted">{t('state.forbidden.asked')}</span> : <Button onClick={ask}>{t('state.forbidden.ask')}</Button>}>
+        {me ? t('state.forbidden.you', { name: me.name, role: t(`role.${me.role}`) }) : error.message}
+      </Empty>
+    );
   }
   if (error?.status === 404) {
-    return <Empty icon="search" tone="gray" title={t('state.notFound.title', { thing })}>{t('state.notFound.body')}</Empty>;
+    return (
+      <div className="empty state-404">
+        <strong className="big-404">404</strong>
+        <h3>{t('state.notFound.title', { thing })}</h3>
+        <p>{t('state.notFound.body')}</p>
+        {back && <div className="empty-actions"><Button onClick={() => navigateTo(back.to)}>{back.label}</Button></div>}
+      </div>
+    );
   }
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  if (offline) return <Empty icon="wifiOff" tone="gray" title={t('state.offline.title')}>{t('state.offline.body')}</Empty>;
+  const support = supportEmail ?? dashCtx?.me?.support?.email ?? 'info@heyquicky.com';
   return (
     <Empty icon="alert" tone="red" title={t('state.error.title', { thing })}
       actions={<>
-        {onRetry && <Button variant="primary" onClick={onRetry}>{t('common.retry')}</Button>}
-        <Button onClick={() => window.open(`mailto:${supportEmail ?? 'info@heyquicky.com'}`)}>{t('state.error.contact')}</Button>
+        {onRetry && <Button variant="primary" onClick={onRetry}>{t('state.error.retry')}</Button>}
+        <Button onClick={() => window.open(`mailto:${support}?subject=${encodeURIComponent(`${thing} didn't load (${error?.status ?? 'network'})`)}`)}>{t('state.error.contact')}</Button>
       </>}>
       {t('state.error.body')}
-      {error?.message && <small className="error-code">{error.message}</small>}
+      <small className="error-code">{t('state.error.code', { code: error?.status ? `HTTP ${error.status}` : 'NETWORK', time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) })}</small>
     </Empty>
   );
 }
