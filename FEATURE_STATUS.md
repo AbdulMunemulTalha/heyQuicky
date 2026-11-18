@@ -23,7 +23,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | INB-02 | Done — Waiting / Unread / Open / Done (+ Spam) tabs with live counts, per channel and Mine/Everyone | /app/inbox |
 | INB-03 | Done — one-tap Done; the chat reopens by itself when the customer writes, with a "Back from Done" tag and a Reopened banner | /app/inbox?tab=done |
 | INB-04 | Partial — Later / snooze picker (1 h, tonight, tomorrow, next week, custom, note); snoozed chats leave the lists and come back at the time or when the customer writes. Missing: the reminder notification at wake-up | /app/inbox |
-| INB-05 | Partial — ⌘K, Ctrl+K and "/" open the search overlay; search itself comes with screen 23 | overlay |
+| INB-05 | Done — ⌘K, Ctrl+K or "/" opens universal search (frame 23): chats by name or words inside any message, orders by #number, name or phone (Bangla digits, +880), customers, products; All / Chats / Orders / Customers / Products filters; agents only see their own and unassigned chats, phones masked without permission | overlay |
 | INB-06 | Done — channel chips with counts, Mine/Everyone, select, bulk Done / Reopen / Assign / Tag / Not spam, Tidy up, Mark all read | /app/inbox |
 | INB-07 | Done — AI/person badge, who replied last, waiting timer, ACT NOW, needs-a-person, auto tags (Back from Done, customer tags) | /app/inbox |
 | INB-08 | Partial — side panel with AI summary, delivery record, orders, team notes, tags, AI switch. Missing: follow-ups, bookings and lead status (come with screens 05 and P2 Bookings) | /app/inbox |
@@ -162,7 +162,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | UX-03 | Not started (Phase 2) | overlay |
 | UX-04 | Not started (Phase 3) | overlay |
 | UX-05 | Not started (Phase 3) | overlay |
-| UX-06 | Partial — keyboard shortcuts open search; commands come with screen 23 | overlay |
+| UX-06 | Done — keyboard: ⌘K / Ctrl+K / "/" search, ↑ ↓ Enter in results, Tab switches filters, Esc closes; "Go to" pages and actions (new order, add product, test chat) with G-then-letter shortcuts (G H overview, G I inbox, G O orders, G C customers, G F follow-ups, G S saved replies, G A AI agent, G P catalog, G R analytics, G T settings) | overlay |
 | UX-07 | Partial — sidebar hides switched-off modules (`workspace.settings.modules`); Modules screen in Phase 2 | /app |
 | UX-08 | Partial — log in by email or phone (Bangla digits too), wrong-password state, forgot → 6-digit code by email or SMS → new password (logs out other devices), "keep me logged in", Continue with Google. Missing: Google needs `GOOGLE_CLIENT_ID`; real email/SMS need `RESEND_API_KEY` / `SMS_API_URL` | /app/login |
 | UX-09 | Done — bell panel (frame 16): All / Orders / Chats / System with counts, New and Earlier, one-tap actions (Take over, View order, Review, Restock), dismiss, mark all read, live updates and a toast; "Notify me about" (16b) per event for App / Phone / WhatsApp with quiet hours, also on Settings → Notifications | overlay, /app/settings/notifications |

@@ -3,7 +3,7 @@ import { SocketContext } from '../components/common.jsx';
 import { dash, setUnauthorizedHandler } from './lib/api.js';
 import { I18n, makeT } from './lib/i18n.js';
 import { Dash } from './lib/context.js';
-import { match, useLocation } from './lib/router.jsx';
+import { match, navigate, useLocation } from './lib/router.jsx';
 import { Sidebar, Topbar, MobileTabs } from './Shell.jsx';
 import { Drawer, Empty, ErrorState, Skeleton, Toasts, toast } from './ui/kit.jsx';
 import './dashboard.css';
@@ -29,8 +29,11 @@ const screens = {
 };
 const overlays = {
   testChat: lazy(() => import('./screens/TestChat.jsx')),
+  search: lazy(() => import('./screens/Search.jsx')),
   notifications: lazy(() => import('./screens/Notifications.jsx')),
 };
+
+const G_KEYS = { H: '/', I: '/inbox', O: '/orders', C: '/customers', F: '/growth', S: '/saved-replies', A: '/agent', P: '/catalog', R: '/analytics', T: '/settings' };
 
 const ROUTES = [
   ['/', 'overview'],
@@ -124,14 +127,22 @@ export function Dashboard({ onSignOut }) {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // ⌘K / Ctrl+K and "/" open universal search (INB-05, UX-06).
+  // ⌘K / Ctrl+K and "/" open universal search (INB-05, UX-06); "G then a letter" jumps to a page
+  // (the same letters the search panel shows under "Go to", see GO_TO in screens/Search.jsx).
   useEffect(() => {
+    let gAt = 0;
     const onKey = (e) => {
       const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
       if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
         e.preventDefault();
         setOverlay({ name: 'search', props: {} });
+        return;
       }
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+      const key = e.key.toUpperCase();
+      if (key === 'G') { gAt = Date.now(); return; }
+      if (gAt && Date.now() - gAt < 1200 && G_KEYS[key]) { e.preventDefault(); gAt = 0; setOverlay(null); navigate(G_KEYS[key]); }
+      gAt = 0;
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
