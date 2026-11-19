@@ -14,6 +14,7 @@ const NAV = [
   { key: 'inbox', to: '/inbox', icon: 'inbox', label: 'nav.inbox', badge: 'inbox', tone: 'yellow' },
   { key: 'orders', to: '/orders', icon: 'orders', label: 'nav.orders', badge: 'orders', tone: 'gray' },
   { key: 'customers', to: '/customers', icon: 'customers', label: 'nav.customers' },
+  { key: 'tickets', to: '/tickets', icon: 'ticket', label: 'nav.tickets', badge: 'tickets', tone: 'red', module: 'tickets' },
   { section: 'nav.grow' },
   { key: 'growth', to: '/growth', icon: 'growth', label: 'nav.growth', module: 'growth' },
   { key: 'saved', to: '/saved-replies', icon: 'saved', label: 'nav.saved' },
@@ -41,7 +42,7 @@ export const SETTINGS_NAV = [
 
 export function activeKey(path) {
   const first = path.split('/')[1] ?? '';
-  const map = { '': 'overview', inbox: 'inbox', comments: 'inbox', orders: 'orders', tickets: 'customers', customers: 'customers',
+  const map = { '': 'overview', inbox: 'inbox', comments: 'inbox', orders: 'orders', tickets: 'tickets', customers: 'customers',
     growth: 'growth', coupons: 'growth', content: 'growth', 'saved-replies': 'saved', agent: 'agent', catalog: 'catalog',
     analytics: 'analytics', payments: 'orders', bookings: 'customers', settings: 'settings', profile: 'profile' };
   return map[first] ?? '';

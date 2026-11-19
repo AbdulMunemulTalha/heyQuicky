@@ -23,6 +23,7 @@ const screens = {
   saved: lazy(() => import('./screens/SavedReplies.jsx')),
   agent: lazy(() => import('./screens/Agent.jsx')),
   training: lazy(() => import('./screens/Training.jsx')),
+  tickets: lazy(() => import('./screens/Tickets.jsx')),
   catalog: lazy(() => import('./screens/Catalog.jsx')),
   product: lazy(() => import('./screens/ProductForm.jsx')),
   analytics: lazy(() => import('./screens/Analytics.jsx')),
@@ -36,6 +37,7 @@ const overlays = {
   products: lazy(() => import('./screens/SendProducts.jsx')),
   notifications: lazy(() => import('./screens/Notifications.jsx')),
   teach: lazy(() => import('./screens/Teach.jsx')),
+  newTicket: lazy(() => import('./screens/Tickets.jsx').then((m) => ({ default: m.NewTicket }))),
 };
 
 const G_KEYS = { H: '/', I: '/inbox', O: '/orders', C: '/customers', F: '/growth', S: '/saved-replies', A: '/agent', P: '/catalog', R: '/analytics', T: '/settings' };
@@ -56,6 +58,8 @@ const ROUTES = [
   ['/saved-replies', 'saved'],
   ['/agent', 'agent'],
   ['/agent/training', 'training'],
+  ['/tickets', 'tickets'],
+  ['/tickets/:n', 'tickets'],
   ['/catalog', 'catalog'],
   ['/catalog/posts', 'placeholder'],
   ['/catalog/size-charts', 'placeholder'],
@@ -116,7 +120,7 @@ export function Dashboard({ onSignOut }) {
   // Live updates: badge counts follow new chats, orders and notifications without a refresh.
   useEffect(() => {
     if (!socket) return undefined;
-    const events = ['conversation', 'order', 'notification', 'unanswered'];
+    const events = ['conversation', 'order', 'notification', 'unanswered', 'ticket'];
     events.forEach((e) => socket.on(e, refreshBadges));
     const onWorkspace = (patch) => setMe((m) => (m ? { ...m, workspace: { ...m.workspace, ...patch } } : m));
     socket.on('workspace', onWorkspace);

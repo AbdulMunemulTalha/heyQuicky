@@ -262,6 +262,7 @@ export function defineDashboardModels(conn) {
     owner_user_id: { type: Number, default: null },
     status: { type: String, default: 'open' },
     resolution: { type: String, default: '' },
+    resolution_kind: { type: String, default: '' }, // refunded | exchanged | replaced | resent | explained | other
     timeline: { type: [Mixed], default: [] },
     solved_at: { type: Date, default: null },
   });

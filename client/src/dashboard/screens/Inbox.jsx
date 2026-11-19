@@ -278,6 +278,7 @@ function Chat({ id, t, me, onChanged, tab }) {
               {c.status === 'open' && can('reply') && (mineTakeover
                 ? <Button size="sm" className="keep-mobile" onClick={() => act('release', {}, t('inbox.backToAiDone'))} title={c.humanUntil ? t('inbox.autoReturn', { time: t.time(c.humanUntil) }) : undefined}>{t('inbox.backToAi')}</Button>
                 : <Button size="sm" variant="dark" onClick={() => act('takeover', {}, t('inbox.tookOver'))}>{t('inbox.takeOver')}</Button>)}
+              {can('reply') && <Button size="sm" onClick={() => openOverlay('newTicket', { conversationId: Number(id), title: c.handoffReason ?? '' })}>{t('tk.make')}</Button>}
               <Button size="sm" onClick={() => setAssignOpen(true)}>{t('inbox.assign')}</Button>
               {c.status === 'open' && <Button size="sm" onClick={() => setSnoozeOpen(true)}>{t('inbox.later')}</Button>}
               {c.status === 'open'

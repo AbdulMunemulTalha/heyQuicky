@@ -127,7 +127,7 @@ test('the shell gets badges and permissions; only owners and admins switch the A
     const me = await app.call('/me', { token: owner });
     assert.equal(me.status, 200);
     assert.ok(me.body.can.includes('billing'));
-    assert.deepEqual(Object.keys(me.body.badges).sort(), ['agent', 'alerts', 'inbox', 'orders']);
+    assert.deepEqual(Object.keys(me.body.badges).sort(), ['agent', 'alerts', 'inbox', 'orders', 'tickets']);
     const agentMe = await app.call('/me', { token: agent });
     assert.equal(agentMe.body.can.includes('billing'), false);
     assert.equal((await app.call('/ai-mode', { method: 'POST', token: agent, body: { mode: 'auto' } })).status, 403);

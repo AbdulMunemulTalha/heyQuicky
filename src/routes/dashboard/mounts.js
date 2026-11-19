@@ -14,6 +14,7 @@ import { settingsRoutes } from './settingsRoutes.js';
 import { notificationRoutes } from './notifications.js';
 import { searchRoutes } from './search.js';
 import { trainingRoutes } from './training.js';
+import { ticketRoutes } from './tickets.js';
 
 // Dashboard feature routers, mounted under /api/dash in this order. Each is (db, config, ctx) => Router.
-export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes, settingsRoutes, notificationRoutes, searchRoutes, trainingRoutes];
+export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes, settingsRoutes, notificationRoutes, searchRoutes, trainingRoutes, ticketRoutes];

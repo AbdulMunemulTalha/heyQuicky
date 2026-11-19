@@ -131,8 +131,8 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | FUP-06 | Partial — Broadcasts: hot / warm / last 24 h / buyers in 24 h, live recipient count that respects Meta's 24-hour rule, text / buttons / product / carousel / photo, send now or schedule, results (replied, ordered). Missing: the designed Messenger cards (screen 24) — sent as text for now; WhatsApp templates | /app/growth?tab=broadcasts |
 | FUP-07 | Not started | AI pipeline |
 | FUP-08 | Not started (Phase 3) | /app/growth/leads?tab=lost |
-| TKT-01 | Not started (Phase 2) | /app/tickets |
-| TKT-02 | Partial — the AI flags refunds, damaged or wrong items, angry customers and review threats as ACT NOW and hands off (listed first under Overview → Needs attention); the tickets screen comes in Phase 2 | /app |
+| TKT-01 | Done — Support tickets: open / waiting / solved tabs, Mine, search; each ticket has a type, owner, due time (1 h ACT NOW, 24 h otherwise, overdue flag), timeline with notes, the chat with "Reply in chat", the customer's orders, and "Mark solved" with a resolution (refunded, exchanged, replaced, sent again, explained); "+ New ticket" by hand or from a chat ("Ticket" in the chat header), optionally for an order; one open ticket per chat; sidebar badge; agents see only their own | /app/tickets |
+| TKT-02 | Done — the AI flags refunds, damaged or wrong items, angry customers and review threats as ACT NOW: it hands off, opens a ticket (type read from the reason) and alerts the team; ACT NOW chats list first under Overview → Needs attention, in the inbox and in Tickets; solving the ticket clears the flag | /app, /app/tickets |
 | TKT-03 | Done — first messages are checked for spam; the Spam folder gets no AI reply (৳0); Not spam, Block, and "AI for this customer" off with a note | /app/inbox?tab=spam |
 | BKG-01 | Not started (Phase 3) | /app/bookings |
 | BKG-02 | Not started (Phase 3) | /app/bookings |

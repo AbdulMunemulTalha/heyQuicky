@@ -2,6 +2,7 @@ import { tryAutoAnswer, hasAutoAnswers } from '../dashboard/autoAnswer.js';
 import { withTraining, recordUnanswered } from '../dashboard/training.js';
 import { INTENTS, REPLY_SCHEMA, COMMENT_SCHEMA, buildSystemPrompt, buildCommentPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
 import { commentAction } from '../dashboard/comments.js';
+import { openTicket } from '../dashboard/tickets.js';
 import { productCards, quickReplies } from '../platforms/rich.js';
 import { placeAiOrder } from '../dashboard/aiOrder.js';
 import { sendSizeChart } from '../dashboard/postbacks.js';
@@ -249,6 +250,10 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       await db.conversations.updateOne({ _id: conversationId }, { $set: { act_now: true } });
       answer.handoff = true;
       answer.handoff_reason = answer.act_now_reason || answer.handoff_reason || 'Urgent — the customer needs a person now';
+      // ...and a ticket so it is tracked to a resolution (TKT-02).
+      await openTicket(db, { workspaceId: ctx.conversation.workspace_id, conversationId, customerId: ctx.conversation.customer_id ?? null,
+        title: answer.handoff_reason, reason: answer.handoff_reason, actNow: true, by: 'AI', ownerId: ctx.conversation.assigned_user_id ?? null, notify })
+        .catch((err) => log.warn(`ticket for conversation ${conversationId} failed: ${err.message}`));
     }
     // ORD-01: the AI places the order; if anything doesn't fit the catalog, a person finishes it instead.
     let placed = null;
