@@ -1,6 +1,9 @@
 import { tryAutoAnswer, hasAutoAnswers } from '../dashboard/autoAnswer.js';
 import { withTraining, recordUnanswered } from '../dashboard/training.js';
-import { INTENTS, REPLY_SCHEMA, buildSystemPrompt, toModelMessages } from './prompt.js';
+import { INTENTS, REPLY_SCHEMA, buildSystemPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
+import { productCards, quickReplies } from '../platforms/rich.js';
+import { placeAiOrder } from '../dashboard/aiOrder.js';
+import { sendSizeChart } from '../dashboard/postbacks.js';
 import { InboxError } from '../inbox.js';
 import { canSpend, meter } from './metering.js';
 
@@ -26,6 +29,12 @@ function normalize(data) {
     handoff: Boolean(data?.handoff),
     handoff_reason: String(data?.handoff_reason ?? '').trim(),
     intent: INTENTS.includes(data?.intent) ? data.intent : 'other',
+    products: (Array.isArray(data?.products) ? data.products : []).map(Number).filter(Number.isInteger).slice(0, 10),
+    quick_replies: (Array.isArray(data?.quick_replies) ? data.quick_replies : []).map((q) => String(q).trim().slice(0, 20)).filter(Boolean).slice(0, 5),
+    size_chart_product: Number(data?.size_chart_product) || 0,
+    order: data?.order?.ready ? data.order : null,
+    act_now: Boolean(data?.act_now),
+    act_now_reason: String(data?.act_now_reason ?? '').trim(),
   };
 }
 
@@ -63,8 +72,16 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     ]);
     const messages = recent.reverse();
     const lastInbound = messages.findLast((m) => m.direction === 'in') ?? null;
+    const now = new Date();
+    const [coupons, customer, orders, notes] = await Promise.all([
+      db.coupons.find({ workspace_id: conversation.workspace_id, active: { $ne: false }, $and: [{ $or: [{ ends_at: null }, { ends_at: { $gt: now } }] }, { $or: [{ starts_at: null }, { starts_at: { $lte: now } }] }] }).limit(10).lean(),
+      conversation.customer_id ? db.customers.findById(conversation.customer_id).lean() : null,
+      conversation.customer_id ? db.orders.find({ customer_id: conversation.customer_id, draft: { $ne: true } }).sort({ created_at: -1 }).limit(3).lean() : [],
+      conversation.customer_id ? db.notes.find({ customer_id: conversation.customer_id }).sort({ created_at: -1 }).limit(3).lean() : [],
+    ]);
     // The knowledge book, taught answers and rules ride along with the shop information.
-    return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, messages, lastInbound };
+    return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, coupons, messages, lastInbound,
+      context: buildCustomerContext({ customer, orders, notes, now }) };
   }
 
   async function generate(ctx, kind = 'reply') {
@@ -73,7 +90,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     const system = buildSystemPrompt(ctx);
     try {
       const contactName = ctx.conversation.contact_id ? (await db.contacts.findById(ctx.conversation.contact_id, { name: 1 }).lean())?.name ?? '' : '';
-      const { data } = await callModel(ctx.conversation.workspace_id, { system, messages: turns, schema: REPLY_SCHEMA },
+      const { data } = await callModel(ctx.conversation.workspace_id, { system, context: ctx.context, messages: turns, schema: REPLY_SCHEMA },
         { kind, conversationId: ctx.conversation._id, customerName: contactName, summary: kind === 'draft' ? 'Drafted a reply' : 'Answered the customer' });
       lastError = null;
       const answer = normalize(data);
@@ -153,18 +170,49 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
       return 'drafted';
     }
 
+    // ACT NOW (TKT-02): urgent chats jump to the top for the team.
+    if (answer.act_now) {
+      await db.conversations.updateOne({ _id: conversationId }, { $set: { act_now: true } });
+      answer.handoff = true;
+      answer.handoff_reason = answer.act_now_reason || answer.handoff_reason || 'Urgent — the customer needs a person now';
+    }
+    // ORD-01: the AI places the order; if anything doesn't fit the catalog, a person finishes it instead.
+    let placed = null;
+    if (answer.order) {
+      try {
+        placed = await placeAiOrder(db, { conversation: ctx.conversation, input: answer.order, notify, publicUrl: config.publicUrl || '' });
+      } catch (err) {
+        await setHandoff(conversationId, `The AI couldn't place the order: ${err.message}. Please finish it.`);
+        await saveDraft(conversationId, answer, messageId);
+        await inbox.refresh(conversationId);
+        return 'order_failed';
+      }
+    }
     if (answer.handoff) await setHandoff(conversationId, answer.handoff_reason || 'The AI asked for a person to take over');
     // A question the shop information didn't cover goes to "Questions it couldn't answer" (TRN-04).
     if (answer.handoff && /^unanswered:/i.test(answer.handoff_reason ?? '')) await recordUnanswered(db, ctx.workspace._id, ctx.lastInbound?.text);
     if (answer.reply) {
-      const sent = await inbox.sendAiReply(conversationId, answer.reply);
+      const sent = answer.quick_replies.length && !placed
+        ? await inbox.sendAiRich(conversationId, quickReplies(answer.reply, answer.quick_replies))
+        : await inbox.sendAiReply(conversationId, answer.reply);
       if (!sent) {
         await setHandoff(conversationId, "Meta's reply window has closed, so the AI couldn't answer. Please follow up.");
         await saveDraft(conversationId, answer, messageId);
+        await inbox.refresh(conversationId);
+        return 'handed_off';
       }
     }
+    // Cards after the text: products (CAT-03 / AI-05), a size chart (AI-14), the order summary (ORD-02).
+    if (answer.products.length) {
+      const list = await db.products.find({ _id: { $in: answer.products }, workspace_id: ctx.conversation.workspace_id }).lean();
+      const byId = new Map(list.map((p) => [p._id, p]));
+      const rich = productCards(answer.products.map((id) => byId.get(id)).filter(Boolean), { publicUrl: config.publicUrl || '' });
+      if (rich.payload.cards.length) await inbox.sendAiRich(conversationId, rich);
+    }
+    if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product);
+    if (placed) await inbox.sendAiRich(conversationId, placed.rich);
     await inbox.refresh(conversationId);
-    return answer.handoff ? 'handed_off' : 'sent';
+    return placed ? 'order_placed' : answer.handoff ? 'handed_off' : 'sent';
   }
 
   // Waits a moment before answering, because customers often send several
@@ -199,7 +247,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     respond,
 
     // Practice chat during onboarding: the owner plays a customer. Nothing is stored or sent to Meta.
-    async practice(user, turns, { extraNotes = '' } = {}) {
+    async practice(user, turns, { extraNotes = '', withActions = false } = {}) {
       if (!provider) throw new InboxError(503, 'AI replies are not set up on this server yet');
       if (!Array.isArray(turns) || !turns.length || turns.length > 30) throw new InboxError(400, 'Send the practice conversation');
       const messages = turns.map((t) => ({
@@ -207,10 +255,11 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
         content: String(t?.content ?? '').trim().slice(0, 1000),
       })).filter((t) => t.content);
       if (!messages.length || messages.at(-1).role !== 'user') throw new InboxError(400, 'Write a customer message first');
-      const [rawWorkspace, products, savedReplies] = await Promise.all([
+      const [rawWorkspace, products, savedReplies, coupons] = await Promise.all([
         db.workspaces.findById(user.workspace_id).lean(),
         db.products.find({ workspace_id: user.workspace_id, archived: { $ne: true }, visibility: { $ne: 'hidden' } }).sort({ name: 1 }).limit(300).lean(),
         db.savedReplies.find({ workspace_id: user.workspace_id }).sort({ shortcut: 1 }).lean(),
+        db.coupons.find({ workspace_id: user.workspace_id, active: { $ne: false } }).limit(10).lean(),
       ]);
       const trained = await withTraining(db, rawWorkspace);
       // A draft answer being previewed in "Teach the answer" is added on top, without saving it.
@@ -221,10 +270,18 @@ ${extraNotes}` } : trained;
       if (!turnsForModel) throw new InboxError(400, 'Write a customer message first');
       try {
         const { data } = await callModel(user.workspace_id, {
-          system: buildSystemPrompt({ workspace, products, savedReplies }), messages: turnsForModel, schema: REPLY_SCHEMA,
+          system: buildSystemPrompt({ workspace, products, savedReplies, coupons }), messages: turnsForModel, schema: REPLY_SCHEMA,
         }, { kind: 'practice', summary: 'Test chat', customerName: 'Test chat' });
         lastError = null;
-        return normalize(data);
+        const answer = normalize(data);
+        // Onboarding's practice chat keeps its original answer shape (reply, handoff, reason, intent).
+        if (!withActions) return { reply: answer.reply, handoff: answer.handoff, handoff_reason: answer.handoff_reason, intent: answer.intent };
+        // The dashboard test chat shows the cards the customer would get (nothing is saved or sent).
+        const byId = new Map(products.map((p) => [p._id, p]));
+        let rich = null;
+        if (answer.products.length) rich = productCards(answer.products.map((id) => byId.get(id)).filter(Boolean));
+        else if (answer.quick_replies.length) rich = quickReplies(answer.reply, answer.quick_replies);
+        return { ...answer, rich };
       } catch (err) {
         if (err.paused) throw err;
         lastError = { message: err.message, at: new Date() };

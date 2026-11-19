@@ -7,7 +7,8 @@ export { AiError } from './errors.js';
 //   provider.name                        e.g. "claude"
 //   provider.model                       model ID, shown in Settings
 //   await provider.generateJson({ system, messages, schema, maxTokens })
-//     system:   string, the instructions
+//     system:   string, the instructions (cached per shop)
+//     context:  optional string, per-conversation facts sent after it (not cached)
 //     messages: [{ role: 'user' | 'assistant', content: string }], oldest first,
 //               starting with 'user'
 //     schema:   JSON Schema the answer must match

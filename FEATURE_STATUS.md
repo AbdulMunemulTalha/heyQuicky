@@ -38,20 +38,20 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | TEAM-05 | Not started (Phase 2) | /app/settings/team |
 | TEAM-06 | Partial — audit log written for AI mode changes; screen in Phase 3 | /app/settings/audit |
 | TEAM-07 | Not started (Phase 3) | /app/settings/team |
-| AI-01 | Not started | AI pipeline |
+| AI-01 | Done — replies in the customer's own language and script (Bangla, Banglish, English; follows their latest message); the shop's style decides greetings and stickers | AI pipeline |
 | AI-02 | Partial — the AI uses the knowledge book and taught answers in every reply and in the test chat; voice input comes later | AI pipeline |
-| AI-03 | Not started | AI pipeline |
+| AI-03 | Done — tone / style from AI agent settings (warm Banglish, Bangla, English, casual) goes into every reply | AI pipeline |
 | AI-04 | Not started | AI pipeline |
-| AI-05 | Not started | AI pipeline |
+| AI-05 | Partial — the AI sends matching products as photo cards when asked what the shop has; matching a customer's photo to a product comes next | AI pipeline |
 | AI-06 | Not started | AI pipeline |
 | AI-07 | Not started | AI pipeline |
-| AI-08 | Not started | AI pipeline |
-| AI-09 | Not started | AI pipeline |
-| AI-10 | Not started | AI pipeline |
-| AI-11 | Not started | AI pipeline |
-| AI-12 | Not started | AI pipeline |
+| AI-08 | Partial — the AI knows each product's id and linked posts; replying to comments comes next | AI pipeline |
+| AI-09 | Done — every reply sees the customer's name, VIP / risk, past orders on any channel (last 3), saved address and phone, and team notes; sent outside the cached shop prompt | AI pipeline |
+| AI-10 | Done — prices and stock only from the catalog; discounts only from active coupons, with their exact terms; "no discounts" when there are none | AI pipeline |
+| AI-11 | Done — when the AI asks for a size or colour it sends tap-to-answer chips (up to 5) | AI pipeline |
+| AI-12 | Done — "Suggested add-ons" are listed with each product; the AI offers one once, after the customer has chosen | AI pipeline |
 | AI-13 | Not started | AI pipeline |
-| AI-14 | Not started | AI pipeline |
+| AI-14 | Done — the AI sends the product's size chart when asked which size fits, then asks height and chest / waist | AI pipeline |
 | AI-15 | Not started | AI pipeline |
 | TRN-01 | Done — knowledge book: add, remove, each change published as a version; persona editor (name, role, tone, sales style, address, reply delay) | /app/agent |
 | TRN-02 | Not started (Phase 2) | overlay |
@@ -81,7 +81,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CMT-04 | Not started (Phase 3) | /app/catalog/posts |
 | CMT-05 | Partial — spam and phone-number comments are hidden automatically when they arrive; the switches live on the P1 Posts screen | /app/comments |
 | CMT-06 | Not started (Phase 3) | /app/content |
-| ORD-01 | Not started | AI pipeline |
+| ORD-01 | Done — the AI takes the order itself: products by id, size / colour matched to a variant, name, phone, address and zone; creates a pending order (on hold for high-risk customers), holds stock, notifies the team and sends the summary card with "হ্যাঁ, কনফার্ম"; anything that doesn't fit the catalog goes to the team with a draft instead | AI pipeline |
 | ORD-02 | Done — the order summary card in chat (items, delivery, cash to collect, name and address) with "হ্যাঁ, কনফার্ম" and "পরিবর্তন করুন" (bill page); tapping confirm approves the order, thanks the customer and alerts the shop | messages |
 | ORD-03 | Done — customer bill page (frames 20, 20b): Bangla first with English, shop header, status card with estimated delivery, 5-step live timeline, items and totals with cash to collect, courier and tracking link once shipped, address / phone change request (lands on the order as ORD-07), bKash / Nagad advance by TrxID (waits in Payments), message / call the shop, "I want to cancel" (notifies, never cancels by itself); link in the chat confirmation and "Customer's bill" on the order | /b/:token |
 | ORD-04 | Not started (Phase 2) | /p/:shop/:product |
@@ -132,7 +132,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | FUP-07 | Not started | AI pipeline |
 | FUP-08 | Not started (Phase 3) | /app/growth/leads?tab=lost |
 | TKT-01 | Not started (Phase 2) | /app/tickets |
-| TKT-02 | Partial — ACT NOW chats listed first under Overview → Needs attention; detection and tickets come with the AI pipeline | /app |
+| TKT-02 | Partial — the AI flags refunds, damaged or wrong items, angry customers and review threats as ACT NOW and hands off (listed first under Overview → Needs attention); the tickets screen comes in Phase 2 | /app |
 | TKT-03 | Done — first messages are checked for spam; the Spam folder gets no AI reply (৳0); Not spam, Block, and "AI for this customer" off with a note | /app/inbox?tab=spam |
 | BKG-01 | Not started (Phase 3) | /app/bookings |
 | BKG-02 | Not started (Phase 3) | /app/bookings |

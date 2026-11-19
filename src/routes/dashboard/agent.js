@@ -147,7 +147,7 @@ export function agentRoutes(db, _config, { auth, agent, emit }) {
   // Test chat (TRN-08): chat as a customer; nothing is stored or sent.
   router.post('/agent/test', auth, async (req, res) => {
     if (!agent?.status().available) throw new InboxError(503, 'The AI is not set up on this server yet. Add ANTHROPIC_API_KEY to try the test chat.');
-    const out = await agent.practice(req.user, req.body?.turns ?? []);
+    const out = await agent.practice(req.user, req.body?.turns ?? [], { withActions: true });
     res.json(out);
   });
 

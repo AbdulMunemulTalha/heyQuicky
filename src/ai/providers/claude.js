@@ -12,7 +12,7 @@ export function createClaudeProvider({ apiKey, model, effort }) {
     name: 'claude',
     model,
 
-    async generateJson({ system, messages, schema, maxTokens = 4000 }) {
+    async generateJson({ system, context = '', messages, schema, maxTokens = 4000 }) {
       let response;
       try {
         response = await client.beta.messages.create({
@@ -20,7 +20,8 @@ export function createClaudeProvider({ apiKey, model, effort }) {
           max_tokens: maxTokens,
           // The shop's instructions and catalogue are the same for every message
           // in a shop, so they are cached between customers.
-          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+          // The customer's own history follows, uncached (it differs per chat).
+          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }, ...(context ? [{ type: 'text', text: context }] : [])],
           messages,
           // Chat replies are short; low effort keeps them fast and cheap.
           output_config: { effort, format: { type: 'json_schema', schema } },
