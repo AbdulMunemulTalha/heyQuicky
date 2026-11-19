@@ -136,6 +136,8 @@ function defineModels(conn) {
     waba_id: { type: String, default: null },
     // The Facebook Page an Instagram account is reached through (needed to read its history).
     page_id: { type: String, default: null },
+    // When the Page was subscribed to button taps (messaging_postbacks), see dashboard/pageSubscriptions.js.
+    postbacks_subscribed_at: { type: Date, default: null },
     // Import of conversations that existed before the channel was connected.
     import_status: { type: String, default: '' },
     import_count: { type: Number, default: 0 },
