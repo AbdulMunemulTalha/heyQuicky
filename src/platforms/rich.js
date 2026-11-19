@@ -47,6 +47,24 @@ export function quickReplies(text, options) {
   return { kind: 'quick_replies', payload: { text, options: opts }, text };
 }
 
+// CAT-05 / AI-14: a size chart — the shop's image if it uploaded one, otherwise the table as text with a
+// link to the chart page — and the sizes as tap-to-answer choices.
+export function sizeChartMessage(chart, { productName = '', publicUrl = '' } = {}) {
+  const unit = chart.unit === 'cm' ? 'সেমি' : 'ইঞ্চি';
+  const sizes = (chart.rows ?? []).map((r) => r[0]).filter(Boolean).slice(0, 10);
+  const image = chart.image ? absolute(chart.image, publicUrl) : '';
+  const url = chart.token && publicUrl ? `${publicUrl.replace(/\/+$/, '')}/size/${chart.token}` : '';
+  const table = [(chart.columns ?? []).join(' | '), ...(chart.rows ?? []).map((r) => r.join(' | '))].join('\n');
+  const text = [
+    `${productName || chart.name} — সাইজ চার্ট (${unit})`,
+    image ? '' : table,
+    chart.how_to ? `মাপ নেওয়ার নিয়ম: ${chart.how_to}` : '',
+    url ? `পুরো চার্ট: ${url}` : '',
+    'আপনার কোন সাইজ লাগবে?',
+  ].filter(Boolean).join('\n\n');
+  return { kind: 'size_chart', payload: { name: chart.name, productName, unit: chart.unit, columns: chart.columns ?? [], rows: chart.rows ?? [], howTo: chart.how_to ?? '', image, url, options: sizes.map((s) => ({ title: s, value: s })) }, text };
+}
+
 // ORD-02 / ORD-11: the order summary the customer confirms in chat, with the bill link.
 export function orderSummary(order, { billUrl = '' } = {}) {
   const items = (order.product_items?.length ? order.product_items : order.items ?? []).map((i) => ({ name: i.name, variant: i.variant ?? '', qty: i.qty ?? 1, price: i.price ?? 0 }));
@@ -112,6 +130,11 @@ export function toPlatform(platform, { kind, payload, text }) {
       return { text: clip(payload.text, 2000), quick_replies: payload.options.map((o) => ({ content_type: 'text', title: clip(o.title, 20), payload: o.value })) };
     case 'review_request':
       return { text: clip(payload.text, 2000), quick_replies: payload.options.map((o) => ({ content_type: 'text', title: clip(o.title, 20), payload: o.value })) };
+    case 'size_chart': {
+      const quick = payload.options.length ? { quick_replies: payload.options.map((o) => ({ content_type: 'text', title: clip(o.title, 20), payload: o.value })) } : {};
+      // A photo can carry the size choices too; without one, the table goes as text.
+      return payload.image ? { attachment: { type: 'image', payload: { url: payload.image, is_reusable: true } }, ...quick } : { text: clip(text, 2000), ...quick };
+    }
     case 'order_summary':
     case 'delivery_card': {
       const title = kind === 'order_summary' ? `অর্ডার #${payload.number} · ${taka(payload.total)}` : payload.title;
@@ -130,10 +153,13 @@ function whatsapp(kind, payload, text) {
   if (kind === 'order_summary' && payload.buttons.some((b) => b.type === 'postback')) {
     return { type: 'interactive', interactive: { type: 'button', body: { text: clip(text, 1024) }, action: { buttons: buttons(payload.buttons) } } };
   }
-  if (kind === 'quick_replies' || kind === 'review_request') {
+  if (kind === 'size_chart' && payload.image) return { type: 'image', image: { link: payload.image, caption: clip(text, 1024) } };
+  if (kind === 'quick_replies' || kind === 'review_request' || kind === 'size_chart') {
     const opts = payload.options.map((o) => ({ type: 'postback', title: o.title, value: o.value }));
-    if (opts.length <= 3) return { type: 'interactive', interactive: { type: 'button', body: { text: clip(payload.text, 1024) }, action: { buttons: buttons(opts) } } };
-    return { type: 'interactive', interactive: { type: 'list', body: { text: clip(payload.text, 1024) }, action: { button: 'বেছে নিন', sections: [{ title: 'Options', rows: opts.slice(0, 10).map((o) => ({ id: o.value.slice(0, 200), title: clip(o.title, 24) })) }] } } };
+    if (!opts.length) return null;
+    const bodyText = kind === 'size_chart' ? text : payload.text;
+    if (opts.length <= 3) return { type: 'interactive', interactive: { type: 'button', body: { text: clip(bodyText, 1024) }, action: { buttons: buttons(opts) } } };
+    return { type: 'interactive', interactive: { type: 'list', body: { text: clip(bodyText, 1024) }, action: { button: 'বেছে নিন', sections: [{ title: 'Options', rows: opts.slice(0, 10).map((o) => ({ id: o.value.slice(0, 200), title: clip(o.title, 24) })) }] } } };
   }
   return null; // carousels and delivery cards go as text with links on WhatsApp
 }

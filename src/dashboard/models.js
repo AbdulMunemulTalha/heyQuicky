@@ -291,6 +291,10 @@ export function defineDashboardModels(conn) {
     unit: { type: String, default: 'inch' },
     columns: { type: [String], default: [] },
     rows: { type: [[String]], default: [] },
+    how_to: { type: String, default: '' }, // "How to measure", sent with the chart
+    image: { type: String, default: '' }, // the shop's own chart picture (/files/…), sent instead of the table
+    categories: { type: [String], default: [] }, // products in these categories use this chart
+    token: { type: String, default: null }, // public chart page /size/:token
   });
 
   const post = S({

@@ -13,7 +13,7 @@ const soft = (hex) => {
 };
 
 export function isRich(kind) {
-  return ['carousel', 'quick_replies', 'order_summary', 'delivery_card', 'review_request'].includes(kind);
+  return ['carousel', 'quick_replies', 'order_summary', 'delivery_card', 'review_request', 'size_chart'].includes(kind);
 }
 
 export function RichMessage({ kind, payload, text }) {
@@ -24,8 +24,26 @@ export function RichMessage({ kind, payload, text }) {
     case 'quick_replies': case 'review_request': return <Quick text={payload.text} options={payload.options ?? []} />;
     case 'order_summary': return <Summary t={t} o={payload} />;
     case 'delivery_card': return <Delivery d={payload} />;
+    case 'size_chart': return <SizeChart t={t} c={payload} />;
     default: return <span className="bn-ok">{text}</span>;
   }
+}
+
+// CAT-05: the chart the customer gets — the shop's picture, or the table — with the sizes to tap.
+export function SizeChart({ t, c }) {
+  return (
+    <div className="rm-chart">
+      <strong className="bn-ok">{c.productName || c.name} · {t(c.unit === 'cm' ? 'sc.cm' : 'sc.inch')}</strong>
+      {c.image ? <img src={c.image} alt={c.name} className="rm-chart-img" /> : (
+        <table className="rm-chart-table">
+          <thead><tr>{c.columns.map((h, i) => <th key={i} scope="col">{h}</th>)}</tr></thead>
+          <tbody>{c.rows.map((r, i) => <tr key={i}>{r.map((v, j) => (j === 0 ? <th key={j} scope="row">{v}</th> : <td key={j}>{v}</td>))}</tr>)}</tbody>
+        </table>
+      )}
+      {c.howTo && <small className="muted bn-ok">{c.howTo}</small>}
+      {c.options?.length > 0 && <div className="rm-chips">{c.options.map((o) => <span key={o.title} className="rm-chip">{o.title}</span>)}</div>}
+    </div>
+  );
 }
 
 function Buttons({ list }) {

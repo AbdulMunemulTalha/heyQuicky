@@ -26,6 +26,7 @@ import { fileRoute } from './routes/dashboard/savedReplies.js';
 import { adminRoutes } from './routes/admin.js';
 import { createNotifier } from './dashboard/notify.js';
 import { billRoutes } from './routes/bill.js';
+import { sizePageRoutes } from './routes/sizePage.js';
 import { createPostbackHandler } from './dashboard/postbacks.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
@@ -77,7 +78,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
     transcriber: createTranscriber({ apiKey: config.ai.openaiKey, model: config.ai.transcribeModel }) });
   inbox.setInboundHandler(agent.onInbound);
   onStatusChange(db, createDeliveryUpdater(db, inbox, config));
-  inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit }));
+  inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit, publicUrl: config.publicUrl }));
 
   io.use(async (socket, next) => {
     try {
@@ -105,6 +106,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.use(legalRoutes(config));
   // Customer bill pages (screen 20): public, behind each order's unguessable link.
   app.use(billRoutes(db, config, { notify }));
+  app.use(sizePageRoutes(db));
   app.use('/api/dash', dashboardRoutes(db, config, { adapters, inbox, orders, agent, importer, emit, notify, io, fetchImpl, mounts: dashboardMounts }));
   app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent, { fetchImpl }));
   // The dashboard is a single page; its assets live under /app/assets.

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { applyCategoryCharts } from './sizeCharts.js';
 import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
 import { audit, escapeRegex } from '../../dashboard/util.js';
@@ -95,6 +96,8 @@ export function catalogRoutes(db, _config, { auth, fetchImpl = fetch }) {
     const fields = await cleanProduct(db, wsId, req.body ?? {});
     const p = await db.insert(db.products, { workspace_id: wsId, ...fields, colour: fields.colour || pickColour(fields.name) });
     if (!fields.code) await db.products.updateOne({ _id: p.id }, { $set: { code: `P-${p.id}` } });
+    // A product in a category that has a size chart gets that chart (CAT-05).
+    if (fields.category && !fields.size_chart_id) await applyCategoryCharts(db, wsId, { productIds: [p.id] });
     await audit(db, req.user, `Added product "${fields.name}"`, { where: 'Catalog' });
     res.status(201).json({ id: p.id });
   });
@@ -105,6 +108,7 @@ export function catalogRoutes(db, _config, { auth, fetchImpl = fetch }) {
     if (!existing) throw new InboxError(404, 'Product not found');
     const fields = await cleanProduct(db, wsId, req.body ?? {}, existing);
     await db.products.updateOne({ _id: existing._id }, { $set: fields });
+    if (fields.category && fields.category !== existing.category && !fields.size_chart_id) await applyCategoryCharts(db, wsId, { productIds: [existing._id] });
     const changes = [];
     if (fields.price !== existing.price) changes.push(`price ৳${existing.price} → ৳${fields.price}`);
     if (fields.visibility !== existing.visibility) changes.push(`visibility ${existing.visibility} → ${fields.visibility}`);

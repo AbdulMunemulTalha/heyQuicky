@@ -51,7 +51,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | AI-11 | Done — when the AI asks for a size or colour it sends tap-to-answer chips (up to 5) | AI pipeline |
 | AI-12 | Done — "Suggested add-ons" are listed with each product; the AI offers one once, after the customer has chosen | AI pipeline |
 | AI-13 | Not started | AI pipeline |
-| AI-14 | Done — the AI sends the product's size chart when asked which size fits, then asks height and chest / waist | AI pipeline |
+| AI-14 | Done — when asked which size fits, the AI (or the "সাইজ চার্ট" button) sends the product's chart: the shop's picture, or the table with how to measure and a link to the chart page, with the sizes as tap-to-answer choices (WhatsApp: picture with caption or a reply list) | AI pipeline |
 | AI-15 | Not started | AI pipeline |
 | TRN-01 | Done — knowledge book: add, remove, each change published as a version; persona editor (name, role, tone, sales style, address, reply delay) | /app/agent |
 | TRN-02 | Done — Teach popup from 👎 on an AI reply in the inbox (what was wrong → the right answer with "use this answer when…" and a live phone preview → tested & published, with Undo); "should have handed off" also adds a hand-off rule; the same popup teaches unanswered questions | overlay |
@@ -73,7 +73,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CAT-02 | Done — per-variant stock, price and SKU with bulk edit; open orders keep their reserved stock; the AI sees which sizes are left and suggests the nearest one when a size is sold out; hidden and archived products are never offered | /app/catalog/:id |
 | CAT-03 | Done — product cards (screen 24): photo or colour, discount badge, price with old price, code and sizes left, "এটা চাই" and "সাইজ চার্ট" buttons; sent as a Messenger / Instagram carousel (up to 10), as a priced list on WhatsApp; hidden products never go out | messages |
 | CAT-04 | Done — "Product" in the composer opens a picker: search, choose up to 10, see the cards exactly as the customer will, send | overlay |
-| CAT-05 | Not started (Phase 2) | /app/catalog/size-charts |
+| CAT-05 | Done — Size charts screen: charts in inch or cm with sizes × measurements (+ Size, + Measurement), "How to measure" sent with the chart, the shop's own image instead of the table, used for picked products and whole categories (new products in the category pick it up), a public chart page (/size/…), and a preview of exactly what the customer gets | /app/catalog/size-charts |
 | CAT-06 | Done — Posts screen: "Sync posts" pulls Facebook Page and Instagram posts (caption, picture, time); products are suggested from the caption and, with "Match with AI", from the picture (the AI looks at the image); the shop confirms, adds or removes products; filters for with products / to confirm / none. Sync needs pages_read_engagement / instagram_basic on the token | /app/catalog/posts |
 | CMT-01 | Done — comments from Facebook and Instagram webhooks; public reply, private DM and hide from the dashboard; the AI replies by itself in auto mode (public reply + DM), each comment once, and leaves complaints for the team with its reason | /app/comments |
 | CMT-02 | Done — multi-product posts: the AI quotes the price range publicly and, on Facebook, the one private reply is a carousel of the post's products (Instagram gets a text message); the shop can set its own public reply per post; "What the AI sends" previews both | /app/catalog/posts |

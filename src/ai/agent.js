@@ -290,7 +290,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       const rich = productCards(answer.products.map((id) => byId.get(id)).filter(Boolean), { publicUrl: config.publicUrl || '' });
       if (rich.payload.cards.length) await inbox.sendAiRich(conversationId, rich);
     }
-    if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product);
+    if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product, { publicUrl: config.publicUrl || '' });
     if (placed) await inbox.sendAiRich(conversationId, placed.rich);
     await inbox.refresh(conversationId);
     return placed ? 'order_placed' : answer.handoff ? 'handed_off' : 'sent';

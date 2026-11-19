@@ -1,9 +1,9 @@
 import { changeStatus, NEXT } from './orderOps.js';
-import { quickReplies } from '../platforms/rich.js';
+import { sizeChartMessage } from '../platforms/rich.js';
 
 // What happens when a customer taps a button on a card (screen 24). Returns true when handled here,
 // so the AI doesn't answer the same tap again. "Order this" (ORDER) is left to the AI / team as a normal message.
-export function createPostbackHandler(db, inbox, { notify = null, emit = () => {} } = {}) {
+export function createPostbackHandler(db, inbox, { notify = null, emit = () => {}, publicUrl = '' } = {}) {
   return async (conversationId, _messageId, { action, id }) => {
     const conv = await db.conversations.findById(conversationId).lean();
     if (!conv) return false;
@@ -39,7 +39,7 @@ export function createPostbackHandler(db, inbox, { notify = null, emit = () => {
       return true;
     }
 
-    if (action === 'SIZE') return sendSizeChart(db, inbox, conversationId, ws, Number(id));
+    if (action === 'SIZE') return sendSizeChart(db, inbox, conversationId, ws, Number(id), { publicUrl });
 
     if (action === 'NOTIFY') {
       const product = await db.products.findOneAndUpdate({ _id: Number(id), workspace_id: ws }, { $inc: { restock_waiting: 1 } }, { new: true, lean: true });
@@ -53,12 +53,10 @@ export function createPostbackHandler(db, inbox, { notify = null, emit = () => {
 
 
 // The product's size chart as text with size chips (from a "সাইজ চার্ট" tap or the AI). False when it has none.
-export async function sendSizeChart(db, inbox, conversationId, workspaceId, productId) {
+export async function sendSizeChart(db, inbox, conversationId, workspaceId, productId, { publicUrl = '' } = {}) {
   const product = await db.products.findOne({ _id: productId, workspace_id: workspaceId }).lean();
-  const chart = product?.size_chart_id ? await db.sizeCharts.findById(product.size_chart_id).lean() : null;
+  const chart = product?.size_chart_id ? await db.sizeCharts.findOne({ _id: product.size_chart_id, workspace_id: workspaceId }).lean() : null;
   if (!chart) return false;
-  const table = [chart.columns.join(' | '), ...chart.rows.map((r) => r.join(' | '))].join('\n');
-  await inbox.sendAiRich(conversationId, quickReplies(`${product.name} — সাইজ চার্ট (${chart.unit === 'cm' ? 'সেমি' : 'ইঞ্চি'})\n${table}\n\nআপনার কোন সাইজ লাগবে?`,
-    chart.rows.map((r) => r[0]).filter(Boolean).slice(0, 10)));
+  await inbox.sendAiRich(conversationId, sizeChartMessage(chart, { productName: product.name, publicUrl }));
   return true;
 }
