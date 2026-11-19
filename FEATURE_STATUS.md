@@ -74,12 +74,12 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CAT-03 | Done — product cards (screen 24): photo or colour, discount badge, price with old price, code and sizes left, "এটা চাই" and "সাইজ চার্ট" buttons; sent as a Messenger / Instagram carousel (up to 10), as a priced list on WhatsApp; hidden products never go out | messages |
 | CAT-04 | Done — "Product" in the composer opens a picker: search, choose up to 10, see the cards exactly as the customer will, send | overlay |
 | CAT-05 | Not started (Phase 2) | /app/catalog/size-charts |
-| CAT-06 | Not started (Phase 2) | /app/catalog/posts |
+| CAT-06 | Done — Posts screen: "Sync posts" pulls Facebook Page and Instagram posts (caption, picture, time); products are suggested from the caption and, with "Match with AI", from the picture (the AI looks at the image); the shop confirms, adds or removes products; filters for with products / to confirm / none. Sync needs pages_read_engagement / instagram_basic on the token | /app/catalog/posts |
 | CMT-01 | Done — comments from Facebook and Instagram webhooks; public reply, private DM and hide from the dashboard; the AI replies by itself in auto mode (public reply + DM), each comment once, and leaves complaints for the team with its reason | /app/comments |
-| CMT-02 | Not started (Phase 2) | /app/catalog/posts |
+| CMT-02 | Done — multi-product posts: the AI quotes the price range publicly and, on Facebook, the one private reply is a carousel of the post's products (Instagram gets a text message); the shop can set its own public reply per post; "What the AI sends" previews both | /app/catalog/posts |
 | CMT-03 | Not started (Phase 3) | /app/catalog/posts |
 | CMT-04 | Not started (Phase 3) | /app/catalog/posts |
-| CMT-05 | Partial — spam and phone-number comments are hidden automatically when they arrive; the switches live on the P1 Posts screen | /app/comments |
+| CMT-05 | Done — spam (money links, prize scams, abuse) and phone-number comments are hidden as they arrive; per-post switches for AI replies, hide spam, hide phone numbers and product cards on the Posts screen | /app/catalog/posts, /app/comments |
 | CMT-06 | Not started (Phase 3) | /app/content |
 | ORD-01 | Done — the AI takes the order itself: products by id, size / colour matched to a variant, name, phone, address and zone; creates a pending order (on hold for high-risk customers), holds stock, notifies the team and sends the summary card with "হ্যাঁ, কনফার্ম"; anything that doesn't fit the catalog goes to the team with a draft instead | AI pipeline |
 | ORD-02 | Done — the order summary card in chat (items, delivery, cash to collect, name and address) with "হ্যাঁ, কনফার্ম" and "পরিবর্তন করুন" (bill page); tapping confirm approves the order, thanks the customer and alerts the shop | messages |

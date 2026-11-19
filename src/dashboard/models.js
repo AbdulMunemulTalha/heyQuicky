@@ -301,6 +301,10 @@ export function defineDashboardModels(conn) {
     image: { type: String, default: '' },
     product_ids: { type: [Number], default: [] },
     match: { type: String, default: 'none' }, // linked | ai_match | none
+    suggested_ids: { type: [Number], default: [] }, // products the AI or the caption suggests, waiting for the shop to confirm (CAT-06)
+    match_source: { type: String, default: '' }, // caption | ai
+    match_confidence: { type: String, default: '' }, // high | medium | low | none
+    synced_at: { type: Date, default: null },
     rules: { type: Mixed, default: { hide_spam: true, hide_phones: true, remind_once: false, react_followup: false } },
     comment_count: { type: Number, default: 0 },
     posted_at: { type: Date, default: () => new Date() },

@@ -1,0 +1,41 @@
+/* Phase 2 · Posts (CAT-06 / CMT-02 / CMT-05) */
+#dash .po-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 16px; align-items: start; }
+#dash .po-listcard { position: sticky; top: 76px; max-height: calc(100vh - 100px); display: flex; flex-direction: column; overflow: hidden; }
+#dash .po-filters { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+#dash .po-list { overflow-y: auto; }
+#dash .po-list .cm-post .grow { display: flex; flex-direction: column; gap: 3px; }
+#dash .po-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+#dash .po-detail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+#dash .po-none { min-height: 300px; display: grid; place-items: center; }
+#dash .po-head { padding: 0; border: 0; background: none; }
+#dash .po-caption { margin: 0 0 4px; font-size: 13.5px; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+#dash .po-suggest { display: flex; gap: 12px; align-items: center; padding: 10px 12px; margin-bottom: 12px; border-radius: 10px; background: var(--blue-soft, #e8f0fe); }
+#dash .po-suggest .grow { display: flex; flex-direction: column; gap: 6px; }
+#dash .po-products { display: flex; flex-direction: column; }
+#dash .po-products li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+#dash .po-products li:first-child { border-top: 0; }
+#dash .po-products .grow { display: flex; flex-direction: column; }
+#dash .po-swatch { width: 36px; height: 36px; border-radius: 8px; background-size: cover; background-position: center; flex: none; }
+#dash .po-add { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+#dash .po-add ul { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+#dash .po-add li button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 8px 12px; font-size: 13px; cursor: pointer; border-top: 1px solid var(--border); }
+#dash .po-add li:first-child button { border-top: 0; }
+#dash .po-add li button:hover, #dash .po-add li button:focus-visible { background: var(--panel-2); }
+#dash .po-matchrow { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+#dash .po-range { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
+#dash .po-sends { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+#dash .po-sends > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+#dash .po-comment { display: flex; gap: 8px; align-items: flex-start; }
+#dash .po-avatar { width: 28px; height: 28px; border-radius: 14px; background: var(--accent, #2f6fed); flex: none; }
+#dash .bubble-c { background: var(--panel-2); border-radius: 14px; padding: 8px 12px; font-size: 13px; }
+#dash .po-custom { display: flex; gap: 8px; }
+#dash .po-custom .input { flex: 1; min-width: 0; }
+#dash .po-dm { overflow-x: auto; }
+#dash .po-switches li { display: flex; gap: 12px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--border); }
+#dash .po-switches li:first-child { border-top: 0; }
+#dash .po-switches .grow { display: flex; flex-direction: column; gap: 2px; }
+@media (max-width: 1250px) { #dash .po-sends { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) {
+  #dash .po-layout { grid-template-columns: minmax(0, 1fr); }
+  #dash .po-listcard { position: static; max-height: none; }
+}

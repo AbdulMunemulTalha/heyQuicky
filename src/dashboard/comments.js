@@ -61,7 +61,7 @@ export async function ingestComment(db, config, evt, { emit = () => {}, fetchImp
 }
 
 // reply: public answer under the comment · dm: Messenger private reply · hide / unhide.
-export async function commentAction(config, channel, action, { commentId, text, hidden }, fetchImpl = globalThis.fetch) {
+export async function commentAction(config, channel, action, { commentId, text, hidden, message }, fetchImpl = globalThis.fetch) {
   if (config.dryRun || !channel.access_token) return { dryRun: true };
   const token = decryptSecret(channel.access_token, config.tokenKey);
   const base = `https://graph.facebook.com/${config.meta.graphVersion}`;
@@ -71,7 +71,7 @@ export async function commentAction(config, channel, action, { commentId, text, 
   }
   if (action === 'dm') {
     const pageId = ig ? channel.page_id || channel.external_id : channel.external_id;
-    return graphRequest(`${base}/${encodeURIComponent(pageId)}/messages`, { method: 'POST', accessToken: token, body: { recipient: { comment_id: commentId }, message: { text } }, fetchImpl });
+    return graphRequest(`${base}/${encodeURIComponent(pageId)}/messages`, { method: 'POST', accessToken: token, body: { recipient: { comment_id: commentId }, message: message ?? { text } }, fetchImpl });
   }
   if (action === 'hide') {
     return graphRequest(`${base}/${encodeURIComponent(commentId)}`, { method: 'POST', accessToken: token, body: ig ? { hide: Boolean(hidden) } : { is_hidden: Boolean(hidden) }, fetchImpl });

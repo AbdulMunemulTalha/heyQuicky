@@ -35,7 +35,8 @@ test('the AI answers a price comment publicly and sends the details privately', 
   assert.match(s.calls[0].system, /Caption: New Jamdani kurti/);
   assert.equal(s.calls[0].messages[0].content, 'Comment from Rakib: dam koto?');
   assert.deepEqual(s.graph.map((g) => g.url.replace(/^.*\/v[\d.]+\//, '')), [`${(await s.db.comments.findById(id).lean()).external_id}/comments`, 'PAGE1/messages']);
-  assert.equal(s.graph[1].body.message.text, 'Jamdani Kurti 1,450 taka. Kon size lagbe?');
+  // The post is linked to a product, so on Facebook the one private reply is its card (CMT-02).
+  assert.deepEqual(s.graph[1].body.message.attachment.payload.elements.map((e) => e.title), ['Jamdani Kurti']);
   const c = await s.db.comments.findById(id).lean();
   assert.deepEqual([c.status, c.replied_by, c.dm_sent, c.public_reply], ['replied', 'AI', true, 'ইনবক্সে বিস্তারিত পাঠিয়েছি আপু']);
   assert.equal(await s.agent.replyToComment(id), 'not_needed', 'never answered twice');

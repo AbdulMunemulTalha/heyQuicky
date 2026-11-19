@@ -1,6 +1,8 @@
 import { tryAutoAnswer, hasAutoAnswers } from '../dashboard/autoAnswer.js';
 import { withTraining, recordUnanswered } from '../dashboard/training.js';
-import { INTENTS, REPLY_SCHEMA, COMMENT_SCHEMA, buildSystemPrompt, buildCommentPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
+import { INTENTS, REPLY_SCHEMA, COMMENT_SCHEMA, POST_MATCH_SCHEMA, buildSystemPrompt, buildCommentPrompt, buildPostMatchPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
+import { priceRange } from '../dashboard/posts.js';
+import { toPlatform } from '../platforms/rich.js';
 import { commentAction } from '../dashboard/comments.js';
 import { openTicket } from '../dashboard/tickets.js';
 import { productCards, quickReplies } from '../platforms/rich.js';
@@ -358,7 +360,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     let data;
     try {
       ({ data } = await callModel(workspace._id, {
-        system: buildCommentPrompt({ workspace: await withTraining(db, workspace), post, products }),
+        system: buildCommentPrompt({ workspace: await withTraining(db, workspace), post, products, range: priceRange(products) }),
         messages: [{ role: 'user', content: `Comment from ${comment.author_name || 'a customer'}: ${comment.text || '(no text)'}` }],
         schema: COMMENT_SCHEMA, maxTokens: 1500,
       }, { kind: 'comment', customerName: comment.author_name, summary: 'Answered a comment' }));
@@ -367,15 +369,22 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       await leave(`The AI couldn't answer: ${err.message}`);
       return 'error';
     }
-    const publicReply = String(data?.public_reply ?? '').trim().slice(0, 1000);
+    const aiPublic = String(data?.public_reply ?? '').trim().slice(0, 1000);
     const dm = String(data?.dm ?? '').trim().slice(0, 1000);
-    if (data?.needs_person || (!publicReply && !dm)) {
+    if (data?.needs_person || (!aiPublic && !dm)) {
       await leave(String(data?.reason ?? '').trim() || 'The AI left this comment for the team');
       return 'left_for_team';
     }
+    // The shop's own public reply for this post, if it set one (Posts → What the AI sends).
+    const custom = String(post.rules?.public_reply ?? '').trim();
+    const publicReply = aiPublic && custom ? custom.slice(0, 1000) : aiPublic;
+    // CMT-02: on Facebook the one private reply is the carousel of the post's products.
+    const linked = (post.product_ids ?? []).length ? products : [];
+    const cards = dm && linked.length && channel.platform === 'messenger' && post.rules?.dm_cards !== false
+      ? toPlatform('messenger', productCards(linked, { publicUrl: config.publicUrl || '' })) : null;
     try {
       if (publicReply) await commentAction(config, channel, 'reply', { commentId: comment.external_id, text: publicReply }, fetchImpl);
-      if (dm && !comment.dm_sent) await commentAction(config, channel, 'dm', { commentId: comment.external_id, text: dm }, fetchImpl);
+      if (dm && !comment.dm_sent) await commentAction(config, channel, 'dm', { commentId: comment.external_id, text: dm, ...(cards ? { message: cards } : {}) }, fetchImpl);
     } catch (err) {
       await leave(`Facebook didn't accept the AI's reply: ${err.message}`);
       return 'send_failed';
@@ -385,10 +394,42 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     return 'replied';
   }
 
+  // CAT-06: which products a post shows, from its picture and caption. Saved as a suggestion
+  // for the shop to confirm. Returns the suggested ids, or null when AI isn't set up.
+  async function matchPost(postId) {
+    if (!provider) return null;
+    const post = await db.posts.findById(postId).lean();
+    if (!post) return null;
+    const products = await db.products.find({ workspace_id: post.workspace_id, archived: { $ne: true } }).sort({ name: 1 }).limit(200).lean();
+    if (!products.length) return [];
+    const ask = (withImage) => callModel(post.workspace_id, {
+      system: buildPostMatchPrompt(products), schema: POST_MATCH_SCHEMA, maxTokens: 800,
+      messages: [{ role: 'user', content: [
+        { type: 'text', text: `Caption: ${post.caption?.trim() || '(no caption)'}` },
+        ...(withImage && /^https:\/\//.test(post.image ?? '') ? [{ type: 'image', source: { type: 'url', url: post.image } }] : []),
+      ] }],
+    }, { kind: 'match', summary: 'Matched a post to products' });
+    let data;
+    try {
+      ({ data } = await ask(true));
+    } catch (err) {
+      if (err.paused) throw err;
+      log.warn(`post ${postId} match with picture failed (${err.message}); trying the caption only`);
+      ({ data } = await ask(false));
+    }
+    const valid = new Set(products.map((p) => p._id));
+    const ids = [...new Set((data?.product_ids ?? []).map(Number).filter((id) => valid.has(id)))].slice(0, 10);
+    await db.posts.updateOne({ _id: post._id }, { $set: ids.length
+      ? { suggested_ids: ids, match: (post.product_ids ?? []).length ? post.match : 'ai_match', match_source: 'ai', match_confidence: data?.confidence ?? '' }
+      : { suggested_ids: [], match_source: 'ai', match_confidence: 'none' } });
+    return ids;
+  }
+
   return {
     onInbound,
     respond,
     replyToComment,
+    matchPost,
 
     // Practice chat during onboarding: the owner plays a customer. Nothing is stored or sent to Meta.
     async practice(user, turns, { extraNotes = '', withActions = false } = {}) {
