@@ -72,7 +72,9 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
     const ws = await db.workspaces.findById(req.user.workspace_id).lean();
     const pay = req.body?.payment ?? {};
     const existing = req.body?.orderId ? await db.orders.findOne({ _id: Number(req.body.orderId), workspace_id: ws._id }).lean() : null;
-    const p = await priceOrder(db, ws, { items: req.body?.items, zone: req.body?.zone, coupon: req.body?.coupon, advance: pay.method === 'bkash_advance' ? pay.advance : 0, paidInFull: pay.method === 'paid', existing });
+    const phone = bdPhone(req.body?.phone ?? '');
+    const known = existing?.customer_id ? await db.customers.findById(existing.customer_id).lean() : phone ? await db.customers.findOne({ workspace_id: ws._id, phones: phone }).lean() : null;
+    const p = await priceOrder(db, ws, { items: req.body?.items, zone: req.body?.zone, coupon: req.body?.coupon, advance: pay.method === 'bkash_advance' ? pay.advance : 0, paidInFull: pay.method === 'paid', existing, customer: known });
     res.json({ subtotal: p.subtotal, delivery: p.delivery, discount: p.discount, coupon: p.couponCode, total: p.total, advance: p.advance, cod: p.cod, days: p.zone.days, count: p.lines.reduce((n, l) => n + l.qty, 0) });
   });
 
@@ -98,7 +100,8 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
     const who = cleanCustomer(req.body);
     const zone = String(req.body?.zone ?? 'inside_dhaka');
     const pay = req.body?.payment ?? {};
-    const priced = await priceOrder(db, ws, { items: req.body?.items, zone, coupon: req.body?.coupon, advance: pay.method === 'bkash_advance' ? pay.advance : 0, paidInFull: pay.method === 'paid' });
+    const known = await db.customers.findOne({ workspace_id: ws._id, phones: who.phone }).lean();
+    const priced = await priceOrder(db, ws, { items: req.body?.items, zone, coupon: req.body?.coupon, advance: pay.method === 'bkash_advance' ? pay.advance : 0, paidInFull: pay.method === 'paid', customer: known });
     if (pay.method === 'bkash_advance' && !priced.advance) throw new InboxError(400, 'Enter the advance amount');
     const conversationId = Number(req.body?.conversationId) || null;
     const customer = await findOrCreateCustomer(ws._id, { ...who, district: who.district }, conversationId);

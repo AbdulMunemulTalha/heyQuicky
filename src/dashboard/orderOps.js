@@ -28,6 +28,8 @@ export async function adjustStock(db, order, sign, { notify = null } = {}) {
     if (!item.product_id) continue;
     const product = await db.products.findById(item.product_id).lean();
     if (!product) continue;
+    // Products without sizes/colours have no counted stock: leave them as they are (they were being marked sold out).
+    if (!(product.variant_list ?? []).length) continue;
     const list = (product.variant_list ?? []).map((v) => (v.sku === item.sku && v.stock !== null && v.stock !== undefined
       ? { ...v, stock: Math.max(0, v.stock + sign * (item.qty ?? 1)) } : v));
     await db.products.updateOne({ _id: product._id }, { $set: { variant_list: list, in_stock: list.some((v) => v.stock === null || v.stock === undefined || v.stock > 0) } });

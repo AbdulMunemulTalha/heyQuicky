@@ -11,8 +11,25 @@ export function zonesFor(ws) {
   ];
 }
 
+// Who a coupon is for (ORD-05 "Who can use it"). "after_review" and "broadcast" are campaign codes:
+// whoever has the code may use it. The others are checked against the customer's history.
+export const AUDIENCES = ['everyone', 'new', 'returning', 'vip', 'after_review', 'broadcast'];
+export function audienceProblem(c, customer) {
+  const orders = customer?.stats?.orders ?? 0;
+  if (c.audience === 'new' && orders > 0) return `${c.code} is only for a customer's first order`;
+  if (c.audience === 'returning' && orders < 1) return `${c.code} is for customers who have ordered before`;
+  if (c.audience === 'vip' && !customer?.vip) return `${c.code} is only for VIP customers`;
+  return null;
+}
+
+// Coupons the AI may tell customers about (AI-10): live, not used up, for everyone, and allowed.
+export function aiCoupons(list, now = new Date()) {
+  return list.filter((c) => c.active !== false && c.ai_may_mention !== false && (c.audience ?? 'everyone') === 'everyone'
+    && (!c.starts_at || c.starts_at <= now) && (!c.ends_at || c.ends_at > now) && (c.max_uses == null || (c.used ?? 0) < c.max_uses));
+}
+
 // Checks a coupon code against the order (ORD-05). Returns { coupon, discount, freeDelivery } or throws a friendly error.
-export async function checkCoupon(db, workspaceId, code, subtotal) {
+export async function checkCoupon(db, workspaceId, code, subtotal, { customer = null } = {}) {
   const c = await db.coupons.findOne({ workspace_id: workspaceId, code: String(code).trim().toUpperCase() }).lean();
   const now = new Date();
   if (!c || !c.active) throw new InboxError(400, `There's no coupon "${code}"`);
@@ -20,13 +37,15 @@ export async function checkCoupon(db, workspaceId, code, subtotal) {
   if (c.ends_at && c.ends_at < now) throw new InboxError(400, `${c.code} has expired`);
   if (c.max_uses !== null && c.used >= c.max_uses) throw new InboxError(400, `${c.code} has been used up`);
   if (subtotal < (c.min_order ?? 0)) throw new InboxError(400, `${c.code} needs an order of at least ৳${c.min_order}`);
+  const who = audienceProblem(c, customer);
+  if (who) throw new InboxError(400, who);
   const discount = c.type === 'percent' ? Math.round((subtotal * c.value) / 100) : c.type === 'amount' ? Math.min(c.value, subtotal) : 0;
   return { coupon: c, discount, freeDelivery: c.type === 'free_delivery' };
 }
 
 // Prices an order from the live catalog — never from what the browser sends (AI-10, SR-06).
 // items: [{ productId, sku, qty }]
-export async function priceOrder(db, ws, { items = [], zone = 'inside_dhaka', coupon = '', advance = 0, paidInFull = false, existing = null }) {
+export async function priceOrder(db, ws, { items = [], zone = 'inside_dhaka', coupon = '', advance = 0, paidInFull = false, existing = null, customer = null }) {
   if (!Array.isArray(items) || !items.length) throw new InboxError(400, 'Add at least one product');
   const zones = zonesFor(ws);
   const z = zones.find((x) => x.key === zone);
@@ -56,7 +75,10 @@ export async function priceOrder(db, ws, { items = [], zone = 'inside_dhaka', co
   let delivery = ws.free_delivery_over && subtotal >= ws.free_delivery_over ? 0 : z.charge;
   let couponCode = '';
   if (coupon) {
-    const c = await checkCoupon(db, ws._id, coupon, subtotal);
+    // When editing an order that already has this coupon, it stays valid for that order.
+    const c = existing?.coupon_code && existing.coupon_code === String(coupon).trim().toUpperCase()
+      ? await checkCoupon(db, ws._id, coupon, subtotal, { customer: null }).catch((err) => { if (/used up/.test(err.message)) return keepCoupon(db, ws._id, coupon, subtotal); throw err; })
+      : await checkCoupon(db, ws._id, coupon, subtotal, { customer });
     discount = c.discount;
     if (c.freeDelivery) delivery = 0;
     couponCode = c.coupon.code;
@@ -64,6 +86,13 @@ export async function priceOrder(db, ws, { items = [], zone = 'inside_dhaka', co
   const total = subtotal + delivery - discount;
   const adv = paidInFull ? total : Math.max(0, Math.min(Number(advance) || 0, total));
   return { lines, subtotal, delivery, discount, couponCode, total, advance: adv, cod: total - adv, zone: z };
+}
+
+// The order already counted this coupon, so "used up" doesn't apply to it again.
+async function keepCoupon(db, workspaceId, code, subtotal) {
+  const c = await db.coupons.findOne({ workspace_id: workspaceId, code: String(code).trim().toUpperCase() }).lean();
+  const discount = c.type === 'percent' ? Math.round((subtotal * c.value) / 100) : c.type === 'amount' ? Math.min(c.value, subtotal) : 0;
+  return { coupon: c, discount, freeDelivery: c.type === 'free_delivery' };
 }
 
 export function cleanCustomer(body) {

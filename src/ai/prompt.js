@@ -47,8 +47,9 @@ export const REPLY_SCHEMA = {
         address: { type: 'string', description: 'Full delivery address with area and district.' },
         zone: { type: 'string', enum: ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'] },
         note: { type: 'string' },
+        coupon: { type: 'string', description: 'A coupon code from "Coupons" the customer asked to use, or empty.' },
       },
-      required: ['ready', 'items', 'name', 'phone', 'address', 'zone', 'note'],
+      required: ['ready', 'items', 'name', 'phone', 'address', 'zone', 'note', 'coupon'],
       additionalProperties: false,
     },
     act_now: { type: 'boolean', description: 'True when this needs the team urgently: refund, damaged or wrong item, angry customer, threat of a bad review, or a safety issue.' },
@@ -177,7 +178,7 @@ export function buildSystemPrompt({ workspace, products, savedReplies, coupons =
 
 ## Facts
 - Use only the shop information below. Never invent or guess prices, discounts, stock, sizes, colours, delivery times, offers or policies.
-- Never offer a discount or free item yourself. Only mention a coupon from "Coupons" below, and only its exact terms.
+- Never offer a discount or free item yourself. Only mention a coupon from "Coupons" below, and only its exact terms. If the customer gives a coupon code, put it in order.coupon; the shop checks it.
 - If a product is OUT OF STOCK, say so politely and suggest a similar in-stock product from the list if there is one.
 - If the customer asks about something the information doesn't cover, don't guess: hand off.
 

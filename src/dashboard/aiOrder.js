@@ -37,11 +37,10 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
     if (!v) throw new InboxError(400, `The size or colour "${i.variant}" for ${p.name} didn't match the catalog`);
     return { productId: p._id, sku: v.sku, qty: Math.max(1, Math.min(99, Number(i.qty) || 1)) };
   });
-  const priced = await priceOrder(db, ws, { items, zone });
-
   // The chat's customer record (or the one with this phone), updated with the new details.
   let customer = conversation.customer_id ? await db.customers.findById(conversation.customer_id).lean() : null;
   customer ??= await db.customers.findOne({ workspace_id: ws._id, phones: who.phone }).lean();
+  const priced = await priceOrder(db, ws, { items, zone, coupon: String(input.coupon ?? '').trim().slice(0, 30), customer });
   if (!customer) customer = { _id: (await db.insert(db.customers, { workspace_id: ws._id, name: who.name, phones: [who.phone] })).id };
   await db.customers.updateOne({ _id: customer._id }, { $addToSet: { phones: who.phone }, $set: { address: who.address, ...(customer.name ? {} : { name: who.name }) } });
   if (!conversation.customer_id) await db.conversations.updateOne({ _id: conversation._id }, { $set: { customer_id: customer._id } });
@@ -55,11 +54,12 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
     workspace_id: ws._id, number, customer_id: customer._id, conversation_id: conversation._id,
     customer_name: who.name, phone: who.phone, address: who.address, area: zone, zone,
     items: priced.lines.map((l) => ({ name: `${l.name}${l.variant ? ` (${l.variant})` : ''}`, qty: l.qty, price: l.price })), product_items: priced.lines,
-    subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, advance_paid: 0, cod_amount: priced.cod, payment_method: 'cod',
+    subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, coupon_code: priced.couponCode, advance_paid: 0, cod_amount: priced.cod, payment_method: 'cod',
     note: String(input.note ?? '').slice(0, 300), status, hold_reason: status === 'on_hold' ? `High return risk (${risk.score}%)` : '', risk,
     source: 'ai', taken_by: 'ai', bill_token: billToken,
   });
   await adjustStock(db, { product_items: priced.lines }, -1, { notify });
+  if (priced.couponCode) await db.coupons.updateOne({ workspace_id: ws._id, code: priced.couponCode }, { $inc: { used: 1 } });
   await db.customers.updateOne({ _id: customer._id }, { $inc: { 'stats.orders': 1 } });
   await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: created.id, type: 'status', to: status, by: 'ai', text: `The AI took the order in chat${status === 'on_hold' ? ' (on hold: high return risk)' : ''}` });
   const total = priced.subtotal + priced.delivery - priced.discount;
