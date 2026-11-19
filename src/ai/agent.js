@@ -6,6 +6,9 @@ import { placeAiOrder } from '../dashboard/aiOrder.js';
 import { sendSizeChart } from '../dashboard/postbacks.js';
 import { InboxError } from '../inbox.js';
 import { canSpend, meter } from './metering.js';
+import { fetchAttachment, IMAGE_TYPES, MAX_IMAGE_BYTES } from './media.js';
+import { MAX_AUDIO_BYTES } from './transcribe.js';
+import { decryptSecret } from '../secrets.js';
 
 // After a person replies (or the AI hands off), the AI stays out of that
 // conversation in auto mode for this long, then may answer again.
@@ -14,6 +17,17 @@ const HANDOFF_LAPSE_MS = 12 * 3_600_000;
 const MAX_AI_REPLIES_PER_DAY = 20;
 
 const modeOf = (workspace) => workspace?.ai_mode ?? 'suggest';
+// At most this many customer photos go with one model call.
+const MAX_IMAGES = 3;
+
+// The real image type from the file's first bytes (CDNs don't always say).
+function sniffImage(b) {
+  if (b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+  if (b.toString('ascii', 0, 3) === 'GIF') return 'image/gif';
+  if (b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
 
 function handoffActive(conversation, now = Date.now()) {
   if (!conversation.ai_handoff) return false;
@@ -41,7 +55,7 @@ function normalize(data) {
 // The Bangla/Banglish chat agent. In "suggest" mode it drafts a reply for the
 // moderator; in "auto" mode it answers the customer itself and hands anything it
 // shouldn't handle to a person. `provider` is null when AI isn't configured.
-export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = console, notify = null, config = {} } = {}) {
+export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = console, notify = null, config = {}, transcriber = null, fetchMedia = fetchAttachment } = {}) {
   const PAUSED = { credit: 'AI credit finished — top up so the AI answers again', cap: "This month's AI spend limit is reached — raise it in Settings → Billing" };
 
   // Every model call goes through here: checked against credit and the monthly cap, then priced and charged.
@@ -84,7 +98,57 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
       context: buildCustomerContext({ customer, orders, notes, now }) };
   }
 
+  // What the customer sent since the shop last replied: voice notes are transcribed once and the
+  // text kept on the message (AI-04); photos are shown to the model for this reply only (AI-05).
+  async function seeMedia(ctx) {
+    const lastOut = ctx.messages.findLastIndex((m) => m.direction === 'out');
+    const fresh = ctx.messages.slice(lastOut + 1).filter((m) => m.direction === 'in' && m.attachments?.length).slice(-5);
+    if (!fresh.some((m) => m.attachments.some((a) => a.type === 'image' || (a.type === 'audio' && transcriber && !a.transcript && !a.transcript_failed)))) return;
+    const raw = await db.channels.findById(ctx.conversation.channel_id, { platform: 1, access_token: 1 }).lean();
+    const channel = raw && { platform: raw.platform, access_token: raw.access_token ? decryptSecret(raw.access_token, config.tokenKey) : '' };
+    const graphVersion = config.meta?.graphVersion;
+    let imagesLeft = MAX_IMAGES;
+    for (const m of fresh) {
+      let changed = false;
+      const images = [];
+      const attachments = [];
+      for (const a of m.attachments) {
+        const next = { ...a };
+        if (a.type === 'audio' && transcriber && !a.transcript && !a.transcript_failed) {
+          changed = true;
+          try {
+            const file = await fetchMedia({ channel, attachment: a, graphVersion, maxBytes: MAX_AUDIO_BYTES });
+            const out = await transcriber.transcribe(file);
+            next.transcript = out.text.slice(0, 2000) || '(no words)';
+            await meter(db, config, { workspaceId: ctx.conversation.workspace_id, model: transcriber.model, usage: out.usage, kind: 'voice', conversationId: ctx.conversation._id,
+              messageId: m._id, summary: 'Listened to a voice note', notify }).catch((e) => log.warn(`metering failed: ${e.message}`));
+          } catch (err) {
+            next.transcript_failed = true;
+            log.warn(`voice note ${m._id} not transcribed: ${err.message}`);
+          }
+        } else if (a.type === 'image' && imagesLeft > 0 && !a.seen_failed) {
+          try {
+            const file = await fetchMedia({ channel, attachment: a, graphVersion, maxBytes: MAX_IMAGE_BYTES });
+            const mediaType = sniffImage(file.bytes) ?? (IMAGE_TYPES.includes(file.mime) ? file.mime : null);
+            if (!mediaType) throw new Error('not a photo the AI can read');
+            images.push({ media_type: mediaType, data: file.bytes.toString('base64') });
+            imagesLeft -= 1;
+          } catch (err) {
+            next.seen_failed = true;
+            changed = true;
+            log.warn(`photo in message ${m._id} not opened: ${err.message}`);
+          }
+        }
+        attachments.push(next);
+      }
+      m.attachments = attachments;
+      m.images = images;
+      if (changed) await db.messages.updateOne({ _id: m._id }, { $set: { attachments } });
+    }
+  }
+
   async function generate(ctx, kind = 'reply') {
+    await seeMedia(ctx).catch((err) => log.warn(`could not open the customer's files: ${err.message}`));
     const turns = toModelMessages(ctx.messages);
     if (!turns) return null;
     const system = buildSystemPrompt(ctx);

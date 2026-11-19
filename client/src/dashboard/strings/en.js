@@ -1325,4 +1325,5 @@ export default {
   'od.msg.review': "Ask for a review",
   'od.msg.sent': "Sent in chat",
   'od.rated': "Customer rated {n}/5",
+  'ib.voiceSaid': "Voice note: “{text}”",
 };

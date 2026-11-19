@@ -11,7 +11,25 @@ export const PRICES = {
 
 // usage: { input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens }
 // Returns USD amounts: what it cost, and what caching saved compared with sending everything fresh.
+// Voice-note transcription (AI-04), from developers.openai.com/api/docs/pricing (checked 2026-11-19):
+// per minute of audio, or per million tokens for token-billed models.
+export const TRANSCRIBE_PRICES = {
+  'gpt-transcribe': { perMinute: 0.0045 },
+  'whisper-1': { perMinute: 0.006 },
+  'gpt-4o-mini-transcribe': { input: 1.25, output: 5 },
+};
+
+function transcribeCost(model, usage) {
+  const p = TRANSCRIBE_PRICES[model];
+  if (!p) return null;
+  const input = usage.input_tokens ?? 0;
+  const output = usage.output_tokens ?? 0;
+  const usd = usage.type === 'duration' ? (usage.seconds ?? 0) / 60 * (p.perMinute ?? 0) : (input * (p.input ?? 0) + output * (p.output ?? 0)) / 1e6;
+  return { usd, savedUsd: 0, tokens: { input, output, cacheWrite: 0, cacheRead: 0 } };
+}
+
 export function usageCost(model, usage = {}) {
+  if (TRANSCRIBE_PRICES[model]) return transcribeCost(model, usage ?? {});
   const base = PRICES[model];
   if (!base) return null;
   const input = usage.input_tokens ?? 0;

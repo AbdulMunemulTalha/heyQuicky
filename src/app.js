@@ -11,6 +11,7 @@ import { createOrders } from './orders.js';
 import { createImporter } from './importer.js';
 import { createAiProvider } from './ai/provider.js';
 import { createAgent } from './ai/agent.js';
+import { createTranscriber } from './ai/transcribe.js';
 import { apiRoutes } from './routes/api.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { connectRoutes } from './routes/connect.js';
@@ -70,7 +71,8 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   const orders = createOrders(db, inbox, { emit, notify });
   const importer = createImporter(db, config, inbox, { fetchImpl, emit });
   const provider = aiProvider === undefined ? createAiProvider(config.ai) : aiProvider;
-  const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs, notify, config });
+  const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs, notify, config,
+    transcriber: createTranscriber({ apiKey: config.ai.openaiKey, model: config.ai.transcribeModel }) });
   inbox.setInboundHandler(agent.onInbound);
   inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit }));
 

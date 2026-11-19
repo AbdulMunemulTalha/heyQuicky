@@ -188,12 +188,14 @@ Hand off, and in "reply" tell the customer briefly, in their language, that some
 - they complain, ask for a refund, return or exchange, or the product was damaged or wrong;
 - they ask for a person, are angry, or the conversation is going badly;
 - the question isn't answered by the shop information (then start handoff_reason with "Unanswered:" so the shop can teach you the answer);
-- the latest message is only an image, video, voice note or sticker you can't see.
+- the latest message is only a video, sticker or file you can't see, or a photo or voice note marked "couldn't be opened".
 ## Taking an order
 When the customer wants to buy, ask for their name, phone number and full address, plus: ${orderFieldsLine(workspace)}. Ask for what's missing in one or two messages, not one question at a time. Once you have everything, set order.ready = true with the products (by id), size/colour exactly as listed, quantity, and their details; pick the delivery zone from the address. In "reply", say you've prepared the order summary and ask them to check it and tap "হ্যাঁ, কনফার্ম" (Yes, confirm). Don't hand off for a new order. Never put an OUT OF STOCK product or a sold-out size in an order.
 
 ## Cards, choices and size charts
 - When the customer asks what you have, asks for a product, or sends a photo of one, put the matching product ids in "products" (photo cards with price) and keep "reply" to one short line.
+- Photos the customer sends are shown to you. If a photo clearly shows a product from the list, send that product's card. If it's only similar, send the closest one or two and say they're similar; if nothing in the list matches, say so and don't guess. A photo of a payment, a parcel or a damaged item is not a product request — follow the rules for those.
+- Voice notes appear as [voice note: "…"] with what the customer said; answer them like a typed message.
 - When you ask them to choose a size or colour, list the available choices in "quick_replies".
 - When they ask which size fits and the product "has size chart", put its id in "size_chart_product" and ask their height and chest/waist.
 - When a product has "suggest with", you may offer one of those once, after they've chosen.
@@ -223,9 +225,14 @@ The shop's saved answers to common questions (use their facts; reword them to fi
 ${answers}`;
 }
 
-function describeAttachments(attachments) {
+function describeAttachments(attachments, images = []) {
   if (!attachments?.length) return '';
-  return attachments.map((a) => `[customer sent ${a.type === 'image' ? 'an image' : `a ${a.type}`}]`).join(' ');
+  return attachments.map((a) => {
+    if (a.type === 'audio' && a.transcript) return `[voice note: "${a.transcript}"]`;
+    if (a.type === 'audio') return a.transcript_failed ? "[customer sent a voice note that couldn't be opened]" : '[customer sent a voice note]';
+    if (a.type === 'image') return images.length ? '[customer sent a photo, shown below]' : a.seen_failed ? "[customer sent a photo that couldn't be opened]" : '[customer sent an image]';
+    return `[customer sent a ${a.type}]`;
+  }).join(' ');
 }
 
 // Turns stored messages (oldest first) into the model's conversation:
@@ -235,17 +242,21 @@ export function toModelMessages(messages, { limit = 20 } = {}) {
   const recent = messages.slice(-limit);
   const turns = [];
   for (const m of recent) {
-    const text = [m.text?.trim(), m.direction === 'in' ? describeAttachments(m.attachments) : ''].filter(Boolean).join(' ');
+    const images = m.direction === 'in' ? m.images ?? [] : [];
+    const text = [m.text?.trim(), m.direction === 'in' ? describeAttachments(m.attachments, images) : ''].filter(Boolean).join(' ');
     if (!text) continue;
     const role = m.direction === 'in' ? 'user' : 'assistant';
     // Several messages in a row from the same side read as one turn.
-    if (turns.length && turns.at(-1).role === role) turns.at(-1).content += `\n${text}`;
-    else turns.push({ role, content: text });
+    if (turns.length && turns.at(-1).role === role) { turns.at(-1).content += `\n${text}`; turns.at(-1).images.push(...images); }
+    else turns.push({ role, content: text, images: [...images] });
   }
   // The conversation must start with the customer and end with something they said.
   while (turns.length && turns[0].role !== 'user') turns.shift();
   if (!turns.length || turns.at(-1).role !== 'user') return null;
-  return turns;
+  // Photos the AI can see (AI-05) go with the turn as image blocks, after its text.
+  return turns.map(({ role, content, images }) => (images.length
+    ? { role, content: [{ type: 'text', text: content }, ...images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.media_type, data: i.data } }))] }
+    : { role, content }));
 }
 
 // What the shop knows about this customer (AI-09): past orders on any channel, VIP/risk, team notes.

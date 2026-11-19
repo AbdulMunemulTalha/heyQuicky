@@ -324,6 +324,7 @@ function Messages({ t, messages, conversation }) {
             {m.kind === 'postback' && <div className="tapped">{t('rm.tapped')}</div>}
             <div className={`bubble bn-ok${isRich(m.kind) && m.payload && !m.payload.item ? ' rm-wrap' : ''}`}>
               {m.attachments?.length > 0 && <span className="msg-attach">[{m.attachments[0].type ?? 'file'}]</span>}
+              {m.attachments?.find((x) => x.transcript) && <span className="msg-attach voice">{t('ib.voiceSaid', { text: m.attachments.find((x) => x.transcript).transcript })}</span>}
               {m.kind === 'order_summary' && m.payload?.item ? <OrderCard t={t} o={m.payload} />
                 : isRich(m.kind) && m.payload ? <RichMessage kind={m.kind} payload={m.payload} text={m.text} /> : m.text}
             </div>

@@ -1319,4 +1319,5 @@ export default {
   'od.msg.review': "রিভিউ চান",
   'od.msg.sent': "চ্যাটে পাঠানো হয়েছে",
   'od.rated': "কাস্টমার {n}/৫ দিয়েছেন",
+  'ib.voiceSaid': "ভয়েস নোট: “{text}”",
 };

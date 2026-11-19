@@ -97,7 +97,7 @@ export function defineDashboardModels(conn) {
   const aiReply = S({
     conversation_id: { type: Number, default: null, index: true },
     message_id: { type: Number, default: null },
-    kind: { type: String, default: 'reply' }, // reply | suggest | copilot | test | followup | teach | selftest
+    kind: { type: String, default: 'reply' }, // reply | suggest | copilot | test | followup | teach | selftest | voice
     model: { type: String, default: '' },
     input_tokens: { type: Number, default: 0 },
     output_tokens: { type: Number, default: 0 },

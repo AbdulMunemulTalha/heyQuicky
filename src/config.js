@@ -49,6 +49,9 @@ export function loadConfig(env = process.env) {
       effort: env.AI_EFFORT || 'low',
       // How long to wait for a customer to finish typing before answering.
       replyDelayMs: Number(env.AI_REPLY_DELAY_MS ?? 4000),
+      // Voice notes to text (AI-04). Without OPENAI_API_KEY, voice notes go to the team.
+      openaiKey: cleanSecret(env.OPENAI_API_KEY),
+      transcribeModel: env.TRANSCRIBE_MODEL || 'gpt-transcribe',
     },
     meta: {
       appId: env.META_APP_ID || '',

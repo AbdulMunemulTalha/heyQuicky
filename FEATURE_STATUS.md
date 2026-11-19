@@ -41,8 +41,8 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | AI-01 | Done — replies in the customer's own language and script (Bangla, Banglish, English; follows their latest message); the shop's style decides greetings and stickers | AI pipeline |
 | AI-02 | Partial — the AI uses the knowledge book and taught answers in every reply and in the test chat; voice input comes later | AI pipeline |
 | AI-03 | Done — tone / style from AI agent settings (warm Banglish, Bangla, English, casual) goes into every reply | AI pipeline |
-| AI-04 | Not started | AI pipeline |
-| AI-05 | Partial — the AI sends matching products as photo cards when asked what the shop has; matching a customer's photo to a product comes next | AI pipeline |
+| AI-04 | Done — voice notes are transcribed with OpenAI (gpt-transcribe; Messenger, Instagram and WhatsApp), answered like typed messages, charged at the real per-minute cost, and the transcript shows under the voice note in the inbox; without OPENAI_API_KEY, or if a file can't be opened, the chat goes to the team | AI pipeline |
+| AI-05 | Done — the AI sees up to 3 photos per reply and sends the matching product cards ("similar" when not an exact match, never a guess); photos are not stored; a photo that can't be opened goes to the team | AI pipeline |
 | AI-06 | Not started | AI pipeline |
 | AI-07 | Not started | AI pipeline |
 | AI-08 | Partial — the AI knows each product's id and linked posts; replying to comments comes next | AI pipeline |
