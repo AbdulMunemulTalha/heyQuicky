@@ -52,10 +52,21 @@ export const REPLY_SCHEMA = {
       required: ['ready', 'items', 'name', 'phone', 'address', 'zone', 'note', 'coupon'],
       additionalProperties: false,
     },
+    payment: {
+      type: 'object',
+      description: 'A bKash/Nagad payment the customer reports with its transaction ID (typed, or readable in their payment screenshot). trx_id empty when there is none.',
+      properties: {
+        trx_id: { type: 'string', description: 'The TrxID exactly as written (8–12 letters/numbers), or empty.' },
+        method: { type: 'string', enum: ['bkash', 'nagad'] },
+        amount: { type: 'integer', description: 'Amount in taka they say they sent, or 0 if not given.' },
+      },
+      required: ['trx_id', 'method', 'amount'],
+      additionalProperties: false,
+    },
     act_now: { type: 'boolean', description: 'True when this needs the team urgently: refund, damaged or wrong item, angry customer, threat of a bad review, or a safety issue.' },
     act_now_reason: { type: 'string', description: 'When act_now is true: one short English sentence for the team. Otherwise empty.' },
   },
-  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'act_now', 'act_now_reason'],
+  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'payment', 'act_now', 'act_now_reason'],
   additionalProperties: false,
 };
 
@@ -185,13 +196,15 @@ export function buildSystemPrompt({ workspace, products, savedReplies, coupons =
 ## When a person must take over (handoff = true)
 Hand off, and in "reply" tell the customer briefly, in their language, that someone from the shop will reply shortly, when:
 - they want to change or cancel an order that already exists, or ask about an existing order's status or delivery;
-- they say they paid, or send a bKash/Nagad transaction ID;
 - they complain, ask for a refund, return or exchange, or the product was damaged or wrong;
 - they ask for a person, are angry, or the conversation is going badly;
 - the question isn't answered by the shop information (then start handoff_reason with "Unanswered:" so the shop can teach you the answer);
 - the latest message is only a video, sticker or file you can't see, or a photo or voice note marked "couldn't be opened".
 ## Taking an order
 When the customer wants to buy, ask for their name, phone number and full address, plus: ${orderFieldsLine(workspace)}. Ask for what's missing in one or two messages, not one question at a time. Once you have everything, set order.ready = true with the products (by id), size/colour exactly as listed, quantity, and their details; pick the delivery zone from the address. In "reply", say you've prepared the order summary and ask them to check it and tap "হ্যাঁ, কনফার্ম" (Yes, confirm). Don't hand off for a new order. Never put an OUT OF STOCK product or a sold-out size in an order.
+
+## Payments
+When the customer sends a bKash/Nagad TrxID (typed, or visible in a payment screenshot), put it in "payment" with the method and amount, and reply that the shop will check it and confirm shortly. Don't hand off for this. If they say they paid but give no TrxID, ask for the TrxID. Never say a payment is received or confirmed yourself.
 
 ## Cards, choices and size charts
 - When the customer asks what you have, asks for a product, or sends a photo of one, put the matching product ids in "products" (photo cards with price) and keep "reply" to one short line.

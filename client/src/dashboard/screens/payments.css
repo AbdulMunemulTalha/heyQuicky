@@ -1,0 +1,41 @@
+/* Phase 2 · Payments (PAY-01 / PAY-03) */
+#dash .payments .tabs { margin-bottom: 14px; }
+#dash .pm-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+#dash .pm-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+#dash .pm-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+#dash .pm-card { display: flex; flex-direction: column; gap: 10px; }
+#dash .pm-card.warn { box-shadow: inset 3px 0 0 var(--red, #d64545); }
+#dash .pm-top { display: flex; gap: 12px; align-items: flex-start; }
+#dash .pm-top .grow { min-width: 0; }
+#dash .pm-method { flex: none; display: inline-grid; place-items: center; width: 54px; height: 40px; border-radius: 10px; font-weight: 700; font-size: 12px; color: #fff; }
+#dash .pm-method.bkash { background: #e2136e; }
+#dash .pm-method.nagad { background: #f6921e; }
+#dash .pm-amount { font: 700 20px/1.2 var(--display); }
+#dash .pm-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 4px; }
+#dash .pm-trx { all: unset; cursor: pointer; font-size: 12.5px; }
+#dash .pm-trx code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--panel-2); padding: 2px 6px; border-radius: 6px; letter-spacing: .04em; }
+#dash .pm-trx:focus-visible { outline: 2px solid var(--accent, #2f6fed); border-radius: 6px; }
+#dash .pm-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+#dash .pm-order { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--panel-2); }
+#dash .pm-link { all: unset; cursor: pointer; font-weight: 700; font-size: 13px; color: var(--accent, #2f6fed); }
+#dash .pm-link:hover, #dash .pm-link:focus-visible { text-decoration: underline; }
+#dash .pm-num { width: 110px; }
+#dash .pm-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+#dash .pm-actions select { width: auto; }
+#dash .pm-form { display: flex; flex-direction: column; gap: 10px; }
+#dash .pm-form label { display: flex; flex-direction: column; gap: 4px; }
+#dash .pm-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
+#dash .pm-type { width: auto; }
+#dash .pm-note { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--yellow-soft, #fff6db); }
+#dash .pm-rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+#dash .pm-rulelist li { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+#dash .pm-rulelist li:first-child { border-top: 0; }
+#dash .pm-rulelist .grow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#dash .pm-amountrow { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; margin: 12px 0 6px; }
+#dash .pm-menuwrap { position: relative; }
+#dash .pm-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 240px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 4px; }
+#dash .pm-menu button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 8px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+#dash .pm-menu button:hover, #dash .pm-menu button:focus-visible { background: var(--panel-2); }
+#dash .pm-preview { margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--panel-2); }
+#dash .pm-preview .bubble-c { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px; font-size: 13px; display: inline-block; }
+@media (max-width: 900px) { #dash .pm-kpis { grid-template-columns: 1fr; } #dash .pm-list { grid-template-columns: 1fr; } }

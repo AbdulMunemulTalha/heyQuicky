@@ -385,7 +385,8 @@
 #dash .of-two .row input { flex: 1; min-width: 0; }
 @media (max-width: 768px) { #dash .of-two { grid-template-columns: 1fr; } }
 #dash .nav-sub { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 4px 27px; }
-#dash .nav-subitem { text-decoration: none; padding: 5px 10px; border-radius: 7px; font-size: 13px; color: var(--muted); }
+#dash .nav-subitem { text-decoration: none; padding: 5px 10px; border-radius: 7px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+#dash .nav-subitem .badge { margin-left: auto; }
 #dash .nav-subitem:hover { background: var(--hover); text-decoration: none; }
 #dash .nav-subitem.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
 @media (min-width: 769px) and (max-width: 1024px) { #dash .nav-sub { display: none; } }

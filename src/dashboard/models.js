@@ -91,6 +91,8 @@ export function defineDashboardModels(conn) {
     status: { type: String, enum: ['waiting', 'approved', 'rejected'], default: 'waiting' },
     decided_by: { type: Number, default: null },
     decided_at: { type: Date, default: null },
+    reject_reason: { type: String, default: '' },
+    source: { type: String, default: 'bill' }, // bill | chat | team
   });
 
   // Every AI reply with its cost, so billing can list them and "Why did the AI say this?" can explain them.

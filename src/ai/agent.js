@@ -3,6 +3,7 @@ import { withTraining, recordUnanswered } from '../dashboard/training.js';
 import { INTENTS, REPLY_SCHEMA, COMMENT_SCHEMA, POST_MATCH_SCHEMA, buildSystemPrompt, buildCommentPrompt, buildPostMatchPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
 import { priceRange } from '../dashboard/posts.js';
 import { aiCoupons } from '../dashboard/orderBuild.js';
+import { recordPayment, advanceMessage, TRX } from '../dashboard/payments.js';
 import { toPlatform } from '../platforms/rich.js';
 import { commentAction } from '../dashboard/comments.js';
 import { openTicket } from '../dashboard/tickets.js';
@@ -59,6 +60,7 @@ function normalize(data) {
     quick_replies: (Array.isArray(data?.quick_replies) ? data.quick_replies : []).map((q) => String(q).trim().slice(0, 20)).filter(Boolean).slice(0, 5),
     size_chart_product: Number(data?.size_chart_product) || 0,
     order: data?.order?.ready ? data.order : null,
+    payment: TRX.test(String(data?.payment?.trx_id ?? '').trim().toUpperCase()) ? { trx_id: String(data.payment.trx_id).trim().toUpperCase(), method: data.payment.method === 'nagad' ? 'nagad' : 'bkash', amount: Number(data.payment.amount) || 0 } : null,
     act_now: Boolean(data?.act_now),
     act_now_reason: String(data?.act_now_reason ?? '').trim(),
   };
@@ -270,6 +272,13 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
         return 'order_failed';
       }
     }
+    // PAY-01: a TrxID from the customer waits in Payments for the team to approve (linked to their open order).
+    if (answer.payment) {
+      const open = await db.orders.findOne({ workspace_id: ctx.conversation.workspace_id, draft: { $ne: true }, status: { $in: ['pending', 'on_hold', 'approved', 'processing', 'ready_to_ship'] },
+        $or: [{ conversation_id: conversationId }, ...(ctx.conversation.customer_id ? [{ customer_id: ctx.conversation.customer_id }] : [])] }).sort({ created_at: -1 }).lean();
+      await recordPayment(db, { workspaceId: ctx.conversation.workspace_id, orderId: open?._id ?? null, method: answer.payment.method, amount: answer.payment.amount || open?.advance?.amount || 0,
+        trxId: answer.payment.trx_id, source: 'chat', notify }).catch((err) => log.warn(`payment from chat not recorded: ${err.message}`));
+    }
     if (answer.handoff) await setHandoff(conversationId, answer.handoff_reason || 'The AI asked for a person to take over');
     // A question the shop information didn't cover goes to "Questions it couldn't answer" (TRN-04).
     if (answer.handoff && /^unanswered:/i.test(answer.handoff_reason ?? '')) await recordUnanswered(db, ctx.workspace._id, ctx.lastInbound?.text);
@@ -293,6 +302,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     }
     if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product, { publicUrl: config.publicUrl || '' });
     if (placed) await inbox.sendAiRich(conversationId, placed.rich);
+    // PAY-03: an advance is needed before this order goes ahead.
+    if (placed?.advance) await inbox.sendAiReply(conversationId, advanceMessage(ctx.workspace, placed.advance.amount));
     await inbox.refresh(conversationId);
     return placed ? 'order_placed' : answer.handoff ? 'handed_off' : 'sent';
   }

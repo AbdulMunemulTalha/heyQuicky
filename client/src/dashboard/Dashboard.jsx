@@ -27,6 +27,7 @@ const screens = {
   posts: lazy(() => import('./screens/Posts.jsx')),
   sizeCharts: lazy(() => import('./screens/SizeCharts.jsx')),
   coupons: lazy(() => import('./screens/Coupons.jsx')),
+  payments: lazy(() => import('./screens/Payments.jsx')),
   catalog: lazy(() => import('./screens/Catalog.jsx')),
   product: lazy(() => import('./screens/ProductForm.jsx')),
   analytics: lazy(() => import('./screens/Analytics.jsx')),
@@ -59,6 +60,7 @@ const ROUTES = [
   ['/customers/:id', 'customers'],
   ['/growth', 'growth'],
   ['/coupons', 'coupons'],
+  ['/payments', 'payments'],
   ['/saved-replies', 'saved'],
   ['/agent', 'agent'],
   ['/agent/training', 'training'],
@@ -124,7 +126,7 @@ export function Dashboard({ onSignOut }) {
   // Live updates: badge counts follow new chats, orders and notifications without a refresh.
   useEffect(() => {
     if (!socket) return undefined;
-    const events = ['conversation', 'order', 'notification', 'unanswered', 'ticket'];
+    const events = ['conversation', 'order', 'notification', 'unanswered', 'ticket', 'payment'];
     events.forEach((e) => socket.on(e, refreshBadges));
     const onWorkspace = (patch) => setMe((m) => (m ? { ...m, workspace: { ...m.workspace, ...patch } } : m));
     socket.on('workspace', onWorkspace);

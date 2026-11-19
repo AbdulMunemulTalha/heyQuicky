@@ -81,12 +81,13 @@ export async function badges(db, user, workspace) {
   const ws = user.workspace_id;
   const seeAll = allowedActions(user, workspace).includes('see_all_chats');
   const mine = seeAll ? {} : { $or: [{ assigned_user_id: user.id }, { assigned_user_id: null }] };
-  const [inbox, orders, agent, alerts, tickets] = await Promise.all([
+  const [inbox, orders, agent, alerts, tickets, payments] = await Promise.all([
     db.conversations.countDocuments({ workspace_id: ws, status: 'open', spam: { $ne: true }, ai_handoff: true, ...mine }),
     db.orders.countDocuments({ workspace_id: ws, status: { $in: ['pending', 'confirmed', 'on_hold'] }, draft: { $ne: true } }),
     db.unanswered.countDocuments({ workspace_id: ws, status: 'open' }),
     db.notifications.countDocuments({ user_id: user.id, read_at: null, dismissed: false }),
     db.tickets.countDocuments({ workspace_id: ws, status: { $ne: 'solved' } }),
+    db.payments.countDocuments({ workspace_id: ws, status: 'waiting' }),
   ]);
-  return { inbox, orders, agent, alerts, tickets };
+  return { inbox, orders, agent, alerts, tickets, payments };
 }

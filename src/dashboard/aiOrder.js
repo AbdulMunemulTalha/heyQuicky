@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { InboxError } from '../inbox.js';
+import { advanceFor } from './payments.js';
 import { priceOrder, cleanCustomer } from './orderBuild.js';
 import { riskFor } from './risk.js';
 import { adjustStock } from './orderOps.js';
@@ -47,7 +48,10 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
   customer = await db.customers.findById(customer._id).lean();
 
   const risk = riskFor({ delivered: customer.stats?.delivered, returned: customer.stats?.returned, cancelled: customer.stats?.cancelled, codAmount: priced.cod, outsideDhaka: zone === 'outside_dhaka' });
-  const status = risk.level === 'high' ? 'on_hold' : 'pending';
+  // PAY-03: the shop's rules may ask for an advance first (high risk, outside Dhaka over ৳X, …).
+  const advance = advanceFor(ws, { riskLevel: risk.level, zone, total: priced.total, previousOrders: customer.stats?.orders ?? 0 });
+  const status = advance || risk.level === 'high' ? 'on_hold' : 'pending';
+  const holdReason = advance ? `Waiting for ৳${advance.amount} advance (${advance.reason.replace(/_/g, ' ')})` : status === 'on_hold' ? `High return risk (${risk.score}%)` : '';
   const { order_seq: number } = await db.workspaces.findOneAndUpdate({ _id: ws._id }, { $inc: { order_seq: 1 } }, { new: true, lean: true });
   const billToken = randomBytes(9).toString('base64url');
   const created = await db.insert(db.orders, {
@@ -55,7 +59,8 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
     customer_name: who.name, phone: who.phone, address: who.address, area: zone, zone,
     items: priced.lines.map((l) => ({ name: `${l.name}${l.variant ? ` (${l.variant})` : ''}`, qty: l.qty, price: l.price })), product_items: priced.lines,
     subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, coupon_code: priced.couponCode, advance_paid: 0, cod_amount: priced.cod, payment_method: 'cod',
-    note: String(input.note ?? '').slice(0, 300), status, hold_reason: status === 'on_hold' ? `High return risk (${risk.score}%)` : '', risk,
+    note: String(input.note ?? '').slice(0, 300), status, hold_reason: holdReason, risk,
+    advance: advance ? { amount: advance.amount, method: ws.bkash_number ? 'bkash' : 'nagad', verified: false, requested: true, reason: advance.reason } : null,
     source: 'ai', taken_by: 'ai', bill_token: billToken,
   });
   await adjustStock(db, { product_items: priced.lines }, -1, { notify });
@@ -64,9 +69,9 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
   await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: created.id, type: 'status', to: status, by: 'ai', text: `The AI took the order in chat${status === 'on_hold' ? ' (on hold: high return risk)' : ''}` });
   const total = priced.subtotal + priced.delivery - priced.discount;
   await notify?.({ workspaceId: ws._id, event: 'order', title: `New order #${number}`, body: `${who.name} · ৳${total.toLocaleString('en-IN')} · taken by AI, waiting for the customer to confirm`, link: `/orders/${number}`, ref: `order:${created.id}`, amount: total });
-  if (status === 'on_hold') {
+  if (status === 'on_hold' && !advance) {
     await notify?.({ workspaceId: ws._id, event: 'escalation', title: `Order #${number} needs a look.`, body: `High return risk (${risk.score}%). ${risk.action}.`, link: `/orders/${number}`, ref: `risk:${created.id}` });
   }
   const order = await db.orders.findById(created.id).lean();
-  return { order, rich: orderSummary(order, { billUrl: publicUrl ? `${publicUrl}/b/${billToken}` : '' }) };
+  return { order, advance, rich: orderSummary(order, { billUrl: publicUrl ? `${publicUrl}/b/${billToken}` : '' }) };
 }

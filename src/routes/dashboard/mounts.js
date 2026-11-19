@@ -18,6 +18,7 @@ import { ticketRoutes } from './tickets.js';
 import { postRoutes } from './posts.js';
 import { sizeChartRoutes } from './sizeCharts.js';
 import { couponRoutes } from './coupons.js';
+import { paymentRoutes } from './payments.js';
 
 // Dashboard feature routers, mounted under /api/dash in this order. Each is (db, config, ctx) => Router.
-export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes, settingsRoutes, notificationRoutes, searchRoutes, trainingRoutes, ticketRoutes, postRoutes, sizeChartRoutes, couponRoutes];
+export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes, settingsRoutes, notificationRoutes, searchRoutes, trainingRoutes, ticketRoutes, postRoutes, sizeChartRoutes, couponRoutes, paymentRoutes];

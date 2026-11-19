@@ -12,7 +12,8 @@ const NAV = [
   { section: 'nav.work' },
   { key: 'overview', to: '/', icon: 'overview', label: 'nav.overview' },
   { key: 'inbox', to: '/inbox', icon: 'inbox', label: 'nav.inbox', badge: 'inbox', tone: 'yellow' },
-  { key: 'orders', to: '/orders', icon: 'orders', label: 'nav.orders', badge: 'orders', tone: 'gray' },
+  { key: 'orders', to: '/orders', icon: 'orders', label: 'nav.orders', badge: 'orders', tone: 'gray',
+    sub: [{ to: '/orders', label: 'nav.orders' }, { to: '/payments', label: 'nav.payments', badge: 'payments' }] },
   { key: 'customers', to: '/customers', icon: 'customers', label: 'nav.customers' },
   { key: 'tickets', to: '/tickets', icon: 'ticket', label: 'nav.tickets', badge: 'tickets', tone: 'red', module: 'tickets' },
   { section: 'nav.grow' },
@@ -115,7 +116,7 @@ export function Sidebar({ open, onClose }) {
                   {n.sub.map((x, j) => {
                     // The first sub-item is the section's own page; it is "on" unless a sibling page is open.
                     const on = j === 0 ? !n.sub.slice(1).some((y) => path.startsWith(y.to)) : path.startsWith(x.to);
-                    return <Link key={x.to} to={x.to} className={`nav-subitem${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined}>{t(x.label)}</Link>;
+                    return <Link key={x.to} to={x.to} className={`nav-subitem${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined}>{t(x.label)}{x.badge && <Badge count={badges[x.badge]} tone="yellow" />}</Link>;
                   })}
                 </div>,
               ] : []),
