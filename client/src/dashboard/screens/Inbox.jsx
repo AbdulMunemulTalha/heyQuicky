@@ -332,7 +332,7 @@ function Messages({ t, messages, conversation }) {
               {m.direction === 'out' && (m.byAi ? <Pill tone="blue">AI</Pill> : <span>{m.by}</span>)}
               <time>{t.time(m.at)}</time>
               {m.status === 'failed' && <span className="error-text" title={m.error}>{t('inbox.failed')}</span>}
-              {m.byAi && messages.indexOf(m) === lastAiIdx && <RateButtons t={t} />}
+              {m.byAi && messages.indexOf(m) === lastAiIdx && <RateButtons t={t} messageId={m.id} />}
             </div>
           </li>
         )))}
@@ -346,12 +346,13 @@ function Messages({ t, messages, conversation }) {
   );
 }
 
-function RateButtons({ t }) {
+function RateButtons({ t, messageId }) {
+  const { can, openOverlay } = useDash();
   const [rated, setRated] = useState(null);
   return (
     <span className="rate">
       <button type="button" aria-label={t('inbox.goodAnswer')} aria-pressed={rated === 'up'} onClick={() => { setRated('up'); toast(t('inbox.thanks')); }}>👍</button>
-      <button type="button" aria-label={t('inbox.teachBetter')} aria-pressed={rated === 'down'} onClick={() => { setRated('down'); navigate('/agent'); }}>👎</button>
+      <button type="button" aria-label={t('inbox.teachBetter')} aria-pressed={rated === 'down'} onClick={() => { setRated('down'); if (can('teach_ai')) openOverlay('teach', { messageId }); else toast(t('tc.askOwner')); }}>👎</button>
     </span>
   );
 }

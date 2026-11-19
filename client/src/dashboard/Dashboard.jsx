@@ -22,6 +22,7 @@ const screens = {
   growth: lazy(() => import('./screens/Growth.jsx')),
   saved: lazy(() => import('./screens/SavedReplies.jsx')),
   agent: lazy(() => import('./screens/Agent.jsx')),
+  training: lazy(() => import('./screens/Training.jsx')),
   catalog: lazy(() => import('./screens/Catalog.jsx')),
   product: lazy(() => import('./screens/ProductForm.jsx')),
   analytics: lazy(() => import('./screens/Analytics.jsx')),
@@ -34,6 +35,7 @@ const overlays = {
   search: lazy(() => import('./screens/Search.jsx')),
   products: lazy(() => import('./screens/SendProducts.jsx')),
   notifications: lazy(() => import('./screens/Notifications.jsx')),
+  teach: lazy(() => import('./screens/Teach.jsx')),
 };
 
 const G_KEYS = { H: '/', I: '/inbox', O: '/orders', C: '/customers', F: '/growth', S: '/saved-replies', A: '/agent', P: '/catalog', R: '/analytics', T: '/settings' };
@@ -53,6 +55,7 @@ const ROUTES = [
   ['/growth', 'growth'],
   ['/saved-replies', 'saved'],
   ['/agent', 'agent'],
+  ['/agent/training', 'training'],
   ['/catalog', 'catalog'],
   ['/catalog/posts', 'placeholder'],
   ['/catalog/size-charts', 'placeholder'],

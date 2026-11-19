@@ -229,6 +229,7 @@ export function defineDashboardModels(conn) {
     when: { type: [String], default: [] },
     attach: { type: [String], default: [] },
     from_message_id: { type: Number, default: null },
+    reason: { type: String, default: '' }, // what was wrong with the AI's reply (Teach popup, TRN-02)
     version: { type: Number, default: null },
   });
   const unanswered = S({

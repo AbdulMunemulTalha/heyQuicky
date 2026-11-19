@@ -35,3 +35,42 @@
 #dash .tc-hint { color: var(--faint); font-size: 12.5px; text-align: center; margin: auto 0; }
 #dash .tc-form { display: flex; gap: 8px; }
 @media (max-width: 1100px) { #dash .ag-grid { grid-template-columns: minmax(0, 1fr); } #dash .ag-test { position: static; } #dash .ag-persona { grid-template-columns: repeat(2, 1fr); } }
+/* Phase 2 · Training (TRN-03/04/05/07) and the Teach popup (TRN-02) */
+#dash .tr-top { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; margin-bottom: 16px; align-items: start; }
+#dash .tr-score { display: flex; flex-direction: column; gap: 8px; }
+#dash .tr-score strong { font: 700 40px/1 var(--display); }
+#dash .tr-bar { display: block; height: 8px; border-radius: 4px; background: var(--gray-soft); overflow: hidden; }
+#dash .tr-bar span { display: block; height: 100%; border-radius: 4px; background: var(--yellow, #e5a50a); }
+#dash .tr-bar span.good { background: var(--green, #1f9d55); }
+#dash .tr-bar span.low { background: var(--red, #d64545); }
+#dash .tr-gaps li, #dash .tr-list li { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--border); }
+#dash .tr-gaps li:first-child, #dash .tr-list li:first-child { border-top: 0; }
+#dash .tr-gaps li .grow, #dash .tr-list li .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#dash .tr-list li.off { opacity: .6; }
+#dash .tr-q { margin: 0; font-size: 13.5px; }
+#dash .tr-vn { font: 700 14px/1 var(--display); min-width: 40px; }
+#dash .training .tabs { margin-bottom: 12px; }
+#dash .tr-rules { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+#dash .tr-new { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+#dash .tr-new .tr-phone { min-height: 110px; }
+#dash .tr-form { display: flex; flex-direction: column; gap: 10px; }
+#dash .tr-phone { background: var(--panel-2); border: 1px solid var(--border); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; }
+#dash .tr-phone .bubble { padding: 9px 12px; border-radius: 14px; font-size: 13px; max-width: 92%; white-space: pre-wrap; }
+#dash .tr-phone .bubble.cust { color: var(--text); background: var(--panel); border: 1px solid var(--border); align-self: flex-start; }
+#dash .tr-phone .bubble.shop { background: var(--blue, #2f6fed); color: #fff; align-self: flex-end; }
+#dash .teach .tc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 18px; }
+#dash .tc-main { display: flex; flex-direction: column; gap: 8px; }
+#dash .tc-pair { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+#dash .tc-pair .bubble, #dash .tc-asked { padding: 9px 12px; border-radius: 12px; font-size: 13px; background: var(--gray-soft); }
+#dash .tc-pair .bubble.shop { background: var(--blue-soft, #e8f0fe); }
+#dash .tc-reasons { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+#dash .tc-reason { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+#dash .tc-reason.on { border-color: var(--blue, #2f6fed); background: var(--blue-soft, #e8f0fe); }
+#dash .tc-reason span { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+#dash .tc-when { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#dash .tc-when .input { flex: 1; min-width: 160px; }
+#dash .tc-old { text-decoration: line-through; opacity: .7; }
+#dash .tc-done { text-align: center; padding: 24px 8px; }
+#dash .tc-check { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 24px; background: var(--green-soft); color: var(--green-text); font-size: 24px; }
+#dash .tc-done h3 { margin: 12px 0 4px; }
+@media (max-width: 1100px) { #dash .tr-top, #dash .tr-rules, #dash .teach .tc-grid, #dash .tr-new { grid-template-columns: minmax(0, 1fr); } }

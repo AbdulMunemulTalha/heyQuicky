@@ -54,15 +54,15 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | AI-14 | Done — the AI sends the product's size chart when asked which size fits, then asks height and chest / waist | AI pipeline |
 | AI-15 | Not started | AI pipeline |
 | TRN-01 | Done — knowledge book: add, remove, each change published as a version; persona editor (name, role, tone, sales style, address, reply delay) | /app/agent |
-| TRN-02 | Not started (Phase 2) | overlay |
-| TRN-03 | Not started (Phase 2) | /app/agent/training |
-| TRN-04 | Partial — "Questions it couldn't answer": counted once however they are written, Teach the answer with a live preview, Turn on for customers, Hide. Full training page in Phase 2 | /app/agent |
-| TRN-05 | Partial — every publish is a version with a snapshot; "Undo last publish" restores the one before. Version history page in Phase 2 | /app/agent |
+| TRN-02 | Done — Teach popup from 👎 on an AI reply in the inbox (what was wrong → the right answer with "use this answer when…" and a live phone preview → tested & published, with Undo); "should have handed off" also adds a hand-off rule; the same popup teaches unanswered questions | overlay |
+| TRN-03 | Done — Training → Rules: new instruction with a kind (tone, selling, never, hand off), preview on a sample question before publishing, pause / remove; each change is a version | /app/agent/training?tab=rules |
+| TRN-04 | Done — Training → Unanswered: questions counted once however they are written, last 7 / 14 / 30 days, Teach (popup with preview) or Ignore; also on the AI agent screen | /app/agent/training |
+| TRN-05 | Done — every publish is a version with a snapshot; Training → Versions lists them with who and when, "Roll back to this" restores any one exactly (saved as a new version); "Undo last publish" on the AI agent screen | /app/agent/training?tab=versions |
 | TRN-06 | Not started (Phase 3) | /app/agent/training |
-| TRN-07 | Not started (Phase 2) | /app/agent/training |
+| TRN-07 | Done — knowledge readiness % and "Gaps to fix" (products, prices, delivery charges, payment, return policy, shop knowledge, size charts, saved replies, unanswered questions), each with a Fix link | /app/agent/training |
 | TRN-08 | Done — test chat on the AI agent screen and in the top bar panel; nothing is stored or sent (needs ANTHROPIC_API_KEY) | /app/agent, overlay |
 | TRN-09 | Not started (Phase 3) | overlay |
-| TRN-10 | Not started (Phase 2) | /app/agent/training |
+| TRN-10 | Done — the rules the AI always follows: listed with author and kind, on / off switch, included in every reply | /app/agent/training?tab=rules |
 | HND-01 | Done — "." from Messenger / Business Suite pauses the AI, "." again hands back; the dot is not stored | webhooks |
 | HND-02 | Done — the AI returns by itself after a takeover (15 min to 12 h, or never), set in the persona editor | /app/agent |
 | HND-03 | Done — Take over / Back to AI buttons | /app/inbox |
