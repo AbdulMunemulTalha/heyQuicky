@@ -1,0 +1,43 @@
+/* Phase 2 · Team (TEAM-01/02/04/05/06/07) */
+#dash .tm-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+#dash .team .tabs { margin-bottom: 14px; }
+#dash .tm-tablewrap { overflow-x: auto; }
+#dash .tm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#dash .tm-table th { text-align: left; font-size: 11.5px; color: var(--muted); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+#dash .tm-table td, #dash .tm-table tbody th { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+#dash .tm-table tbody th { font-weight: 500; color: var(--text); font-size: 13px; }
+#dash .tm-table tr:last-child td, #dash .tm-table tr:last-child th { border-bottom: 0; }
+#dash .tm-table tr.off { opacity: .55; }
+#dash .tm-actions { text-align: right; }
+#dash .tm-perms td { text-align: center; }
+#dash .tm-perms td.tm-changed { background: var(--yellow-soft, #fff6db); }
+#dash .tm-tick { color: var(--green-text, #12733f); font-weight: 700; }
+#dash .tm-foot { padding: 10px 14px; margin: 0; border-top: 1px solid var(--border); }
+#dash .tm-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+#dash .tm-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; font-size: 13px; }
+#dash .tm-mins { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+#dash .tm-mins .input { width: 70px; text-align: center; }
+#dash .tm-times { display: inline-flex; align-items: center; gap: 6px; }
+#dash .tm-times .input { width: 120px; }
+#dash .tm-days { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+#dash .tm-waiting { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+#dash .tm-wait { all: unset; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 8px; }
+#dash .tm-wait:hover, #dash .tm-wait:focus-visible { background: var(--panel-2); }
+#dash .tm-share { border: 0; padding: 0; margin: 0 0 10px; display: flex; flex-direction: column; gap: 6px; }
+#dash .tm-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+#dash .tm-opt.on { border-color: var(--accent, #2f6fed); background: var(--accent-tint, #eef2ff); }
+#dash .tm-opt span { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+#dash .tm-save { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 12px; }
+#dash .tm-rules { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+#dash .tm-rules li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
+#dash .tm-rules .input { width: auto; min-width: 140px; }
+#dash .tm-if { font-weight: 700; font-size: 11.5px; letter-spacing: .06em; color: var(--accent, #2f6fed); }
+#dash .tm-ruleactions { margin-left: auto; display: inline-flex; gap: 2px; }
+#dash .sg-icon { all: unset; cursor: pointer; width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 12px; color: var(--muted); }
+#dash .sg-icon:hover, #dash .sg-icon:focus-visible { background: var(--panel); color: var(--text); }
+#dash .sg-icon:disabled { opacity: .3; cursor: default; }
+#dash .tm-auditbar { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+#dash .tm-auditbar .input { width: auto; min-width: 150px; }
+#dash .tm-audit li { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--border); }
+#dash .tm-audit li:first-child { border-top: 0; }
+@media (max-width: 900px) { #dash .tm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } #dash .tm-audit li { grid-template-columns: 1fr; gap: 4px; } }

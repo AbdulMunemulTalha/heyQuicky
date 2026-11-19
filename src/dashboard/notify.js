@@ -35,12 +35,16 @@ export function inQuietHours(now = new Date()) {
 // notify(db, emit, adapters, { workspaceId, event, title, body, link, ref, userIds?, amount? })
 // userIds: exact people (mentions, an assignee); otherwise everyone active whose role gets this event.
 // ref: de-duplicates (the same ref is not repeated to a person within an hour).
-export async function notify(db, emit, adapters, { workspaceId, event, title, body = '', link = '', ref = '', userIds = null, exceptUserId = null, amount = 0, now = new Date() }) {
+// roleOverride: send to these roles instead of the event's usual ones. Team alerts (handoffs, escalations,
+// courier problems) only go to people on duty (TEAM-04); direct and role-override alerts always go.
+const DUTY_EVENTS = ['handoff', 'escalation', 'courier'];
+export async function notify(db, emit, adapters, { workspaceId, event, title, body = '', link = '', ref = '', userIds = null, exceptUserId = null, amount = 0, now = new Date(), roleOverride = null }) {
   const def = EVENTS[event];
   if (!def) throw new Error(`Unknown notification event ${event}`);
   const where = { workspace_id: workspaceId, is_active: { $ne: false } };
   if (userIds) where._id = { $in: userIds };
-  else where.role = { $in: def.roles };
+  else where.role = { $in: roleOverride ?? def.roles };
+  if (!userIds && !roleOverride && DUTY_EVENTS.includes(event)) where.on_duty = { $ne: false };
   if (exceptUserId) where._id = { ...(where._id ?? {}), $ne: exceptUserId };
   const users = await db.users.find(where, { notify_prefs: 1, role: 1 }).lean();
   const sent = [];

@@ -346,7 +346,7 @@ function MoneyInline({ value, label, onSave }) {
 }
 
 // ---------- Team ----------
-const ROLE_HINT = { owner: 'set.role.ownerHint', admin: 'set.role.adminHint', moderator: 'set.role.moderatorHint', agent: 'set.role.agentHint' };
+export const ROLE_HINT = { owner: 'set.role.ownerHint', admin: 'set.role.adminHint', moderator: 'set.role.moderatorHint', agent: 'set.role.agentHint' };
 function Team({ t }) {
   const { d, error, load } = useData('/settings/team');
   const [invite, setInvite] = useState(false);
@@ -393,7 +393,7 @@ function Team({ t }) {
   );
 }
 
-function InviteDialog({ t, onClose, onDone }) {
+export function InviteDialog({ t, onClose, onDone }) {
   const { me } = useDash();
   const [v, setV] = useState({ name: '', email: '', role: 'moderator' });
   const [busy, setBusy] = useState(false);

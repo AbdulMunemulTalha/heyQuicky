@@ -1,9 +1,12 @@
-// Picks the on-duty moderator with the fewest open conversations. Ties go to
-// whoever was assigned least recently (never-assigned first), so new customers
-// rotate fairly.
-export async function pickModerator(db, workspaceId) {
+import { teamSettings, ruleAssignee } from './dashboard/team.js';
+
+// Picks the on-duty teammate (of the roles that share chats, Team → Duty & targets) with the
+// fewest open conversations. Ties go to whoever was assigned least recently (never-assigned
+// first), so new customers rotate fairly.
+export async function pickModerator(db, workspaceId, roles = null) {
+  roles ??= teamSettings(await db.workspaces.findById(workspaceId, { settings: 1 }).lean()).shareRoles;
   const moderators = await db.users
-    .find({ workspace_id: workspaceId, role: 'moderator', is_active: true, is_online: true }, { last_assigned_at: 1 })
+    .find({ workspace_id: workspaceId, role: { $in: roles }, is_active: true, is_online: true, on_duty: { $ne: false } }, { last_assigned_at: 1 })
     .lean();
   if (!moderators.length) return null;
   const counts = await db.conversations.aggregate([
@@ -31,23 +34,30 @@ async function hasActiveAssignee(db, conversation) {
 
 // Keeps an existing assignee (the sticky rule). Only conversations without an
 // active owner are routed; if nobody is on duty they wait in "Unassigned".
+// Routing rules (TEAM-07) go first; then chats are shared out, unless the shop keeps them in the queue.
 export async function ensureAssigned(db, conversation) {
   if (await hasActiveAssignee(db, conversation)) return conversation.assigned_user_id;
-  const userId = await pickModerator(db, conversation.workspace_id);
-  await assignConversation(db, conversation.id, userId);
+  const ws = await db.workspaces.findById(conversation.workspace_id, { settings: 1 }).lean();
+  const team = teamSettings(ws);
+  let userId = await ruleAssignee(db, { ...conversation, _id: conversation.id ?? conversation._id }, ws);
+  if (!userId && team.share === 'balanced') userId = await pickModerator(db, conversation.workspace_id, team.shareRoles);
+  if (!userId) return null;
+  await assignConversation(db, conversation.id ?? conversation._id, userId);
   return userId;
 }
 
 // Hands waiting conversations to on-duty moderators, oldest first. Called when
 // someone goes on duty so nothing sits unanswered in the queue.
 export async function distributeUnassigned(db, workspaceId) {
+  const team = teamSettings(await db.workspaces.findById(workspaceId, { settings: 1 }).lean());
+  if (team.share !== 'balanced') return [];
   const waiting = await db.conversations
     .find({ workspace_id: workspaceId, status: 'open', assigned_user_id: null }, { _id: 1 })
     .sort({ last_inbound_at: 1 })
     .lean();
   const assigned = [];
   for (const { _id: id } of waiting) {
-    const userId = await pickModerator(db, workspaceId);
+    const userId = await pickModerator(db, workspaceId, team.shareRoles);
     if (!userId) break;
     await assignConversation(db, id, userId);
     assigned.push(id);

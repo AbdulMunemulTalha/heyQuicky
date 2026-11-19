@@ -7,6 +7,7 @@ import { runMigrations } from './dashboard/migrations.js';
 import { startCourierSync } from './routes/dashboard/orderDetail.js';
 import { startFollowups } from './dashboard/followups.js';
 import { startPageSubscriptions } from './dashboard/pageSubscriptions.js';
+import { startSlaWatch } from './dashboard/team.js';
 
 const config = loadConfig();
 
@@ -32,6 +33,7 @@ const { server, inbox, io, notify } = createApp(db, config);
 startFollowups(db, inbox);
 // Connected Pages also get button taps from cards (screen 24).
 startPageSubscriptions(db, config);
+startSlaWatch(db, notify);
 startCourierSync(db, config, { emit: (ws, event, payload) => io.to(`workspace:${ws}`).emit(event, payload), notify });
 
 server.listen(config.port, () => {
