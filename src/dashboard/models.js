@@ -103,7 +103,8 @@ export function defineDashboardModels(conn) {
     output_tokens: { type: Number, default: 0 },
     cache_read_tokens: { type: Number, default: 0 },
     cache_write_tokens: { type: Number, default: 0 },
-    cost: { type: Number, default: 0 }, // taka, fractional
+    cost: { type: Number, default: 0 }, // taka charged (real cost × USD_TO_BDT × markup), fractional
+    cost_usd: { type: Number, default: 0 }, // what the model call cost HeyQuicky
     saved: { type: Number, default: 0 }, // taka saved by the cache
     summary: { type: String, default: '' },
     customer_name: { type: String, default: '' },

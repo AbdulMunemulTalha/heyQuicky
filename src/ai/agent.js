@@ -2,6 +2,7 @@ import { tryAutoAnswer, hasAutoAnswers } from '../dashboard/autoAnswer.js';
 import { withTraining, recordUnanswered } from '../dashboard/training.js';
 import { INTENTS, REPLY_SCHEMA, buildSystemPrompt, toModelMessages } from './prompt.js';
 import { InboxError } from '../inbox.js';
+import { canSpend, meter } from './metering.js';
 
 // After a person replies (or the AI hands off), the AI stays out of that
 // conversation in auto mode for this long, then may answer again.
@@ -31,7 +32,21 @@ function normalize(data) {
 // The Bangla/Banglish chat agent. In "suggest" mode it drafts a reply for the
 // moderator; in "auto" mode it answers the customer itself and hands anything it
 // shouldn't handle to a person. `provider` is null when AI isn't configured.
-export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = console, notify = null } = {}) {
+export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = console, notify = null, config = {} } = {}) {
+  const PAUSED = { credit: 'AI credit finished — top up so the AI answers again', cap: "This month's AI spend limit is reached — raise it in Settings → Billing" };
+
+  // Every model call goes through here: checked against credit and the monthly cap, then priced and charged.
+  async function callModel(workspaceId, request, meta = {}) {
+    const spend = await canSpend(db, workspaceId, new Date(), { enforced: Boolean(config.ai?.creditEnforced) });
+    if (!spend.ok) {
+      const err = new InboxError(402, PAUSED[spend.reason]);
+      err.paused = spend.reason;
+      throw err;
+    }
+    const out = await provider.generateJson(request);
+    await meter(db, config, { workspaceId, model: provider.model, usage: out.usage, notify, ...meta }).catch((e) => log.warn(`metering failed: ${e.message}`));
+    return out;
+  }
   // conversationId -> { timer, resolve } for the reply waiting to be written.
   const pending = new Map();
   let lastError = null;
@@ -52,16 +67,19 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, messages, lastInbound };
   }
 
-  async function generate(ctx) {
+  async function generate(ctx, kind = 'reply') {
     const turns = toModelMessages(ctx.messages);
     if (!turns) return null;
     const system = buildSystemPrompt(ctx);
     try {
-      const { data } = await provider.generateJson({ system, messages: turns, schema: REPLY_SCHEMA });
+      const contactName = ctx.conversation.contact_id ? (await db.contacts.findById(ctx.conversation.contact_id, { name: 1 }).lean())?.name ?? '' : '';
+      const { data } = await callModel(ctx.conversation.workspace_id, { system, messages: turns, schema: REPLY_SCHEMA },
+        { kind, conversationId: ctx.conversation._id, customerName: contactName, summary: kind === 'draft' ? 'Drafted a reply' : 'Answered the customer' });
       lastError = null;
-      return normalize(data);
+      const answer = normalize(data);
+      return answer;
     } catch (err) {
-      lastError = { message: err.message, at: new Date() };
+      if (!err.paused) lastError = { message: err.message, at: new Date() };
       throw err;
     }
   }
@@ -117,7 +135,12 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
       auto = false;
     }
 
-    const answer = await generate(ctx);
+    const spend = await canSpend(db, ctx.conversation.workspace_id, new Date(), { enforced: Boolean(config.ai?.creditEnforced) });
+    if (!spend.ok) {
+      if (auto && !ctx.conversation.ai_handoff) await setHandoff(conversationId, PAUSED[spend.reason]);
+      return spend.reason === 'cap' ? 'cap_reached' : 'no_credit';
+    }
+    const answer = await generate(ctx, auto ? 'reply' : 'draft');
     if (!answer) return 'nothing_to_answer';
 
     // The customer may have written again, or a person replied, while the model was working.
@@ -197,12 +220,13 @@ ${extraNotes}` } : trained;
       const turnsForModel = toModelMessages(messages.map((m) => ({ direction: m.role === 'user' ? 'in' : 'out', text: m.content })));
       if (!turnsForModel) throw new InboxError(400, 'Write a customer message first');
       try {
-        const { data } = await provider.generateJson({
+        const { data } = await callModel(user.workspace_id, {
           system: buildSystemPrompt({ workspace, products, savedReplies }), messages: turnsForModel, schema: REPLY_SCHEMA,
-        });
+        }, { kind: 'practice', summary: 'Test chat', customerName: 'Test chat' });
         lastError = null;
         return normalize(data);
       } catch (err) {
+        if (err.paused) throw err;
         lastError = { message: err.message, at: new Date() };
         throw new InboxError(502, `The AI couldn't answer: ${err.message}`);
       }
@@ -223,8 +247,9 @@ ${extraNotes}` } : trained;
       if (modeOf(ctx.workspace) === 'off') throw new InboxError(409, 'The AI agent is turned off in Settings');
       let answer;
       try {
-        answer = await generate(ctx);
+        answer = await generate(ctx, 'draft');
       } catch (err) {
+        if (err.paused) throw err;
         throw new InboxError(502, `The AI couldn't write a reply: ${err.message}`);
       }
       if (!answer) throw new InboxError(409, 'There is no customer message waiting for a reply');
@@ -251,14 +276,15 @@ ${extraNotes}` } : trained;
       const transcript = messages.reverse().map((m) => `${m.direction === 'in' ? 'Customer' : m.sent_by_ai ? 'AI' : 'Team'}: ${m.text}`).join('\n');
       const orderLines = orders.map((o) => `#${o.number ?? o._id} ${o.status} ৳${o.subtotal + o.delivery_charge - (o.discount ?? 0)} ${o.items.map((i) => i.name).join(', ')}`).join('\n');
       try {
-        const { data } = await provider.generateJson({
+        const { data } = await callModel(user.workspace_id, {
           system: 'You help a shop team understand one customer. Answer briefly (1-3 sentences) from the chat and orders only. If the answer is not there, say so. Reply in the language of the question.',
           messages: [{ role: 'user', content: `Chat:\n${transcript || '(none)'}\n\nOrders:\n${orderLines || '(none)'}\n\nQuestion: ${question}` }],
           schema: { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false },
           maxTokens: 600,
-        });
+        }, { kind: 'copilot', conversationId, summary: 'Answered a teammate' });
         return String(data.answer ?? '').trim();
       } catch (err) {
+        if (err.paused) throw err;
         throw new InboxError(502, `The AI couldn't answer: ${err.message}`);
       }
     },

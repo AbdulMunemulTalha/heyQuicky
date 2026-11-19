@@ -37,8 +37,8 @@ export function dashboardRoutes(db, config, ctx) {
         repliesLeft: Math.floor((workspace.credit_balance ?? 0) / await averageReplyCost(db, workspace._id)), plan: workspace.plan ?? 'starter',
         wentLiveAt: workspace.went_live_at, modules: modulesFor(workspace),
         channels: channels.map((c) => ({ id: c._id, platform: c.platform, name: c.name, needsReconnect: Boolean(c.needs_reconnect) })),
-        // AI replies only pause at zero credit once per-reply charging is on (AI pipeline); until then the banner stays hidden.
-        creditEnforced: false,
+        // AI replies pause at zero credit only when AI_CREDIT_ENFORCED is on (src/ai/metering.js).
+        creditEnforced: Boolean(config.ai?.creditEnforced),
         // Couriers marked connected but without keys can't book for real (outside test mode).
         couriersNeedKeys: config.dryRun ? [] : (await db.courierAccounts.find({ workspace_id: workspace._id, connected: true, credentials: { $in: ['', null] } }, { courier: 1 }).lean()).map((c) => c.courier),
       },

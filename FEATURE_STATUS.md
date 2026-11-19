@@ -151,12 +151,12 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | INT-02 | Not started (Phase 2) | /app/settings/integrations |
 | INT-03 | Not started (Phase 3) | /s/:shop |
 | INT-04 | Not started (Phase 3) | /app/settings/integrations |
-| BIL-01 | Partial — Settings → Billing: balance, replies-left estimate, this month's AI replies and cost, saved replies free; charging per reply comes with the AI pipeline | /app/settings |
-| BIL-02 | Partial — "Cost of every reply" table and CSV for this month; costs fill in once the AI pipeline records each reply | /app/settings |
-| BIL-03 | Partial — cache savings line for the month; real numbers once the AI pipeline records cache usage | /app/settings |
+| BIL-01 | Done — every AI call (replies, drafts, test chat, copilot) is priced from its real token use and charged at cost × USD_TO_BDT × (1 + AI_MARKUP_PCT%); balance, replies left and this month on Settings → Billing. Charging and pausing at ৳0 switch on with AI_CREDIT_ENFORCED=1 (off: costs recorded, nothing deducted) | /app/settings |
+| BIL-02 | Done — "Cost of every reply" lists each AI call with what it cost, plus CSV | /app/settings |
+| BIL-03 | Done — cache savings per call from Claude's cache-read tokens, summed for the month | /app/settings |
 | BIL-04 | Partial — trial starts at first go-live; amount waits on pricing | /app |
 | BIL-05 | Partial — manual top-up: shop sends bKash / Nagad to TOPUP_BKASH_NUMBER / TOPUP_NAGAD_NUMBER and enters the TrxID; credit is added only after an admin approves it (GET /admin/topups, POST /admin/topups/:id/approve, ADMIN_TOKEN). Gateway checkout and card wait on payment accounts | /app/settings |
-| BIL-06 | Partial — monthly spend cap and low-credit alert saved; enforced once per-reply charging is on (AI pipeline) | /app/settings |
+| BIL-06 | Done — with charging on, the AI stops before calling the model when credit is ৳0 or this month's spend reaches the cap, and hands the chat to the team; the owner is alerted when credit drops below their line and when it runs out | /app/settings |
 | UX-01 | Partial — full Bangla for the shell, log-in and Overview with Bangla digits and ৳ grouping; a test fails if any English string lacks a Bangla one; other screens add theirs as they're built | /app |
 | UX-02 | Partial — dark theme variables and `user.theme`; Profile switch in Phase 2, frame in Phase 3 | /app |
 | UX-03 | Not started (Phase 2) | overlay |

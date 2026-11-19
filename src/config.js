@@ -38,7 +38,13 @@ export function loadConfig(env = process.env) {
     ai: {
       provider: env.AI_PROVIDER || 'claude',
       apiKey: cleanSecret(env.ANTHROPIC_API_KEY),
-      model: env.AI_MODEL || 'claude-opus-5-5',
+      model: env.AI_MODEL || 'claude-haiku-5-5',
+      // Credit charged per call = real token cost (USD) × USD_TO_BDT × (1 + AI_MARKUP_PCT / 100).
+      usdToBdt: Number(env.USD_TO_BDT || 122),
+      markupPct: Number(env.AI_MARKUP_PCT || 0),
+      // Off: every AI call is priced and recorded, nothing is deducted and the AI never pauses.
+      // On (AI_CREDIT_ENFORCED=1): credit is charged and the AI pauses at zero credit or the monthly cap.
+      creditEnforced: env.AI_CREDIT_ENFORCED === '1' || env.AI_CREDIT_ENFORCED === 'true',
       // Reasoning effort for chat replies: low keeps them quick and inexpensive.
       effort: env.AI_EFFORT || 'low',
       // How long to wait for a customer to finish typing before answering.

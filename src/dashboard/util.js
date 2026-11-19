@@ -36,6 +36,13 @@ export function taka(amount) {
 }
 
 // Start of "today" in Asia/Dhaka (UTC+6, no daylight saving) as a UTC Date.
+// First moment of the current month in Dhaka time.
+export function dhakaMonthStart(now = new Date()) {
+  const d = dhakaDayStart(now);
+  const dhaka = new Date(d.getTime() + 6 * 3_600_000);
+  return dhakaDayStart(now, -(dhaka.getUTCDate() - 1));
+}
+
 export function dhakaDayStart(date = new Date(), offsetDays = 0) {
   const shifted = new Date(date.getTime() + 6 * 3_600_000);
   shifted.setUTCHours(0, 0, 0, 0);

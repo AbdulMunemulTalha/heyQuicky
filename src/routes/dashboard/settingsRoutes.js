@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
-import { audit, bdPhone, csv, dhakaDayStart } from '../../dashboard/util.js';
+import { audit, bdPhone, csv, dhakaMonthStart } from '../../dashboard/util.js';
 import { setting, DEFAULT_CAPS } from '../../dashboard/settings.js';
 import { averageReplyCost, requestTopup, TOPUP_MIN, TOPUP_MAX } from '../../dashboard/credit.js';
 import { zonesFor } from '../../dashboard/orderBuild.js';
@@ -12,11 +12,7 @@ import { hashPassword } from '../../auth.js';
 import { isDuplicateKey, normalizeEmail } from '../../db.js';
 
 const ROLES = ['admin', 'moderator', 'agent'];
-const monthStart = (now = new Date()) => {
-  const d = dhakaDayStart(now);
-  const dhaka = new Date(d.getTime() + 6 * 3_600_000);
-  return dhakaDayStart(now, -(dhaka.getUTCDate() - 1));
-};
+const monthStart = dhakaMonthStart;
 const money = (v, what, { min = 0, max = 1_000_000 } = {}) => {
   const n = Number(String(v ?? '').replace(/[,৳\s]/g, '').replace(/[০-৯]/g, (d) => '০১২৩৪৫৬৭৮৯'.indexOf(d)));
   if (!Number.isFinite(n) || n < min || n > max) throw new InboxError(400, `Enter a valid ${what}`);
@@ -36,7 +32,7 @@ export function settingsRoutes(db, config, { auth, adapters }) {
     const ws = await db.workspaces.findById(wsId).lean();
     const since = monthStart();
     const [month, saved, replies, pending, avg] = await Promise.all([
-      db.aiReplies.aggregate([{ $match: { workspace_id: wsId, kind: { $in: ['reply', 'followup'] }, created_at: { $gte: since } } },
+      db.aiReplies.aggregate([{ $match: { workspace_id: wsId, kind: { $ne: 'saved' }, created_at: { $gte: since } } },
         { $group: { _id: null, n: { $sum: 1 }, cost: { $sum: '$cost' }, saved: { $sum: '$saved' } } }]),
       db.aiReplies.countDocuments({ workspace_id: wsId, kind: 'saved', created_at: { $gte: since } }),
       db.aiReplies.find({ workspace_id: wsId }).sort({ created_at: -1 }).limit(30).lean(),

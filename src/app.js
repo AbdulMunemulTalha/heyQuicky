@@ -70,7 +70,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   const orders = createOrders(db, inbox, { emit, notify });
   const importer = createImporter(db, config, inbox, { fetchImpl, emit });
   const provider = aiProvider === undefined ? createAiProvider(config.ai) : aiProvider;
-  const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs, notify });
+  const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs, notify, config });
   inbox.setInboundHandler(agent.onInbound);
   inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit }));
 

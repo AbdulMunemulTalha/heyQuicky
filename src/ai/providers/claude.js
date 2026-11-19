@@ -3,6 +3,8 @@ import { AiError } from '../errors.js';
 
 // Claude through the official Anthropic SDK. The answer is constrained to the
 // caller's JSON Schema with structured outputs, so it always parses.
+const FALLBACK_MODELS = /^claude-(opus|sonnet|fable|mythos)-/;
+
 export function createClaudeProvider({ apiKey, model, effort }) {
   const client = new Anthropic({ apiKey, maxRetries: 2, timeout: 60_000 });
 
@@ -22,9 +24,9 @@ export function createClaudeProvider({ apiKey, model, effort }) {
           messages,
           // Chat replies are short; low effort keeps them fast and cheap.
           output_config: { effort, format: { type: 'json_schema', schema } },
-          // If a safety classifier declines, retry on Anthropic's recommended fallback model.
-          betas: ['server-side-fallback-2026-07-01'],
-          fallbacks: 'default',
+          // If a safety classifier declines, retry on Anthropic's recommended fallback model
+          // (only for the larger model families; Haiku runs without it).
+          ...(FALLBACK_MODELS.test(model) ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {}),
         });
       } catch (err) {
         if (err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError
