@@ -4,7 +4,10 @@ import { can, need } from '../../dashboard/permissions.js';
 import { audit, clampInt, dhakaDayStart } from '../../dashboard/util.js';
 import { WINDOW_MS, runFollowups } from '../../dashboard/followups.js';
 
+import { segmentMembers } from '../../dashboard/segments.js';
+
 const AUDIENCES = ['hot', 'warm', 'last_24h', 'customers_24h'];
+const okAudience = (a) => AUDIENCES.includes(a) || /^segment:\d+$/.test(String(a ?? ''));
 const FORMATS = ['text', 'buttons', 'product', 'carousel', 'photo'];
 const RANK = { hot: 0, warm: 1 };
 const rank = (f) => (f.status === 'watching' ? RANK[f.temp] ?? 2 : { sent: 2, replied: 3, ordered: 3, skipped: 4 }[f.status] ?? 5);
@@ -114,6 +117,11 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
       const temps = new Set((await db.followups.find({ workspace_id: ws, temp: aud, status: { $in: ['watching', 'sent'] } }, { conversation_id: 1 }).lean()).map((f) => f.conversation_id));
       convs = convs.filter((c) => temps.has(c._id));
     }
+    if (String(aud).startsWith('segment:')) {
+      const seg = await db.segments.findOne({ _id: Number(aud.slice(8)), workspace_id: ws }).lean();
+      const members = new Set(seg ? (await segmentMembers(db, ws, seg.conditions)).ids : []);
+      convs = convs.filter((c) => members.has(c.customer_id));
+    }
     if (aud === 'customers_24h') {
       const buyers = new Set((await db.customers.find({ workspace_id: ws, 'stats.orders': { $gte: 1 } }, { _id: 1 }).lean()).map((c) => c._id));
       convs = convs.filter((c) => buyers.has(c.customer_id));
@@ -125,7 +133,7 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
   }
 
   router.post('/growth/broadcasts/preview', auth, async (req, res) => {
-    const aud = AUDIENCES.includes(req.body?.audience) ? req.body.audience : 'last_24h';
+    const aud = okAudience(req.body?.audience) ? req.body.audience : 'last_24h';
     const { ids, outside } = await audience(req.user.workspace_id, aud);
     res.json({ recipients: ids.length, outsideWindow: outside });
   });
@@ -157,7 +165,7 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
 
   router.post('/growth/broadcasts', auth, need(db, 'reply'), async (req, res) => {
     const ws = req.user.workspace_id;
-    const aud = AUDIENCES.includes(req.body?.audience) ? req.body.audience : null;
+    const aud = okAudience(req.body?.audience) ? req.body.audience : null;
     const format = FORMATS.includes(req.body?.format) ? req.body.format : null;
     if (!aud) throw new InboxError(400, 'Pick who gets it');
     if (!format) throw new InboxError(400, 'Pick a format');

@@ -1,5 +1,6 @@
 import { InboxError } from '../inbox.js';
 import { bdPhone, phoneProblem } from './util.js';
+import { inSegment } from './segments.js';
 
 // Delivery zones with their charge and time (ONB-06, ORD-08). Suburbs fall between the two onboarding zones.
 export function zonesFor(ws) {
@@ -13,7 +14,7 @@ export function zonesFor(ws) {
 
 // Who a coupon is for (ORD-05 "Who can use it"). "after_review" and "broadcast" are campaign codes:
 // whoever has the code may use it. The others are checked against the customer's history.
-export const AUDIENCES = ['everyone', 'new', 'returning', 'vip', 'after_review', 'broadcast'];
+export const AUDIENCES = ['everyone', 'new', 'returning', 'vip', 'after_review', 'broadcast', 'segment'];
 export function audienceProblem(c, customer) {
   const orders = customer?.stats?.orders ?? 0;
   if (c.audience === 'new' && orders > 0) return `${c.code} is only for a customer's first order`;
@@ -39,6 +40,10 @@ export async function checkCoupon(db, workspaceId, code, subtotal, { customer = 
   if (subtotal < (c.min_order ?? 0)) throw new InboxError(400, `${c.code} needs an order of at least ৳${c.min_order}`);
   const who = audienceProblem(c, customer);
   if (who) throw new InboxError(400, who);
+  if (c.audience === 'segment') {
+    const seg = c.segment_id ? await db.segments.findOne({ _id: c.segment_id, workspace_id: workspaceId }).lean() : null;
+    if (!seg || !(await inSegment(db, seg, customer?._id))) throw new InboxError(400, `${c.code} is only for customers in "${seg?.name ?? 'a segment'}"`);
+  }
   const discount = c.type === 'percent' ? Math.round((subtotal * c.value) / 100) : c.type === 'amount' ? Math.min(c.value, subtotal) : 0;
   return { coupon: c, discount, freeDelivery: c.type === 'free_delivery' };
 }

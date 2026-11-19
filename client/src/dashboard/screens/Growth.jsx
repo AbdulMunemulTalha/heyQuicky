@@ -22,7 +22,7 @@ export default function Growth({ query }) {
       </header>
       {tab === 'followups' && <Followups t={t} />}
       {tab === 'leads' && <Leads t={t} query={query} />}
-      {tab === 'broadcasts' && <Broadcasts t={t} />}
+      {tab === 'broadcasts' && <Broadcasts t={t} segment={query.segment} />}
     </div>
   );
 }
@@ -167,9 +167,11 @@ function Leads({ t, query }) {
   );
 }
 
-function Broadcasts({ t }) {
+function Broadcasts({ t, segment }) {
   const { can } = useDash();
-  const [audience, setAudience] = useState('last_24h');
+  const [audience, setAudience] = useState(segment ? `segment:${segment}` : 'last_24h');
+  const [segments, setSegments] = useState([]);
+  useEffect(() => { dash('/segments').then((d) => setSegments(d.segments)).catch(() => {}); }, []);
   const [format, setFormat] = useState('text');
   const [text, setText] = useState('');
   const [buttons, setButtons] = useState(['অর্ডার করব', 'আরও দেখান', '']);
@@ -208,6 +210,12 @@ function Broadcasts({ t }) {
               </button>
             ))}
           </div>
+          {segments.length > 0 && (
+            <select className="input gr-segment" style={{ marginTop: 8 }} value={audience.startsWith('segment:') ? audience : ''} onChange={(e) => setAudience(e.target.value || 'last_24h')} aria-label={t('gr.orSegment')}>
+              <option value="">{t('gr.orSegment')}</option>
+              {segments.map((s) => <option key={s.id} value={`segment:${s.id}`}>{s.name} ({s.count})</option>)}
+            </select>
+          )}
           <p className="field-hint">{preview ? t('gr.recipients', { n: preview.recipients }) : '…'}{preview?.outsideWindow ? ` · ${t('gr.outside', { n: preview.outsideWindow })}` : ''}</p>
         </div>
         <div className="field" style={{ marginTop: 12 }}><span className="label-like">{t('gr.format')}</span>

@@ -62,6 +62,8 @@ export function couponRoutes(db, _config, { auth }) {
     const ends = set.ends_at !== undefined ? set.ends_at : current?.ends_at;
     if (starts && ends && ends <= starts) throw new InboxError(400, 'The end date must be after the start date');
     if (b.audience !== undefined) { if (!AUDIENCES.includes(b.audience)) throw new InboxError(400, 'Pick who can use it'); set.audience = b.audience; }
+    if (b.segmentId !== undefined) set.segment_id = b.segmentId ? Number(b.segmentId) : null;
+    if ((set.audience ?? current?.audience) === 'segment' && !(set.segment_id ?? current?.segment_id)) throw new InboxError(400, 'Pick the segment this coupon is for');
     if (typeof b.aiMayMention === 'boolean') set.ai_may_mention = b.aiMayMention;
     if (typeof b.active === 'boolean') set.active = b.active;
     return set;
@@ -77,10 +79,11 @@ export function couponRoutes(db, _config, { auth }) {
       ]),
     ]);
     const by = new Map(sales.map((x) => [x._id, x]));
+    const segNames = new Map((await db.segments.find({ workspace_id: ws }, { name: 1 }).lean()).map((s) => [s._id, s.name]));
     const now = new Date();
     const rows = coupons.map((c) => ({
       id: c._id, code: c.code, type: c.type, value: c.value, minOrder: c.min_order ?? 0, maxUses: c.max_uses ?? null, used: c.used ?? 0,
-      startsAt: c.starts_at, endsAt: c.ends_at, audience: c.audience ?? 'everyone', aiMayMention: c.ai_may_mention !== false, active: c.active !== false,
+      startsAt: c.starts_at, endsAt: c.ends_at, audience: c.audience ?? 'everyone', segmentId: c.segment_id ?? null, segmentName: segNames.get(c.segment_id) ?? '', aiMayMention: c.ai_may_mention !== false, active: c.active !== false,
       status: couponStatus(c, now), orders: by.get(c.code)?.orders ?? 0, revenue: by.get(c.code)?.revenue ?? 0, given: by.get(c.code)?.discount ?? 0,
     }));
     const counts = { all: rows.length };
@@ -93,6 +96,7 @@ export function couponRoutes(db, _config, { auth }) {
   router.post('/coupons', auth, edit, async (req, res) => {
     const ws = req.user.workspace_id;
     const set = clean(req.body ?? {});
+    if (set.segment_id && !(await db.segments.exists({ _id: set.segment_id, workspace_id: ws }))) throw new InboxError(404, 'Segment not found');
     if (await db.coupons.exists({ workspace_id: ws, code: set.code })) throw new InboxError(409, `${set.code} already exists`);
     const c = await db.insert(db.coupons, { workspace_id: ws, audience: 'everyone', ...set });
     await audit(db, req.user, `Created coupon ${set.code}`, { where: 'Coupons' });

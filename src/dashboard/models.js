@@ -328,10 +328,23 @@ export function defineDashboardModels(conn) {
     starts_at: { type: Date, default: null },
     ends_at: { type: Date, default: null },
     audience: { type: String, default: 'everyone' },
+    segment_id: { type: Number, default: null }, // audience "segment": only its members (CRM-04 Give coupon)
     ai_may_mention: { type: Boolean, default: true },
     active: { type: Boolean, default: true },
   });
   coupon.index({ workspace_id: 1, code: 1 }, { unique: true });
+
+  // Tags & segments (CRM-04): manual tags with a colour, and saved customer groups.
+  const tag = S({
+    name: { type: String, required: true },
+    colour: { type: String, default: 'gray' },
+  });
+  tag.index({ workspace_id: 1, name: 1 }, { unique: true });
+  const segment = S({
+    name: { type: String, required: true },
+    conditions: { type: Mixed, default: [] }, // [{ field, op, value }], all must match
+    last_count: { type: Number, default: 0 },
+  });
 
   // Uploaded photos and voice notes (kept in MongoDB, the one store that survives redeploys).
   const file = new Schema({ _id: String, workspace_id: ws, type: String, size: Number, name: String, data: Buffer, created_at: createdAt }, opts);
@@ -360,6 +373,8 @@ export function defineDashboardModels(conn) {
     taughtAnswers: conn.model('TaughtAnswer', taughtAnswer, 'taught_answers'),
     unanswered: conn.model('Unanswered', unanswered, 'unanswered'),
     aiVersions: conn.model('AiVersion', aiVersion, 'ai_versions'),
+    tags: conn.model('Tag', tag, 'tags'),
+    segments: conn.model('Segment', segment, 'segments'),
     tickets: conn.model('Ticket', ticket, 'tickets'),
     comments: conn.model('Comment', comment, 'comments'),
     posts: conn.model('Post', post, 'posts'),

@@ -75,7 +75,7 @@ export default function Coupons({ query }) {
                       {c.maxUses != null && <span className="cp-bar" aria-hidden="true"><span style={{ width: `${Math.min(100, (c.used / c.maxUses) * 100)}%` }} /></span>}
                     </td>
                     <td className="small">{c.startsAt || c.endsAt ? `${c.startsAt ? t.date(c.startsAt) : t('cp.now')} – ${c.endsAt ? t.date(c.endsAt) : t('cp.noEnd')}` : t('cp.always')}</td>
-                    <td className="small">{t(`cp.aud.${c.audience}`)}</td>
+                    <td className="small">{c.audience === 'segment' ? t('cp.aud.segmentName', { name: c.segmentName || '—' }) : t(`cp.aud.${c.audience}`)}</td>
                     <td className="small">{c.orders ? <>{t.money(c.revenue)}<small className="muted"> · {t('cp.ordersN', { n: t.num(c.orders) })}</small></> : <span className="muted">—</span>}</td>
                     <td><Toggle size="sm" checked={c.aiMayMention && c.audience === 'everyone'} disabled={!edit || c.audience !== 'everyone'} onChange={(on) => patch(c, { aiMayMention: on })} label={t('cp.aiMay')} /></td>
                     <td className="cp-actions">
