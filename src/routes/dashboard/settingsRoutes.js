@@ -97,6 +97,7 @@ export function settingsRoutes(db, config, { auth, adapters }) {
     const accounts = new Map((await db.courierAccounts.find({ workspace_id: ws._id }).lean()).map((a) => [a.courier, a]));
     res.json({
       zones: zonesFor(ws),
+      updates: ws.settings?.delivery_updates !== false,
       couriers: Object.entries(COURIERS).map(([key, c]) => {
         const a = accounts.get(key);
         return { key, name: c.name, fields: c.fields, connected: Boolean(a?.connected), hasKeys: Boolean(a?.credentials), autoBook: Boolean(a?.auto_book), testMode: config.dryRun || !a?.credentials };
@@ -115,6 +116,14 @@ export function settingsRoutes(db, config, { auth, adapters }) {
     await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: set });
     await audit(db, req.user, 'Changed delivery charges', { where: 'Delivery & courier' });
     res.json({ zones: zonesFor(await db.workspaces.findById(req.user.workspace_id).lean()) });
+  });
+
+  // CRR-04: send the delivery update card automatically when an order is packed, shipped or delivered.
+  router.patch('/settings/delivery/updates', auth, ownerOrAdmin, async (req, res) => {
+    if (typeof req.body?.on !== 'boolean') throw new InboxError(400, 'Say on or off');
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: { 'settings.delivery_updates': req.body.on } });
+    await audit(db, req.user, `Turned automatic delivery updates ${req.body.on ? 'on' : 'off'}`, { where: 'Delivery & courier' });
+    res.json({ updates: req.body.on });
   });
 
   // Connect a courier with the shop's own merchant keys (stored encrypted, never sent back).

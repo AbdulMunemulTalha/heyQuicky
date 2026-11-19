@@ -41,6 +41,10 @@ export async function adjustStock(db, order, sign, { notify = null } = {}) {
   }
 }
 
+// Something to run after every status change (CRR-04 delivery updates), one per database.
+const statusListeners = new WeakMap();
+export function onStatusChange(db, fn) { statusListeners.set(db, fn); }
+
 // Moves an order to another stage, writing the history and keeping the customer's numbers right.
 export async function changeStatus(db, user, order, to, { reason = '', restock = true, emit = () => {}, by = 'user', text = '' } = {}) {
   const from = stage(order.status);
@@ -68,6 +72,8 @@ export async function changeStatus(db, user, order, to, { reason = '', restock =
   });
   if (user) await audit(db, user, `Changed order #${order.number ?? order._id} status ${from.replace(/_/g, ' ')} → ${to.replace(/_/g, ' ')}`, { where: 'Orders' });
   emit(order.workspace_id, 'order', { id: order._id, number: order.number, status: to });
+  const listener = statusListeners.get(db);
+  if (listener) Promise.resolve(listener({ ...order, ...set }, from, to)).catch((err) => console.warn(`after status change of order ${order._id}: ${err.message}`));
   return { ...order, ...set };
 }
 

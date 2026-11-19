@@ -1326,4 +1326,7 @@ export default {
   'od.msg.sent': "Sent in chat",
   'od.rated': "Customer rated {n}/5",
   'ib.voiceSaid': "Voice note: “{text}”",
+  'cm.aiLeft': "AI left this for you: {reason}",
+  'set.updates': "Delivery updates in chat",
+  'set.updatesHint': "When an order is packed, handed to the courier or delivered, the customer gets an update card with tracking — automatically.",
 };

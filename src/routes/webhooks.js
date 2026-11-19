@@ -4,7 +4,7 @@ import { parseCommentChanges, ingestComment } from '../dashboard/comments.js';
 
 // One callback URL serves Messenger, Instagram and WhatsApp: configure the same
 // URL and verify token for all three products in the Meta app dashboard.
-export function webhookRoutes(config, inbox, { db, emit = () => {} } = {}) {
+export function webhookRoutes(config, inbox, { db, emit = () => {}, onComment = null } = {}) {
   const router = Router();
 
   router.get('/webhooks/meta', (req, res) => {
@@ -60,7 +60,10 @@ export function webhookRoutes(config, inbox, { db, emit = () => {} } = {}) {
     // Page and Instagram comments (screen 14).
     for (const comment of parseCommentChanges(req.body)) {
       try {
-        await ingestComment(db, config, comment, { emit });
+        const out = await ingestComment(db, config, comment, { emit });
+        if (onComment && out.stored && out.comment.status === 'needs_you') {
+          Promise.resolve(onComment(out.comment.id)).catch((err) => console.error('AI comment reply failed:', err.message));
+        }
       } catch (err) {
         console.error('comment webhook failed:', err.message);
       }

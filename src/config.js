@@ -48,7 +48,8 @@ export function loadConfig(env = process.env) {
       // Reasoning effort for chat replies: low keeps them quick and inexpensive.
       effort: env.AI_EFFORT || 'low',
       // How long to wait for a customer to finish typing before answering.
-      replyDelayMs: Number(env.AI_REPLY_DELAY_MS ?? 4000),
+      // Unset: each shop's own "Reply delay" (AI agent → persona) decides. Set to force one delay for every shop.
+      replyDelayMs: env.AI_REPLY_DELAY_MS == null || env.AI_REPLY_DELAY_MS === '' ? null : Number(env.AI_REPLY_DELAY_MS),
       // Voice notes to text (AI-04). Without OPENAI_API_KEY, voice notes go to the team.
       openaiKey: cleanSecret(env.OPENAI_API_KEY),
       transcribeModel: env.TRANSCRIBE_MODEL || 'gpt-transcribe',

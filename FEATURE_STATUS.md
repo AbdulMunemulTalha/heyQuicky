@@ -39,13 +39,13 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | TEAM-06 | Partial — audit log written for AI mode changes; screen in Phase 3 | /app/settings/audit |
 | TEAM-07 | Not started (Phase 3) | /app/settings/team |
 | AI-01 | Done — replies in the customer's own language and script (Bangla, Banglish, English; follows their latest message); the shop's style decides greetings and stickers | AI pipeline |
-| AI-02 | Partial — the AI uses the knowledge book and taught answers in every reply and in the test chat; voice input comes later | AI pipeline |
+| AI-02 | Done — the shop's "Reply delay" (instant, 1-3, 3-6, 6-10 seconds) paces every AI reply; the customer sees "seen" and "typing…" on Messenger and Instagram while it writes; the knowledge book and taught answers go into every reply | AI pipeline |
 | AI-03 | Done — tone / style from AI agent settings (warm Banglish, Bangla, English, casual) goes into every reply | AI pipeline |
 | AI-04 | Done — voice notes are transcribed with OpenAI (gpt-transcribe; Messenger, Instagram and WhatsApp), answered like typed messages, charged at the real per-minute cost, and the transcript shows under the voice note in the inbox; without OPENAI_API_KEY, or if a file can't be opened, the chat goes to the team | AI pipeline |
 | AI-05 | Done — the AI sees up to 3 photos per reply and sends the matching product cards ("similar" when not an exact match, never a guess); photos are not stored; a photo that can't be opened goes to the team | AI pipeline |
-| AI-06 | Not started | AI pipeline |
+| AI-06 | Done — the AI waits for the reply delay, so a burst of short messages gets one combined answer to the latest | AI pipeline |
 | AI-07 | Not started | AI pipeline |
-| AI-08 | Partial — the AI knows each product's id and linked posts; replying to comments comes next | AI pipeline |
+| AI-08 | Done — the AI answers comments on the shop's posts using the products linked to the post (or the catalog): a short public reply, details by private message; complaints and unknowns stay in "Needs you" with the AI's reason; per-post "AI replies" switch | AI pipeline |
 | AI-09 | Done — every reply sees the customer's name, VIP / risk, past orders on any channel (last 3), saved address and phone, and team notes; sent outside the cached shop prompt | AI pipeline |
 | AI-10 | Done — prices and stock only from the catalog; discounts only from active coupons, with their exact terms; "no discounts" when there are none | AI pipeline |
 | AI-11 | Done — when the AI asks for a size or colour it sends tap-to-answer chips (up to 5) | AI pipeline |
@@ -75,7 +75,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CAT-04 | Done — "Product" in the composer opens a picker: search, choose up to 10, see the cards exactly as the customer will, send | overlay |
 | CAT-05 | Not started (Phase 2) | /app/catalog/size-charts |
 | CAT-06 | Not started (Phase 2) | /app/catalog/posts |
-| CMT-01 | Partial — comments from Facebook and Instagram webhooks; public reply, private DM and hide from the dashboard. Missing: the AI replying to comments by itself (AI pipeline step) | /app/comments |
+| CMT-01 | Done — comments from Facebook and Instagram webhooks; public reply, private DM and hide from the dashboard; the AI replies by itself in auto mode (public reply + DM), each comment once, and leaves complaints for the team with its reason | /app/comments |
 | CMT-02 | Not started (Phase 2) | /app/catalog/posts |
 | CMT-03 | Not started (Phase 3) | /app/catalog/posts |
 | CMT-04 | Not started (Phase 3) | /app/catalog/posts |
@@ -102,7 +102,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | CRR-01 | Partial — one-click and bulk booking (list, order detail, or "Book right away" when creating) with Steadfast and Pathao; real APIs once the shop adds keys, test mode otherwise; label sheet. Missing: auto-booking on approve and key entry in Settings → Couriers (screen 10) | /app/orders |
 | CRR-02 | Partial — tracking timeline on the order (frame 11b), Refresh, and a background check of every parcel on the way every 30 minutes that moves the order to Delivered / Returned. Missing: courier webhooks (polling covers it until then) | /app/orders/:n |
 | CRR-03 | Not started (Phase 2) | /app/settings/delivery-updates |
-| CRR-04 | Partial — delivery update card (packed / on the way / delivered, courier, tracking and bill buttons) sent from the order screen; sending it automatically on each status change comes with the AI pipeline / delivery-updates settings | /app/orders/:n |
+| CRR-04 | Done — the delivery update card (packed / on the way / delivered, courier, tracking and bill buttons) goes to the customer's chat automatically on each status change, and can be sent by hand from the order screen; switch in Settings → Delivery & courier | /app/orders |
 | CRR-05 | Not started (Phase 2) | /app/settings/delivery-updates |
 | CRR-06 | Partial — review request card after delivery (one-tap rating); the rating is saved on the order and a low rating alerts the team; automatic sending comes with delivery-updates settings | /app/orders/:n |
 | CRR-07 | Partial — Settings → Delivery & courier: connect Steadfast, Pathao, RedX, Paperfly or eCourier with the shop's own keys (stored encrypted, refused in production without TOKEN_ENCRYPTION_KEY), auto-book (one courier), disconnect; test mode until real keys and DRY_RUN off | /app/settings/courier |

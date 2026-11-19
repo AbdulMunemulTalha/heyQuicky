@@ -216,6 +216,13 @@ export async function graphRequest(url, { method = 'GET', accessToken, body, fet
 
 const graphPost = (url, accessToken, body, fetchImpl) => graphRequest(url, { method: 'POST', accessToken, body, fetchImpl });
 
+// "Seen" and "typing…" while the AI writes its answer (AI-02). Messenger and Instagram only.
+export async function sendSenderAction({ channel, contact, action, graphVersion, dryRun, fetchImpl = globalThis.fetch }) {
+  if (dryRun || !channel.access_token || !['messenger', 'instagram'].includes(channel.platform)) return false;
+  await graphPost(`https://graph.facebook.com/${graphVersion}/me/messages`, channel.access_token, { recipient: { id: contact.external_id }, sender_action: action }, fetchImpl);
+  return true;
+}
+
 export async function sendText({ channel, contact, text, tag, graphVersion, dryRun, fetchImpl = globalThis.fetch }) {
   if (dryRun || !channel.access_token) return { externalId: `dry_${randomBytes(8).toString('hex')}` };
   const base = `https://graph.facebook.com/${graphVersion}`;

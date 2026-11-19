@@ -1,6 +1,6 @@
 import { row, rows, isDuplicateKey } from './db.js';
 import { ensureAssigned, assignConversation, distributeUnassigned } from './assignment.js';
-import { messagingWindow, sendText, sendRich, fetchProfileName, INVALID_TOKEN } from './platforms/meta.js';
+import { messagingWindow, sendText, sendRich, sendSenderAction, fetchProfileName, INVALID_TOKEN } from './platforms/meta.js';
 import { toPlatform, parsePostback } from './platforms/rich.js';
 import { decryptSecret } from './secrets.js';
 import { looksLikeSpam } from './dashboard/spam.js';
@@ -381,6 +381,23 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
       if (!window.ok) return null;
       return deliver(conversation, { text, tag: window.tag, sent_by_ai: true });
+    },
+
+    // Marks the customer's message seen and shows "typing…" while the AI writes (AI-02).
+    // Best effort: returns false when the platform has no typing indicator or Meta refuses.
+    async showTyping(conversationId) {
+      const conversation = await getConversation(conversationId);
+      if (!conversation || !messagingWindow(conversation.platform, conversation.last_inbound_at).ok) return false;
+      const channel = await db.channels.findById(conversation.channel_id).lean();
+      const contact = await db.contacts.findById(conversation.contact_id, { external_id: 1 }).lean();
+      if (!channel || !contact) return false;
+      const target = { ...row(channel), access_token: channel.access_token ? decryptSecret(channel.access_token, config.tokenKey) : '' };
+      const send = (action) => sendSenderAction({ channel: target, contact, action, graphVersion: config.meta.graphVersion, dryRun: config.dryRun, fetchImpl });
+      try {
+        return (await send('mark_seen')) && (await send('typing_on'));
+      } catch {
+        return false;
+      }
     },
 
     // A rich message from a teammate (product cards, order summary, delivery update, review request).

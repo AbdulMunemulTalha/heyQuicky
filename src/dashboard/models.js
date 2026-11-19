@@ -278,6 +278,8 @@ export function defineDashboardModels(conn) {
     public_reply: { type: String, default: '' },
     dm_sent: { type: Boolean, default: false },
     replied_by: { type: String, default: '' },
+    ai_tried_at: { type: Date, default: null }, // the AI looked at it once (CMT-01), so it never answers twice
+    ai_reason: { type: String, default: '' }, // why the AI left it for the team
   });
   comment.index({ external_id: 1 }, { unique: true });
 

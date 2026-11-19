@@ -1,6 +1,7 @@
 import { tryAutoAnswer, hasAutoAnswers } from '../dashboard/autoAnswer.js';
 import { withTraining, recordUnanswered } from '../dashboard/training.js';
-import { INTENTS, REPLY_SCHEMA, buildSystemPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
+import { INTENTS, REPLY_SCHEMA, COMMENT_SCHEMA, buildSystemPrompt, buildCommentPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
+import { commentAction } from '../dashboard/comments.js';
 import { productCards, quickReplies } from '../platforms/rich.js';
 import { placeAiOrder } from '../dashboard/aiOrder.js';
 import { sendSizeChart } from '../dashboard/postbacks.js';
@@ -17,6 +18,13 @@ const HANDOFF_LAPSE_MS = 12 * 3_600_000;
 const MAX_AI_REPLIES_PER_DAY = 20;
 
 const modeOf = (workspace) => workspace?.ai_mode ?? 'suggest';
+// The shop's "Reply delay" (AI-02), in ms. It also lets a burst of short messages arrive first (AI-06),
+// so "instant" still waits a moment.
+const DELAY_RANGES = { instant: [800, 800], '1-3': [1000, 3000], '3-6': [3000, 6000], '6-10': [6000, 10000] };
+export function delayFor(setting, random = Math.random) {
+  const [lo, hi] = DELAY_RANGES[setting] ?? DELAY_RANGES['3-6'];
+  return Math.round(lo + (hi - lo) * random());
+}
 // At most this many customer photos go with one model call.
 const MAX_IMAGES = 3;
 
@@ -55,7 +63,7 @@ function normalize(data) {
 // The Bangla/Banglish chat agent. In "suggest" mode it drafts a reply for the
 // moderator; in "auto" mode it answers the customer itself and hands anything it
 // shouldn't handle to a person. `provider` is null when AI isn't configured.
-export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = console, notify = null, config = {}, transcriber = null, fetchMedia = fetchAttachment } = {}) {
+export function createAgent(db, inbox, provider, { replyDelayMs = null, log = console, notify = null, config = {}, transcriber = null, fetchMedia = fetchAttachment, emit = () => {}, fetchImpl } = {}) {
   const PAUSED = { credit: 'AI credit finished — top up so the AI answers again', cap: "This month's AI spend limit is reached — raise it in Settings → Billing" };
 
   // Every model call goes through here: checked against credit and the monthly cap, then priced and charged.
@@ -221,6 +229,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
       if (auto && !ctx.conversation.ai_handoff) await setHandoff(conversationId, PAUSED[spend.reason]);
       return spend.reason === 'cap' ? 'cap_reached' : 'no_credit';
     }
+    // The customer sees "seen" and "typing…" while the answer is written (AI-02).
+    if (auto && inbox.showTyping) inbox.showTyping(conversationId).catch(() => {});
     const answer = await generate(ctx, auto ? 'reply' : 'draft');
     if (!answer) return 'nothing_to_answer';
 
@@ -281,8 +291,15 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
 
   // Waits a moment before answering, because customers often send several
   // short messages in a row; only the last one gets a reply.
+  async function shopDelay(conversationId) {
+    const conv = await db.conversations.findById(conversationId, { workspace_id: 1 }).lean();
+    const ws = conv && await db.workspaces.findById(conv.workspace_id, { 'settings.persona.delay': 1 }).lean();
+    return delayFor(ws?.settings?.persona?.delay);
+  }
+
   async function onInbound(conversationId, messageId) {
     if (!provider && !(await hasAutoAnswers(db, conversationId))) return 'not_configured';
+    const wait = replyDelayMs ?? await shopDelay(conversationId).catch(() => 4000);
     const previous = pending.get(conversationId);
     if (previous) {
       clearTimeout(previous.timer);
@@ -295,7 +312,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
           log.warn(`AI reply for conversation ${conversationId} failed: ${err.message}`);
           resolve('error');
         });
-      }, replyDelayMs);
+      }, wait);
       pending.set(conversationId, { timer, resolve });
     });
   }
@@ -306,9 +323,67 @@ export function createAgent(db, inbox, provider, { replyDelayMs = 4000, log = co
     return conversation;
   }
 
+  // Public comments on the shop's posts (CMT-01 / AI-08), in auto mode, when the post's
+  // "AI replies" switch is on. Returns what happened, for logs and tests.
+  async function replyToComment(commentId) {
+    if (!provider) return 'not_configured';
+    const comment = await db.comments.findById(commentId).lean();
+    if (!comment || comment.status !== 'needs_you') return 'not_needed';
+    const [workspace, channel, post] = await Promise.all([
+      db.workspaces.findById(comment.workspace_id).lean(),
+      db.channels.findById(comment.channel_id).lean(),
+      db.posts.findById(comment.post_id).lean(),
+    ]);
+    if (!workspace || !channel || !post) return 'gone';
+    if (modeOf(workspace) !== 'auto') return 'off';
+    if (channel.ai_enabled === false || post.rules?.ai_reply === false) return 'post_off';
+    // Claim it: two webhook deliveries of the same comment must not both be answered.
+    const claimed = await db.comments.findOneAndUpdate({ _id: commentId, ai_tried_at: null, status: 'needs_you' }, { $set: { ai_tried_at: new Date() } });
+    if (!claimed) return 'not_needed';
+    const spend = await canSpend(db, workspace._id, new Date(), { enforced: Boolean(config.ai?.creditEnforced) });
+    if (!spend.ok) return spend.reason === 'cap' ? 'cap_reached' : 'no_credit';
+
+    const visible = { workspace_id: workspace._id, archived: { $ne: true }, visibility: { $ne: 'hidden' } };
+    let products = post.product_ids?.length ? await db.products.find({ ...visible, _id: { $in: post.product_ids } }).lean() : [];
+    if (!products.length) products = await db.products.find(visible).sort({ name: 1 }).limit(100).lean();
+    const leave = async (reason) => {
+      await db.comments.updateOne({ _id: commentId }, { $set: { ai_reason: reason.slice(0, 200) } });
+      emit(workspace._id, 'comment', { id: commentId, postId: post._id, status: 'needs_you' });
+    };
+    let data;
+    try {
+      ({ data } = await callModel(workspace._id, {
+        system: buildCommentPrompt({ workspace: await withTraining(db, workspace), post, products }),
+        messages: [{ role: 'user', content: `Comment from ${comment.author_name || 'a customer'}: ${comment.text || '(no text)'}` }],
+        schema: COMMENT_SCHEMA, maxTokens: 1500,
+      }, { kind: 'comment', customerName: comment.author_name, summary: 'Answered a comment' }));
+    } catch (err) {
+      log.warn(`AI comment reply ${commentId} failed: ${err.message}`);
+      await leave(`The AI couldn't answer: ${err.message}`);
+      return 'error';
+    }
+    const publicReply = String(data?.public_reply ?? '').trim().slice(0, 1000);
+    const dm = String(data?.dm ?? '').trim().slice(0, 1000);
+    if (data?.needs_person || (!publicReply && !dm)) {
+      await leave(String(data?.reason ?? '').trim() || 'The AI left this comment for the team');
+      return 'left_for_team';
+    }
+    try {
+      if (publicReply) await commentAction(config, channel, 'reply', { commentId: comment.external_id, text: publicReply }, fetchImpl);
+      if (dm && !comment.dm_sent) await commentAction(config, channel, 'dm', { commentId: comment.external_id, text: dm }, fetchImpl);
+    } catch (err) {
+      await leave(`Facebook didn't accept the AI's reply: ${err.message}`);
+      return 'send_failed';
+    }
+    await db.comments.updateOne({ _id: commentId }, { $set: { status: 'replied', replied_by: 'AI', public_reply: publicReply, ...(dm ? { dm_sent: true } : {}) } });
+    emit(workspace._id, 'comment', { id: commentId, postId: post._id, status: 'replied' });
+    return 'replied';
+  }
+
   return {
     onInbound,
     respond,
+    replyToComment,
 
     // Practice chat during onboarding: the owner plays a customer. Nothing is stored or sent to Meta.
     async practice(user, turns, { extraNotes = '', withActions = false } = {}) {

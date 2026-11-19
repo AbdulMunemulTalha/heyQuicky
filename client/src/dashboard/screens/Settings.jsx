@@ -210,6 +210,9 @@ function Delivery({ t }) {
   async function autoBook(c) {
     try { await dash(`/settings/couriers/${c.key}`, { method: 'PATCH', body: { autoBook: !c.autoBook } }); load(); } catch (e) { toast(e.message, 'red'); }
   }
+  async function toggleUpdates() {
+    try { const r = await dash('/settings/delivery/updates', { method: 'PATCH', body: { on: !d.updates } }); setD((x) => ({ ...x, updates: r.updates })); toast(t('common.saved'), 'green'); } catch (e) { toast(e.message, 'red'); }
+  }
   async function disconnect(c) {
     // eslint-disable-next-line no-alert
     if (!window.confirm(t('set.disconnectConfirm', { c: c.name }))) return;
@@ -239,6 +242,15 @@ function Delivery({ t }) {
               ) : edit && <Button size="sm" variant="dark" onClick={() => setKeysFor(c)}>{t('set.connect')}</Button>}
             </li>
           ))}
+        </ul>
+      </Card>
+      <Card pad={false}>
+        <ul className="set-list">
+          <li>
+            <div className="grow"><strong>{t('set.updates')}</strong><small className="muted">{t('set.updatesHint')}</small></div>
+            {edit ? <button type="button" className={`set-pill${d.updates ? ' on blue' : ''}`} onClick={toggleUpdates} aria-pressed={d.updates}>{d.updates ? t('common.on') : t('common.off')}</button>
+              : <Pill tone={d.updates ? 'green' : 'gray'}>{d.updates ? t('common.on') : t('common.off')}</Pill>}
+          </li>
         </ul>
       </Card>
       {keysFor && <CourierKeys t={t} c={keysFor} onClose={() => setKeysFor(null)} onDone={() => { setKeysFor(null); load(); }} />}

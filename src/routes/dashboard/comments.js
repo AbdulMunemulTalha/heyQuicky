@@ -44,7 +44,7 @@ export function commentRoutes(db, config, { auth, emit, fetchImpl }) {
       counts,
       comments: comments.map((c) => ({
         id: c._id, author: c.author_name, text: c.text, at: c.created_at, status: kind(c), hiddenReason: c.hidden_reason,
-        reply: c.public_reply, repliedBy: c.replied_by, dmSent: c.dm_sent, conversationId: convByAuthor.get(c.author_external_id) ?? null, parent: c.parent_external_id,
+        reply: c.public_reply, repliedBy: c.replied_by, dmSent: c.dm_sent, conversationId: convByAuthor.get(c.author_external_id) ?? null, parent: c.parent_external_id, aiReason: c.status === 'needs_you' ? c.ai_reason : '',
       })),
     });
   });

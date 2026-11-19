@@ -160,6 +160,7 @@ function CommentCard({ c, t, active, onSelect, canReply, onDone }) {
         <Pill tone={tone}>{t(label)}{c.status === 'hidden' && c.hiddenReason ? ` · ${c.hiddenReason}` : ''}</Pill>
       </div>
       <p className="cm-text bn-ok">{c.text}</p>
+      {c.aiReason && <p className="faint small bn-ok">{t('cm.aiLeft', { reason: c.aiReason })}</p>}
       {canReply && (
         <div className="cm-actions">
           <button type="button" onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{t('cm.reply')}</button>
