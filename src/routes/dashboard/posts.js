@@ -32,9 +32,10 @@ export function postRoutes(db, config, { auth, agent, emit, fetchImpl }) {
 
   router.get('/posts', auth, async (req, res) => {
     const ws = req.user.workspace_id;
-    const platform = req.query.platform === 'instagram' ? 'instagram' : 'facebook';
+    // Both platforms together unless one is asked for (frame "Posts" shows them in one grid).
+    const platform = ['facebook', 'instagram'].includes(req.query.platform) ? req.query.platform : null;
     const filter = FILTERS.includes(req.query.filter) ? req.query.filter : 'all';
-    const base = { channel_id: { $in: await channelIds(ws) }, platform };
+    const base = { channel_id: { $in: await channelIds(ws) }, ...(platform ? { platform } : {}) };
     const where = { ...base, ...(filter === 'linked' ? HAS_PRODUCTS : filter === 'suggested' ? SUGGESTED : filter === 'none' ? NOTHING : {}) };
     const [posts, counts, otherPlatform] = await Promise.all([
       db.posts.find(where).sort({ posted_at: -1 }).limit(60).lean(),
@@ -44,13 +45,13 @@ export function postRoutes(db, config, { auth, agent, emit, fetchImpl }) {
         db.posts.countDocuments({ ...base, ...SUGGESTED }),
         db.posts.countDocuments({ ...base, ...NOTHING }),
       ]),
-      db.posts.countDocuments({ ...base, platform: platform === 'facebook' ? 'instagram' : 'facebook' }),
+      platform ? db.posts.countDocuments({ ...base, platform: platform === 'facebook' ? 'instagram' : 'facebook' }) : 0,
     ]);
     const products = await productMap(posts.flatMap((p) => [...(p.product_ids ?? []), ...(p.suggested_ids ?? [])]));
     const aiReplied = new Map((await db.comments.aggregate([{ $match: { post_id: { $in: posts.map((p) => p._id) }, replied_by: 'AI' } }, { $group: { _id: '$post_id', n: { $sum: 1 } } }])).map((x) => [x._id, x.n]));
     res.json({
       posts: posts.map((p) => ({
-        id: p._id, caption: p.caption, image: p.image, postedAt: p.posted_at, comments: p.comment_count ?? 0, aiReplied: aiReplied.get(p._id) ?? 0,
+        id: p._id, platform: p.platform, caption: p.caption, image: p.image, postedAt: p.posted_at, comments: p.comment_count ?? 0, aiReplied: aiReplied.get(p._id) ?? 0,
         products: (p.product_ids ?? []).map((id) => products.get(id)).filter(Boolean).map(brief),
         suggested: (p.product_ids ?? []).length ? [] : (p.suggested_ids ?? []).map((id) => products.get(id)).filter(Boolean).map(brief),
         aiReply: p.rules?.ai_reply !== false,

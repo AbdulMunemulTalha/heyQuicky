@@ -179,3 +179,15 @@ test('owners switch teammates on or off duty; rule actions are limited to what e
     assert.equal((await s.call('/team/settings', { method: 'PATCH', token: s.owner, body: { rules: [{ field: 'topic', value: 'gossip', userId: nadia._id }] } })).status, 400);
   } finally { await s.close(); }
 });
+
+test('members show orders taken in the last 7 days; the counters name who is past the target', async () => {
+  const s = await start();
+  try {
+    const nadia = await s.db.users.findOne({ email: 'nadia@shop.test' }).lean();
+    await s.db.insert(s.db.orders, { workspace_id: s.ws, customer_name: 'R', phone: '01711111111', address: 'Dhanmondi', area: 'inside_dhaka', items: [{ name: 'Kurti', qty: 1, price: 1500 }], subtotal: 1500, delivery_charge: 70, cod_amount: 1570, created_by_user_id: nadia._id });
+    await s.db.insert(s.db.orders, { workspace_id: s.ws, customer_name: 'R', phone: '01711111111', address: 'Dhanmondi', area: 'inside_dhaka', items: [{ name: 'Kurti', qty: 1, price: 1500 }], subtotal: 1500, delivery_charge: 70, cod_amount: 1570, created_by_user_id: nadia._id, created_at: new Date(Date.now() - 9 * 86_400_000) });
+    const team = await s.call('/team', { token: s.owner });
+    assert.equal(team.body.members.find((m) => m.id === nadia._id).ordersWeek, 1, 'only the last 7 days');
+    assert.ok(Array.isArray(team.body.sla.pastNames));
+  } finally { await s.close(); }
+});

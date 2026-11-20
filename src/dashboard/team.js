@@ -110,8 +110,9 @@ export async function slaCounts(db, ws, now = new Date()) {
   const base = { workspace_id: ws._id, status: 'open', spam: { $ne: true }, last_replier: 'customer' };
   const waiting = await db.conversations.find({ ...base, ai_handoff: true }, { last_inbound_at: 1, assigned_user_id: 1, contact_id: 1 }).sort({ last_inbound_at: 1 }).limit(500).lean();
   const past = waiting.filter((c) => now - new Date(c.last_inbound_at) > s.replyMin * 60_000);
-  const never = await db.conversations.countDocuments({ ...base, first_reply_at: null, created_at: { $lt: new Date(now.getTime() - s.replyMin * 60_000) } });
-  return { waiting: waiting.length, pastTarget: past.length, neverAnswered: never, oldest: waiting.slice(0, 5), inHours: inHours(ws, now) };
+  // "Never answered · 7 days": chats from the last week nobody ever replied to, past the reply target.
+  const never = await db.conversations.countDocuments({ ...base, first_reply_at: null, created_at: { $gte: new Date(now.getTime() - 7 * 86_400_000), $lt: new Date(now.getTime() - s.replyMin * 60_000) } });
+  return { waiting: waiting.length, pastTarget: past.length, past, neverAnswered: never, oldest: waiting.slice(0, 5), inHours: inHours(ws, now) };
 }
 
 // Warns the owner once per chat when a handed-over chat waits past "Warn the owner after" (working hours only).

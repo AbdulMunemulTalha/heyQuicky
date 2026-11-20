@@ -42,7 +42,9 @@ export function Badge({ count, tone = 'yellow' }) {
 
 export function Avatar({ name = '', src, size = 32, tone }) {
   const letters = String(name).replace(/[^\p{L}\p{N}\s]/gu, ' ').trim().split(/\s+/).filter(Boolean);
-  const text = letters.length ? (letters[0][0] + (letters.length > 1 ? letters[letters.length - 1][0] : '')).toUpperCase() : '?';
+  // Two letters: first and last name, or the first two letters of a one-word name ("Talha" → TA).
+  const second = letters.length > 1 ? letters[letters.length - 1][0] : (/^\p{L}$/u.test(letters[0]?.[1] ?? '') ? letters[0][1] : '');
+  const text = letters.length ? (letters[0][0] + second).toUpperCase() : '?';
   const tones = ['peach', 'sky', 'mint', 'lilac', 'sand', 'rose'];
   const pick = tone ?? tones[[...String(name)].reduce((a, c) => a + c.charCodeAt(0), 0) % tones.length];
   return src

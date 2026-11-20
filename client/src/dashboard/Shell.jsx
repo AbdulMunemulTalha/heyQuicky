@@ -12,17 +12,18 @@ const NAV = [
   { section: 'nav.work' },
   { key: 'overview', to: '/', icon: 'overview', label: 'nav.overview' },
   { key: 'inbox', to: '/inbox', icon: 'inbox', label: 'nav.inbox', badge: 'inbox', tone: 'yellow' },
-  { key: 'orders', to: '/orders', icon: 'orders', label: 'nav.orders', badge: 'orders', tone: 'gray',
-    sub: [{ to: '/orders', label: 'nav.orders' }, { to: '/payments', label: 'nav.payments', badge: 'payments' }] },
-  { key: 'customers', to: '/customers', icon: 'customers', label: 'nav.customers',
-    sub: [{ to: '/customers', label: 'nav.customers' }, { to: '/customers/segments', label: 'nav.segments' }] },
+  { key: 'orders', to: '/orders', icon: 'orders', label: 'nav.orders', badge: 'orders', tone: 'gray' },
+  { key: 'payments', to: '/payments', icon: 'card', label: 'nav.payments', badge: 'payments', tone: 'yellow' },
   { key: 'tickets', to: '/tickets', icon: 'ticket', label: 'nav.tickets', badge: 'tickets', tone: 'red', module: 'tickets' },
+  { key: 'customers', to: '/customers', icon: 'customers', label: 'nav.customers',
+    sub: [{ to: '/customers', label: 'nav.allCustomers' }, { to: '/customers/segments', label: 'nav.segments' }] },
   { section: 'nav.grow' },
-  { key: 'growth', to: '/growth', icon: 'growth', label: 'nav.growth', module: 'growth',
-    sub: [{ to: '/growth', label: 'nav.growth' }, { to: '/coupons', label: 'nav.coupons' }] },
+  { key: 'growth', to: '/growth', icon: 'growth', label: 'nav.growth', module: 'growth' },
+  { key: 'coupons', to: '/coupons', icon: 'tag', label: 'nav.coupons' },
   { key: 'saved', to: '/saved-replies', icon: 'saved', label: 'nav.saved' },
   { section: 'nav.ai' },
-  { key: 'agent', to: '/agent', icon: 'agent', label: 'nav.agent', badge: 'agent', tone: 'gray' },
+  { key: 'agent', to: '/agent', icon: 'agent', label: 'nav.agent', badge: 'agent', tone: 'gray',
+    sub: [{ to: '/agent', label: 'nav.agentHome' }, { to: '/agent/training', label: 'ag.training' }] },
   { key: 'catalog', to: '/catalog', icon: 'catalog', label: 'nav.catalog', module: 'catalog',
     sub: [{ to: '/catalog', label: 'nav.products' }, { to: '/catalog/posts', label: 'nav.posts' }, { to: '/catalog/size-charts', label: 'nav.sizeCharts' }] },
   { section: 'nav.insights' },
@@ -46,8 +47,8 @@ export const SETTINGS_NAV = [
 export function activeKey(path) {
   const first = path.split('/')[1] ?? '';
   const map = { '': 'overview', inbox: 'inbox', comments: 'inbox', orders: 'orders', tickets: 'tickets', customers: 'customers',
-    growth: 'growth', coupons: 'growth', content: 'growth', 'saved-replies': 'saved', agent: 'agent', catalog: 'catalog',
-    analytics: 'analytics', payments: 'orders', bookings: 'customers', settings: 'settings', profile: 'profile' };
+    growth: 'growth', coupons: 'coupons', content: 'growth', 'saved-replies': 'saved', agent: 'agent', catalog: 'catalog',
+    analytics: 'analytics', payments: 'payments', bookings: 'customers', settings: 'settings', profile: 'profile' };
   return map[first] ?? '';
 }
 

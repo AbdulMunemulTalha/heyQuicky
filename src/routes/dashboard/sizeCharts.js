@@ -66,7 +66,18 @@ export function sizeChartRoutes(db, config, { auth }) {
     const products = await db.products.find({ workspace_id: req.user.workspace_id, size_chart_id: c._id, archived: { $ne: true } }, { name: 1, code: 1, category: 1, price: 1 }).sort({ name: 1 }).lean();
     // "Image the customer gets": exactly what goes out in Messenger.
     const preview = sizeChartMessage(c, { productName: products[0]?.name ?? '', publicUrl: config.publicUrl || '' });
-    res.json({ chart: row(c, products.length), products: products.map((p) => ({ id: p._id, name: p.name, code: p.code, category: p.category })), preview,
+    // "Asked 128 times this month · last sent 9 min ago": this chart sent in this shop's chats in the last 30 days.
+    const [sent] = await db.messages.aggregate([
+      { $match: { kind: 'size_chart', 'payload.name': c.name, direction: 'out', created_at: { $gte: new Date(Date.now() - 30 * 86_400_000) } } },
+      { $lookup: { from: db.conversations.collection.name, localField: 'conversation_id', foreignField: '_id', as: 'conv', pipeline: [{ $project: { workspace_id: 1 } }] } },
+      { $match: { 'conv.workspace_id': req.user.workspace_id } },
+      { $group: { _id: null, n: { $sum: 1 }, last: { $max: '$created_at' } } },
+    ]);
+    // "Used for": product count per category.
+    const cats = c.categories ?? [];
+    const catCounts = cats.length ? await db.products.aggregate([{ $match: { workspace_id: req.user.workspace_id, archived: { $ne: true }, category: { $in: cats } } }, { $group: { _id: '$category', n: { $sum: 1 } } }]) : [];
+    res.json({ chart: row(c, products.length), usage: { month: sent?.n ?? 0, lastAt: sent?.last ?? null },
+      categoryCounts: Object.fromEntries(cats.map((k) => [k, catCounts.find((x) => x._id === k)?.n ?? 0])), products: products.map((p) => ({ id: p._id, name: p.name, code: p.code, category: p.category })), preview,
       pageUrl: c.token && config.publicUrl ? `${config.publicUrl}/size/${c.token}` : c.token ? `/size/${c.token}` : '' });
   });
 

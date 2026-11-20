@@ -26,24 +26,25 @@ export function teamRoutes(db, _config, { auth, emit }) {
     const ids = users.map((u) => u._id);
     const today = dhakaDayStart(new Date());
     const week = new Date(Date.now() - 7 * 86_400_000);
-    const [open, replied, firstReplies, sla] = await Promise.all([
+    const [open, replied, firstReplies, sla, weekOrders] = await Promise.all([
       db.conversations.aggregate([{ $match: { workspace_id: ws._id, status: 'open', assigned_user_id: { $in: ids } } }, { $group: { _id: '$assigned_user_id', n: { $sum: 1 } } }]),
       db.messages.aggregate([{ $match: { direction: 'out', sender_user_id: { $in: ids }, created_at: { $gte: today } } }, { $group: { _id: '$sender_user_id', n: { $sum: 1 } } }]),
       db.conversations.aggregate([{ $match: { workspace_id: ws._id, assigned_user_id: { $in: ids }, first_reply_at: { $gte: week } } },
         { $group: { _id: '$assigned_user_id', avg: { $avg: { $subtract: ['$first_reply_at', '$created_at'] } } } }]),
       slaCounts(db, ws),
+      db.orders.aggregate([{ $match: { workspace_id: ws._id, created_by_user_id: { $in: ids }, created_at: { $gte: week } } }, { $group: { _id: '$created_by_user_id', n: { $sum: 1 } } }]),
     ]);
     const m = (rows) => new Map(rows.map((x) => [x._id, x]));
-    const [o, r, f] = [m(open), m(replied), m(firstReplies)];
+    const [o, r, f, w] = [m(open), m(replied), m(firstReplies), m(weekOrders)];
     const names = new Map(users.map((u) => [u._id, u.name]));
     const contacts = new Map((await db.contacts.find({ _id: { $in: sla.oldest.map((c) => c.contact_id) } }, { name: 1 }).lean()).map((c) => [c._id, c.name]));
     res.json({
       members: users.map((u) => ({
         id: u._id, name: u.name, email: u.email, role: u.role, active: u.is_active !== false, pending: Boolean(u.invite_pending), you: u._id === req.user.id,
         onDuty: u.is_active !== false && u.on_duty !== false && u.is_online !== false, openChats: o.get(u._id)?.n ?? 0, repliesToday: r.get(u._id)?.n ?? 0,
-        firstReplyMin: f.get(u._id)?.avg != null ? Math.round(f.get(u._id).avg / 60_000) : null,
+        firstReplyMin: f.get(u._id)?.avg != null ? Math.round(f.get(u._id).avg / 60_000) : null, ordersWeek: w.get(u._id)?.n ?? 0,
       })),
-      sla: { waiting: sla.waiting, pastTarget: sla.pastTarget, neverAnswered: sla.neverAnswered, inHours: sla.inHours,
+      sla: { waiting: sla.waiting, pastTarget: sla.pastTarget, pastNames: [...new Set(sla.past.map((c) => names.get(c.assigned_user_id)).filter(Boolean))].slice(0, 3), neverAnswered: sla.neverAnswered, inHours: sla.inHours,
         oldest: sla.oldest.map((c) => ({ id: c._id, name: contacts.get(c.contact_id) ?? '', since: c.last_inbound_at, assignee: names.get(c.assigned_user_id) ?? '' })) },
       settings: teamSettings(ws), canEdit: ['owner', 'admin'].includes(req.user.role), isOwner: req.user.role === 'owner',
     });

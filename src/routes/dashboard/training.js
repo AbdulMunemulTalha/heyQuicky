@@ -5,7 +5,36 @@ import { audit } from '../../dashboard/util.js';
 import { publish, rollback } from '../../dashboard/training.js';
 import { readiness } from '../../dashboard/readiness.js';
 
-export const RULE_CATEGORIES = ['tone', 'selling', 'never', 'handoff', 'other'];
+// Frame "Training — rules": Price, Handoff, Tone, Delivery, Safety (older categories still shown).
+export const RULE_CATEGORIES = ['price', 'handoff', 'tone', 'delivery', 'safety', 'selling', 'never', 'other'];
+const CATEGORY_WORDS = [
+  ['handoff', /hand (it )?(over|to)|a person|human|manager|team|হ্যান্ড|মানুষ/i],
+  ['safety', /angry|argue|abuse|rude|scam|threat|never (argue|share|promise)|রাগ|গালি/i],
+  ['delivery', /deliver|courier|parcel|outside dhaka|inside dhaka|shipping|ডেলিভারি|কুরিয়ার/i],
+  ['price', /price|discount|offer|coupon|dam|দাম|ছাড়|taka|টাকা|৳|free delivery/i],
+  ['tone', /apu|bhaiya|আপু|ভাইয়া|greet|salam|সালাম|polite|tone|emoji|formal|friendly|call (women|men|them)/i],
+];
+// Picks the category from the instruction's words, so the shop never has to choose one.
+export function ruleCategory(text) {
+  return CATEGORY_WORDS.find(([, rx]) => rx.test(String(text ?? '')))?.[0] ?? 'other';
+}
+// A customer question that tests an instruction of that kind, for the preview.
+const SAMPLE_QUESTION = {
+  price: 'apu kichu discount den na?', delivery: 'Dhaka-r baire delivery charge koto? kobe pabo?', handoff: 'ami manager er sathe kotha bolte chai',
+  tone: 'hi, eta ache?', safety: 'apnara faltu, 3 din hoye gelo parcel ashe nai!', selling: 'eta ki valo hobe?', never: 'eta ki original?', other: 'Apu, eta ache? dam koto?',
+};
+// A short topic under each unanswered question ("Sizes asked by chest number").
+const TOPICS = [
+  ['size', /size|সাইজ|মাপ|chest|বুক|\b(3[0-9]|4[0-9]|5[0-2])\b|xl|xxl/i],
+  ['payment', /bkash|nagad|বিকাশ|নগদ|payment|pay|পেমেন্ট/i],
+  ['exchange', /exchange|bodol|বদল|return|ferot|ফেরত|refund/i],
+  ['stock', /stock|\bnew\b|নতুন|collection|কালেকশন|restock/i],
+  ['shop', /shop|dokan|দোকান|address|ঠিকানা|visit|showroom|এসে|কোথায়|kothay/i],
+  ['delivery', /deliver|ডেলিভারি|kobe|কবে|pabo|পাব|courier|কুরিয়ার|charge|চার্জ/i],
+  ['price', /price|dam|দাম|koto|কত|taka|টাকা/i],
+];
+export const topicOf = (q) => TOPICS.find(([, rx]) => rx.test(String(q ?? '')))?.[0] ?? 'other';
+const dhakaDay = (d = new Date()) => new Date(d.getTime() + 6 * 3_600_000).toISOString().slice(0, 10);
 // The six reasons in the Teach popup (older ones still accepted).
 export const TEACH_REASONS = ['wrong_info', 'misunderstood', 'should_hand_off', 'tone', 'made_up', 'too_long', 'missing_info', 'other'];
 
@@ -58,9 +87,16 @@ export function trainingRoutes(db, _config, { auth, agent, emit }) {
       db.aiRules.find({ workspace_id: ws }).sort({ created_at: 1 }).lean(),
       db.aiVersions.find({ workspace_id: ws }).sort({ number: -1 }).limit(30).lean(),
     ]);
+    // "+6% this week": today's score is kept per day, and compared with the one from a week ago.
+    const wsDoc = await db.workspaces.findById(ws, { 'settings.readiness_history': 1 }).lean();
+    const today = dhakaDay();
+    const history = [...(wsDoc?.settings?.readiness_history ?? []).filter((h) => h.day !== today), { day: today, score: score.score }].slice(-60);
+    await db.workspaces.updateOne({ _id: ws }, { $set: { 'settings.readiness_history': history } });
+    const weekAgo = dhakaDay(new Date(Date.now() - 7 * 86_400_000));
+    const before = [...history].reverse().find((h) => h.day <= weekAgo) ?? (history.length > 1 ? history[0] : null);
     res.json({
-      readiness: score, days, aiReady: aiReady(),
-      unanswered: unanswered.map((u) => ({ id: u._id, question: u.question, count: u.count, lastAt: u.last_asked_at })),
+      readiness: { ...score, weekChange: before ? score.score - before.score : null }, days, aiReady: aiReady(),
+      unanswered: unanswered.map((u) => ({ id: u._id, question: u.question, count: u.count, lastAt: u.last_asked_at, topic: topicOf(u.question) })),
       rules: rules.map((r) => ({ id: r._id, text: r.text, category: r.category, enabled: r.enabled, author: r.author, at: r.created_at })),
       versions: versions.map((v, i) => ({ id: v._id, number: v.number, summary: v.summary, by: v.by_name, source: v.source, at: v.created_at, live: i === 0 })),
     });
@@ -69,17 +105,23 @@ export function trainingRoutes(db, _config, { auth, agent, emit }) {
   // "How the customer sees it": the AI answers a sample question with the new instruction added. Nothing saved.
   router.post('/training/rules/preview', auth, teach, async (req, res) => {
     const text = clean(req.body?.text, 500);
-    const question = clean(req.body?.question, 300) || 'Apu, eta ache? dam koto?';
     if (!text) throw new InboxError(400, 'Write the instruction first');
-    if (!aiReady()) return res.json({ reply: null, ai: false });
-    const out = await agent.practice(req.user, [{ role: 'user', content: question }], { extraNotes: `Rule the shop always wants followed:\n- ${text}` });
-    res.json({ reply: out.reply, ai: true, question });
+    const category = ruleCategory(text);
+    const question = clean(req.body?.question, 300) || SAMPLE_QUESTION[category];
+    if (!aiReady()) return res.json({ reply: null, before: null, ai: false, question, category });
+    // The answer with the new instruction, and what the AI says today without it ("Before: …").
+    const ask = [{ role: 'user', content: question }];
+    const [out, was] = await Promise.all([
+      agent.practice(req.user, ask, { extraNotes: `Rule the shop always wants followed:\n- ${text}` }),
+      agent.practice(req.user, ask).catch(() => null),
+    ]);
+    res.json({ reply: out.reply, before: was?.reply ?? null, ai: true, question, category });
   });
 
   router.post('/training/rules', auth, teach, async (req, res) => {
     const text = clean(req.body?.text, 500);
     if (!text) throw new InboxError(400, 'Write the instruction');
-    const category = RULE_CATEGORIES.includes(req.body?.category) ? req.body.category : 'other';
+    const category = RULE_CATEGORIES.includes(req.body?.category) ? req.body.category : ruleCategory(text);
     if (await db.aiRules.countDocuments({ workspace_id: req.user.workspace_id }) >= 50) throw new InboxError(409, 'You have 50 rules — remove one before adding another');
     const rule = await db.insert(db.aiRules, { workspace_id: req.user.workspace_id, text, category, enabled: true, author: req.user.name });
     const v = await publish(db, req.user, `New rule: ${text.slice(0, 60)}`, 'rule');

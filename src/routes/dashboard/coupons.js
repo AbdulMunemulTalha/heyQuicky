@@ -71,11 +71,17 @@ export function couponRoutes(db, _config, { auth }) {
 
   router.get('/coupons', auth, async (req, res) => {
     const ws = req.user.workspace_id;
-    const [coupons, sales] = await Promise.all([
+    const couponOrders = { workspace_id: ws, coupon_code: { $nin: ['', null] }, draft: { $ne: true }, status: { $nin: ['cancelled', 'returned'] } };
+    const [coupons, sales, month] = await Promise.all([
       db.coupons.find({ workspace_id: ws }).sort({ created_at: -1 }).lean(),
       db.orders.aggregate([
-        { $match: { workspace_id: ws, coupon_code: { $nin: ['', null] }, draft: { $ne: true }, status: { $nin: ['cancelled', 'returned'] } } },
+        { $match: couponOrders },
         { $group: { _id: '$coupon_code', orders: { $sum: 1 }, revenue: { $sum: { $subtract: [{ $add: ['$subtotal', '$delivery_charge'] }, '$discount'] } }, discount: { $sum: '$discount' } } },
+      ]),
+      // The counters on top are for the last 30 days.
+      db.orders.aggregate([
+        { $match: { ...couponOrders, created_at: { $gte: new Date(Date.now() - 30 * 86_400_000) } } },
+        { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: { $subtract: [{ $add: ['$subtotal', '$delivery_charge'] }, '$discount'] } }, discount: { $sum: '$discount' } } },
       ]),
     ]);
     const by = new Map(sales.map((x) => [x._id, x]));
@@ -88,7 +94,8 @@ export function couponRoutes(db, _config, { auth }) {
     }));
     const counts = { all: rows.length };
     for (const r of rows) counts[r.status] = (counts[r.status] ?? 0) + 1;
-    res.json({ coupons: rows, counts, totals: { orders: rows.reduce((s, r) => s + r.orders, 0), revenue: rows.reduce((s, r) => s + r.revenue, 0), given: rows.reduce((s, r) => s + r.given, 0) } });
+    res.json({ coupons: rows, counts, totals: { orders: rows.reduce((s, r) => s + r.orders, 0), revenue: rows.reduce((s, r) => s + r.revenue, 0), given: rows.reduce((s, r) => s + r.given, 0) },
+      month: { orders: month[0]?.orders ?? 0, revenue: month[0]?.revenue ?? 0, avgDiscount: month[0]?.orders ? Math.round(month[0].discount / month[0].orders) : 0 } });
   });
 
   router.get('/coupons/generate', auth, (req, res) => res.json({ code: generateCode(req.query.prefix) }));

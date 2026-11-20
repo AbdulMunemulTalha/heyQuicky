@@ -111,3 +111,16 @@ test('ordering a product without sizes doesn\'t mark it sold out', async () => {
   assert.equal((await ctx.db.products.findById(plain.id).lean()).in_stock, true);
   assert.equal((await ctx.db.products.findById(sized.id).lean()).in_stock, false, 'the last counted size sold out');
 });
+
+test('the counters cover the last 30 days, with the average discount', async () => {
+  const s = await start();
+  try {
+    await s.call('/coupons', { method: 'POST', token: s.owner, body: { code: 'EID10', type: 'percent', value: 10 } });
+    await s.db.insert(s.db.orders, { workspace_id: s.ws, customer_name: 'R', phone: '01711111111', address: 'Dhanmondi', area: 'inside_dhaka', items: [{ name: 'Kurti', qty: 1, price: 1500 }], subtotal: 1500, delivery_charge: 70, cod_amount: 1570, coupon_code: 'EID10', discount: 150 });
+    await s.db.insert(s.db.orders, { workspace_id: s.ws, customer_name: 'R', phone: '01711111111', address: 'Dhanmondi', area: 'inside_dhaka', items: [{ name: 'Kurti', qty: 1, price: 1500 }], subtotal: 1500, delivery_charge: 70, cod_amount: 1570, coupon_code: 'EID10', discount: 50 });
+    await s.db.insert(s.db.orders, { workspace_id: s.ws, customer_name: 'R', phone: '01711111111', address: 'Dhanmondi', area: 'inside_dhaka', items: [{ name: 'Kurti', qty: 1, price: 1500 }], subtotal: 1500, delivery_charge: 70, cod_amount: 1570, coupon_code: 'EID10', discount: 500, created_at: new Date(Date.now() - 40 * 86_400_000) });
+    const r = await s.call('/coupons', { token: s.owner });
+    assert.deepEqual([r.body.month.orders, r.body.month.avgDiscount], [2, 100]);
+    assert.equal(r.body.totals.orders, 3, 'the table still counts every use');
+  } finally { await s.close(); }
+});

@@ -106,3 +106,21 @@ test('the AI and the "সাইজ চার্ট" button send the chart; anoth
     assert.equal(await sendSizeChart(s.db, s.app.inbox, conversation.id, s.ws, kurti.id), false);
   } finally { await s.close(); }
 });
+
+test('a chart shows how often it was sent this month and how many products each category has', async () => {
+  const s = await start();
+  try {
+    const made = await s.call('/size-charts', { method: 'POST', token: s.owner, body: { ...CHART, categories: ['Kurti'] } });
+    await s.db.insert(s.db.products, { workspace_id: s.ws, name: 'Cotton Kurti', category: 'Kurti', price: 1250 });
+    await s.db.insert(s.db.products, { workspace_id: s.ws, name: 'Silk Kurti', category: 'Kurti', price: 1850 });
+    const channel = await s.db.channels.findOne({ workspace_id: s.ws }).lean();
+    const contact = await s.db.insert(s.db.contacts, { workspace_id: s.ws, channel_id: channel._id, external_id: 'sc1', name: 'C' });
+    const conv = await s.db.insert(s.db.conversations, { workspace_id: s.ws, channel_id: channel._id, contact_id: contact.id });
+    await s.db.insert(s.db.messages, { conversation_id: conv.id, direction: 'out', kind: 'size_chart', payload: { name: 'Kurti' }, text: 'chart' });
+    await s.db.insert(s.db.messages, { conversation_id: conv.id, direction: 'out', kind: 'size_chart', payload: { name: 'Kurti' }, text: 'old', created_at: new Date(Date.now() - 45 * 86_400_000) });
+    const d = await s.call(`/size-charts/${made.body.id}`, { token: s.owner });
+    assert.equal(d.body.usage.month, 1);
+    assert.ok(d.body.usage.lastAt);
+    assert.deepEqual(d.body.categoryCounts, { Kurti: 2 });
+  } finally { await s.close(); }
+});

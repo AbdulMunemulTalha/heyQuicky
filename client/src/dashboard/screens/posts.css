@@ -1,41 +1,55 @@
-/* Phase 2 · Posts (CAT-06 / CMT-02 / CMT-05) */
-#dash .po-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 16px; align-items: start; }
-#dash .po-listcard { position: sticky; top: 76px; max-height: calc(100vh - 100px); display: flex; flex-direction: column; overflow: hidden; }
-#dash .po-filters { padding: 12px 14px; border-bottom: 1px solid var(--border); }
-#dash .po-list { overflow-y: auto; }
-#dash .po-list .cm-post .grow { display: flex; flex-direction: column; gap: 3px; }
+/* Phase 2 · Posts (CAT-06 / CMT-02 / CMT-05), frame "Posts → products": picture cards and a side panel */
+#dash .posts.with-panel { display: grid; grid-template-columns: minmax(0, 1fr) 400px; margin: -8px -32px -40px 0; min-height: calc(100vh - 64px); }
+#dash .posts.with-panel .po-main { padding: 8px 22px 40px 0; min-width: 0; }
+#dash .po-filters { margin-bottom: 14px; }
+#dash .po-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+#dash .po-card { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+#dash .po-card:hover { border-color: var(--border-strong, #cfcfcf); }
+#dash .po-card.on { border-color: var(--accent, #2f6fed); box-shadow: 0 0 0 1px var(--accent, #2f6fed); }
+#dash .po-card:focus-visible { outline: 2px solid var(--accent, #2f6fed); outline-offset: 2px; }
+#dash .po-img { position: relative; display: block; aspect-ratio: 16 / 10; background: var(--gray-soft) center / cover no-repeat; }
+#dash .po-badge { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,.92); color: #111; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+#dash .po-body { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; }
+#dash .po-cap { font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 #dash .po-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
-#dash .po-detail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-#dash .po-none { min-height: 300px; display: grid; place-items: center; }
-#dash .po-head { padding: 0; border: 0; background: none; }
-#dash .po-caption { margin: 0 0 4px; font-size: 13.5px; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-#dash .po-suggest { display: flex; gap: 12px; align-items: center; padding: 10px 12px; margin-bottom: 12px; border-radius: 10px; background: var(--blue-soft, #e8f0fe); }
-#dash .po-suggest .grow { display: flex; flex-direction: column; gap: 6px; }
-#dash .po-products { display: flex; flex-direction: column; }
-#dash .po-products li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
-#dash .po-products li:first-child { border-top: 0; }
-#dash .po-products .grow { display: flex; flex-direction: column; }
-#dash .po-swatch { width: 36px; height: 36px; border-radius: 8px; background-size: cover; background-position: center; flex: none; }
-#dash .po-add { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Side panel */
+#dash .po-panel { position: sticky; top: 64px; align-self: start; height: calc(100vh - 64px); overflow-y: auto; background: var(--panel); border-left: 1px solid var(--border); }
+#dash .po-hero { position: relative; height: 150px; background: var(--gray-soft) center / cover no-repeat; }
+#dash .po-close { all: unset; cursor: pointer; position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 14px; background: rgba(255,255,255,.9); color: #111; font-size: 18px; }
+#dash .po-close:focus-visible { outline: 2px solid var(--accent, #2f6fed); }
+#dash .po-pbody { padding: 14px 18px 24px; display: flex; flex-direction: column; gap: 16px; }
+#dash .po-caption { margin: 0 0 4px; font-size: 14px; font-weight: 600; white-space: pre-wrap; }
+#dash .linklike { all: unset; cursor: pointer; color: var(--accent, #2f6fed); text-decoration: underline; }
+#dash .po-sec { display: flex; flex-direction: column; gap: 8px; }
+#dash .po-sec h3 { margin: 0; font-size: 12.5px; font-weight: 600; }
+#dash .po-sechead { display: flex; justify-content: space-between; align-items: center; }
+#dash .po-prod { display: flex; gap: 10px; align-items: center; }
+#dash .po-prod.boxed { padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; }
+#dash .po-prod .grow { display: flex; flex-direction: column; min-width: 0; }
+#dash .po-swatch { width: 34px; height: 34px; border-radius: 7px; background-size: cover; background-position: center; flex: none; }
+#dash .po-x { all: unset; cursor: pointer; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 11px; color: var(--muted); }
+#dash .po-x:hover, #dash .po-x:focus-visible { background: var(--panel-2); color: var(--text); }
+#dash .po-suggest { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--yellow-soft, #fff6db); }
+#dash .po-suggest .button, #dash .po-suggest button { align-self: flex-start; }
+#dash .po-add { display: flex; flex-direction: column; gap: 6px; }
 #dash .po-add ul { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-#dash .po-add li button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 8px 12px; font-size: 13px; cursor: pointer; border-top: 1px solid var(--border); }
+#dash .po-add li button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 7px 12px; font-size: 13px; cursor: pointer; border-top: 1px solid var(--border); }
 #dash .po-add li:first-child button { border-top: 0; }
 #dash .po-add li button:hover, #dash .po-add li button:focus-visible { background: var(--panel-2); }
-#dash .po-matchrow { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-#dash .po-range { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
-#dash .po-sends { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
-#dash .po-sends > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-#dash .po-comment { display: flex; gap: 8px; align-items: flex-start; }
-#dash .po-avatar { width: 28px; height: 28px; border-radius: 14px; background: var(--accent, #2f6fed); flex: none; }
-#dash .bubble-c { background: var(--panel-2); border-radius: 14px; padding: 8px 12px; font-size: 13px; }
-#dash .po-custom { display: flex; gap: 8px; }
+#dash .po-box { padding: 10px 12px; border-radius: 10px; background: var(--panel-2); display: flex; flex-direction: column; gap: 4px; }
+#dash .po-box p { margin: 0; font-size: 13px; }
+#dash .po-boxhead { display: flex; justify-content: space-between; align-items: center; }
+#dash .po-custom { display: flex; gap: 6px; }
 #dash .po-custom .input { flex: 1; min-width: 0; }
-#dash .po-dm { overflow-x: auto; }
-#dash .po-switches li { display: flex; gap: 12px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--border); }
+#dash .po-dm { overflow-x: auto; margin-top: 6px; }
+#dash .po-switches li { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
 #dash .po-switches li:first-child { border-top: 0; }
 #dash .po-switches .grow { display: flex; flex-direction: column; gap: 2px; }
-@media (max-width: 1250px) { #dash .po-sends { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 1100px) {
-  #dash .po-layout { grid-template-columns: minmax(0, 1fr); }
-  #dash .po-listcard { position: static; max-height: none; }
+#dash .po-switches li.later { opacity: .65; }
+
+@media (max-width: 1200px) {
+  #dash .posts.with-panel { grid-template-columns: minmax(0, 1fr); margin: 0; min-height: 0; }
+  #dash .posts.with-panel .po-main { padding: 0; }
+  #dash .po-panel { position: static; height: auto; border: 1px solid var(--border); border-radius: 12px; margin-top: 16px; overflow: hidden; }
 }

@@ -5,6 +5,7 @@ import { createApp } from '../src/app.js';
 import { createAdapters } from '../src/adapters/index.js';
 import { readiness } from '../src/dashboard/readiness.js';
 import { trainedNotes } from '../src/dashboard/training.js';
+import { ruleCategory, topicOf } from '../src/routes/dashboard/training.js';
 
 // A fake model that repeats the shop notes it was given, so tests can see what the AI was taught.
 async function start({ ai = true } = {}) {
@@ -50,7 +51,10 @@ test('rules: preview with the rule added, publish a version, pause, remove; mode
   try {
     const pv = await s.call('/training/rules/preview', { method: 'POST', token: s.owner, body: { text: 'Always greet with Assalamu alaikum', question: 'hi' } });
     assert.deepEqual([pv.status, pv.body.ai, pv.body.reply], [200, true, 'ji apu, taught answer']);
-    assert.match(s.seen.at(-1).system, /Rule the shop always wants followed:\n- Always greet with Assalamu alaikum/);
+    // Two answers: with the new rule, and "Before:" (today's AI, without it). The category is picked from the words.
+    const prompts = s.seen.slice(-2).map((x) => x.system);
+    assert.equal(prompts.filter((p) => /Rule the shop always wants followed:\n- Always greet with Assalamu alaikum/.test(p)).length, 1);
+    assert.deepEqual([pv.body.before, pv.body.category], ['ji apu, taught answer', 'tone']);
     assert.equal(await s.db.aiRules.countDocuments({}), 0, 'preview saves nothing');
 
     const add = await s.call('/training/rules', { method: 'POST', token: s.owner, body: { text: 'Always greet with Assalamu alaikum', category: 'tone' } });
@@ -126,5 +130,25 @@ test('teach popup: suggested "use this answer when…" choices, the size chart o
     assert.deepEqual([taught.reason, taught.attach], ['made_up', [`size_chart:${p.id}`]]);
     assert.match(await trainedNotes(s.db, s.ws), new RegExp(`also send the size chart: size_chart_product = ${p.id}`));
     assert.equal((await s.call('/training/transcribe', { method: 'POST', token: s.owner, body: {} })).status, 503);
+  } finally { await s.close(); }
+});
+
+test('rules get a category from their words; unanswered questions get a topic; readiness keeps a weekly change', async () => {
+  assert.equal(ruleCategory('Never give a discount that is not in the catalog'), 'price');
+  assert.equal(ruleCategory('Hand to a person when an order is above 10,000'), 'handoff');
+  assert.equal(ruleCategory('Call women customers Apu'), 'tone');
+  assert.equal(ruleCategory('Outside Dhaka orders need an advance for delivery'), 'delivery');
+  assert.equal(ruleCategory('If the customer is angry, apologise'), 'safety');
+  assert.equal(topicOf('৪২ সাইজ হবে? / 42 size ache?'), 'size');
+  assert.equal(topicOf('কবে নতুন কালেকশন আসবে?'), 'stock');
+  assert.equal(topicOf('দোকান কোথায়?'), 'shop');
+  assert.equal(topicOf('বিকাশ নম্বর কোনটা?'), 'payment');
+  const s = await start();
+  try {
+    await s.db.workspaces.updateOne({ _id: s.ws }, { $set: { 'settings.readiness_history': [{ day: '2000-01-01', score: 10 }] } });
+    const page = await s.call('/training', { token: s.owner });
+    assert.equal(page.body.readiness.weekChange, page.body.readiness.score - 10);
+    const ws = await s.db.workspaces.findById(s.ws).lean();
+    assert.equal(ws.settings.readiness_history.length, 2, 'today is kept once');
   } finally { await s.close(); }
 });

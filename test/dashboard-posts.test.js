@@ -149,3 +149,16 @@ test('each product in a post shows where it came from: linked by you, found by A
     assert.deepEqual(d.body.products.map((p) => p.source), ['ai'], 'kept when the list changes');
   } finally { await s.close(); }
 });
+
+test('the posts screen shows Facebook and Instagram posts together, each with its platform', async () => {
+  const s = await start();
+  try {
+    const ig = await s.db.channels.findOne({ workspace_id: s.ws, platform: 'instagram' }).lean();
+    await s.db.insert(s.db.posts, { workspace_id: s.ws, channel_id: s.page._id, external_id: 'FB1', platform: 'facebook', caption: 'Facebook post', posted_at: new Date() });
+    if (ig) await s.db.insert(s.db.posts, { workspace_id: s.ws, channel_id: ig._id, external_id: 'IG1', platform: 'instagram', caption: 'Instagram post', posted_at: new Date() });
+    const all = await s.call('/posts', { token: s.owner });
+    assert.deepEqual(all.body.posts.map((p) => p.platform).sort(), ig ? ['facebook', 'instagram'] : ['facebook']);
+    const fb = await s.call('/posts?platform=facebook', { token: s.owner });
+    assert.deepEqual(fb.body.posts.map((p) => p.platform), ['facebook']);
+  } finally { await s.close(); }
+});
