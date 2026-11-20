@@ -44,7 +44,10 @@ export async function notify(db, emit, adapters, { workspaceId, event, title, bo
   const where = { workspace_id: workspaceId, is_active: { $ne: false } };
   if (userIds) where._id = { $in: userIds };
   else where.role = { $in: roleOverride ?? def.roles };
-  if (!userIds && !roleOverride && DUTY_EVENTS.includes(event)) where.on_duty = { $ne: false };
+  if (!userIds && !roleOverride && DUTY_EVENTS.includes(event)) {
+    const ws = await db.workspaces.findById(workspaceId, { 'settings.team.duty_only': 1 }).lean();
+    if (ws?.settings?.team?.duty_only !== false) where.on_duty = { $ne: false };
+  }
   if (exceptUserId) where._id = { ...(where._id ?? {}), $ne: exceptUserId };
   const users = await db.users.find(where, { notify_prefs: 1, role: 1 }).lean();
   const sent = [];

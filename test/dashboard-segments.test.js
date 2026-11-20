@@ -104,3 +104,37 @@ test('a segment\'s coupon only works for its members, and broadcasts can go to a
     assert.equal((await s.call('/growth/broadcasts/preview', { method: 'POST', token: s.owner, body: { audience: 'last_24h' } })).body.recipients, 2);
   } finally { await s.close(); }
 });
+
+test('delivery success condition, suggested actions, and tags the AI adds from chats', async () => {
+  const { createInbox } = await import('../src/inbox.js');
+  const { createAgent } = await import('../src/ai/agent.js');
+  const s = await start();
+  try {
+    const p = await people(s.db, s.ws);
+    const ids = async (conds) => (await segmentMembers(s.db, s.ws, cleanConditions(conds))).ids.sort();
+    assert.deepEqual(await ids([{ field: 'delivery_rate', op: 'gte', value: 90 }]), [p.mitu.id, p.nila.id].sort(), 'Rafi is 50%, Badhon 0%');
+    assert.deepEqual(await ids([{ field: 'delivery_rate', op: 'lte', value: 50 }]), [p.rafi.id, p.bad.id].sort());
+    assert.throws(() => cleanConditions([{ field: 'delivery_rate', op: 'gte', value: 120 }]), /number/);
+
+    await s.db.workspaces.updateOne({ _id: s.ws }, { $set: { 'settings.advance.rules': { courier_risk: { on: true, kind: 'fixed', value: 500, below: 70 } } } });
+    const seg = await s.call('/segments', { method: 'POST', token: s.owner, body: { name: 'All buyers', conditions: [{ field: 'orders', op: 'gte', value: 1 }] } });
+    await s.call('/coupons', { method: 'POST', token: s.owner, body: { code: 'BUYERS50', type: 'amount', value: 50, audience: 'segment', segmentId: seg.body.id } });
+    const m = await s.call(`/segments/${seg.body.id}/customers`, { token: s.owner });
+    const by = Object.fromEntries(m.body.customers.map((c) => [c.name, c]));
+    assert.deepEqual(by.Badhon.suggested, { key: 'ask_advance', amount: 500 });
+    assert.deepEqual(by.Mitu.suggested, { key: 'send_coupon', code: 'BUYERS50' });
+    assert.equal(by.Mitu.deliveryRate, 100);
+
+    // The AI tags a customer who asks for a discount.
+    await s.db.workspaces.updateOne({ _id: s.ws }, { $set: { ai_mode: 'auto' } });
+    const provider = { name: 'fake', model: 'fake-1', async generateJson() { return { data: { reply: 'দুঃখিত আপু, এখন কোনো ছাড় নেই', handoff: false, handoff_reason: '', intent: 'price', customer_tags: ['asked_discount', 'bogus'] }, usage: {} }; } };
+    const inbox = createInbox(s.db, s.config);
+    const agent = createAgent(s.db, inbox, provider, { replyDelayMs: 0, log: { warn() {} }, config: s.config });
+    const { conversation, message } = await inbox.ingestMessage(inbound({ contactExternalId: 'discount-asker', text: 'kono discount ache?' }));
+    await s.db.conversations.updateOne({ _id: conversation.id }, { $set: { customer_id: p.nila.id } });
+    await agent.respond(conversation.id, message.id);
+    assert.deepEqual((await s.db.customers.findById(p.nila.id).lean()).ai_tags, ['Asked for discount']);
+    assert.deepEqual(await ids([{ field: 'tag', op: 'has', value: 'Asked for discount' }]), [p.nila.id], 'AI tags work in conditions');
+    assert.equal((await s.call('/segments', { token: s.owner })).body.aiTags.find((a) => a.key === 'asked_discount').count, 1);
+  } finally { await s.close(); }
+});

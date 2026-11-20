@@ -51,3 +51,11 @@
   #dash .tk-listcard { position: static; max-height: none; }
   #dash .tk-facts { grid-template-columns: 1fr; }
 }
+
+#dash .tk-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+#dash .tk-why { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--red-soft, #fdecec); }
+#dash .tk-why strong { color: var(--red-text, #b42318); }
+#dash .tk-why p { margin: 2px 0 0; }
+#dash .tk-last { margin-top: 10px; padding: 9px 12px; border-radius: 12px; background: var(--panel-2); font-size: 13px; max-width: 90%; }
+#dash .tk-resolve { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 900px) { #dash .tk-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

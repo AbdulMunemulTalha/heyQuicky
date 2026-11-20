@@ -2,8 +2,14 @@
 // a warning to the owner, and IF → THEN routing rules. Stored in workspace.settings.team.
 
 const TZ_OFFSET_MIN = 6 * 60; // Bangladesh, no daylight saving
-export const SHARE_MODES = ['balanced', 'queue'];
-export const RULE_FIELDS = ['channel', 'tag', 'new_customer'];
+// Round-robin: next on-duty member in turn · balanced (least busy): fewest open chats · queue (manual only).
+export const SHARE_MODES = ['round_robin', 'balanced', 'queue'];
+// When each kind of rule is checked: a chat arriving, the AI handing it over, a comment that needs a person.
+export const RULE_FIELDS = ['channel', 'tag', 'new_customer', 'topic', 'order_over', 'comment'];
+export const RULE_ACTIONS = ['assign', 'assign_ticket', 'notify'];
+export const TOPICS = { complaint: ['complaint'], order_status: ['order_status'], payment: ['payment'], delivery: ['delivery'], new_order: ['order'], price: ['price', 'stock', 'product_info'] };
+const STAGE_FIELDS = { inbound: ['channel', 'tag', 'new_customer'], handoff: ['topic', 'order_over'], comment: ['comment'] };
+export const DEFAULT_OFF_DUTY = 'আমাদের টিম এখন অফলাইনে আছে। কাজের সময় শুরু হলেই আপনাকে উত্তর দেবে 🙏';
 
 export function teamSettings(ws) {
   const t = ws?.settings?.team ?? {};
@@ -13,7 +19,10 @@ export function teamSettings(ws) {
     replyMin: t.reply_min ?? 15,
     warnMin: t.warn_min ?? 30,
     hours: { on: Boolean(t.hours?.on), days: t.hours?.days ?? [0, 1, 2, 3, 4, 6], start: t.hours?.start ?? '10:00', end: t.hours?.end ?? '22:00' },
-    rules: Array.isArray(t.rules) ? t.rules : [],
+    rules: (Array.isArray(t.rules) ? t.rules : []).map((r) => ({ ...r, action: RULE_ACTIONS.includes(r.action) ? r.action : 'assign' })),
+    // TEAM-04: only on-duty people get team alerts (can be turned off), and what the AI says when nobody is on duty.
+    dutyOnly: t.duty_only !== false,
+    offDuty: { on: t.off_duty?.on !== false, message: t.off_duty?.message || DEFAULT_OFF_DUTY },
   };
 }
 
@@ -39,24 +48,60 @@ export function hoursLine(ws) {
   return `The team answers ${h.days.map((d) => names[d]).join(', ')}, ${h.start}–${h.end} (Bangladesh time).`;
 }
 
-// The first matching rule's teammate, if they're active and on duty (otherwise the usual sharing applies).
-export async function ruleAssignee(db, conversation, ws) {
-  const rules = teamSettings(ws).rules;
+const onDutyUser = (db, workspaceId, userId) => db.users.findOne({ _id: userId, workspace_id: workspaceId, is_active: { $ne: false }, on_duty: { $ne: false }, is_online: { $ne: false } }, { _id: 1, name: 1 }).lean();
+
+// The first rule for this moment that matches. ctx: { conversation, intent, comment }.
+export async function matchRule(db, ws, stage, ctx = {}) {
+  const rules = teamSettings(ws).rules.filter((r) => STAGE_FIELDS[stage].includes(r.field));
   if (!rules.length) return null;
-  const [channel, customer] = await Promise.all([
-    db.channels.findById(conversation.channel_id, { platform: 1 }).lean(),
-    conversation.customer_id ? db.customers.findById(conversation.customer_id, { tags: 1, vip: 1, stats: 1 }).lean() : null,
-  ]);
+  const conv = ctx.conversation;
+  const [channel, customer, order] = conv ? await Promise.all([
+    db.channels.findById(conv.channel_id, { platform: 1 }).lean(),
+    conv.customer_id ? db.customers.findById(conv.customer_id, { tags: 1, vip: 1, stats: 1 }).lean() : null,
+    db.orders.findOne({ conversation_id: conv._id ?? conv.id, draft: { $ne: true }, status: { $nin: ['cancelled', 'returned', 'delivered'] } }).sort({ created_at: -1 }).lean(),
+  ]) : [null, null, null];
   for (const r of rules) {
     let hit = false;
     if (r.field === 'channel') hit = channel?.platform === r.value;
     if (r.field === 'tag') hit = Boolean(customer && ((r.value === 'VIP' && customer.vip) || (customer.tags ?? []).some((x) => x.toLowerCase() === String(r.value).toLowerCase())));
     if (r.field === 'new_customer') hit = !customer || (customer.stats?.orders ?? 0) === 0;
-    if (!hit) continue;
-    const user = await db.users.findOne({ _id: r.user_id, workspace_id: conversation.workspace_id, is_active: { $ne: false }, on_duty: { $ne: false }, is_online: { $ne: false } }, { _id: 1 }).lean();
-    if (user) return user._id;
+    if (r.field === 'topic') hit = (TOPICS[r.value] ?? []).includes(ctx.intent);
+    if (r.field === 'order_over') hit = Boolean(order && (order.subtotal ?? 0) + (order.delivery_charge ?? 0) - (order.discount ?? 0) > Number(r.value));
+    if (r.field === 'comment') hit = true;
+    if (hit) return r;
   }
   return null;
+}
+
+// Kept for inbound routing: the teammate a rule assigns, if they're on duty.
+export async function ruleAssignee(db, conversation, ws) {
+  const r = await matchRule(db, ws, 'inbound', { conversation });
+  if (!r || r.action === 'notify') return null;
+  return (await onDutyUser(db, conversation.workspace_id, r.user_id))?._id ?? null;
+}
+
+// Runs a matching rule's action: assign (+ open a ticket) or keep with the AI and notify someone.
+// Returns what happened, for logs and tests.
+export async function applyRule(db, rule, { conversation = null, reason = '', notify = null, openTicket = null, title = '' }) {
+  const wsId = conversation?.workspace_id ?? rule.workspace_id;
+  const user = await onDutyUser(db, wsId ?? rule.workspace_id, rule.user_id);
+  if (rule.action === 'notify' || !conversation) {
+    if (notify) await notify({ workspaceId: wsId, event: 'handoff', title: title || 'A routing rule wants you to look', body: String(reason).slice(0, 200), link: conversation ? `/inbox/${conversation._id ?? conversation.id}` : '/comments', userIds: [rule.user_id] }).catch(() => {});
+    return 'notified';
+  }
+  if (!user) return 'off_duty';
+  const id = conversation._id ?? conversation.id;
+  await db.conversations.updateOne({ _id: id }, { $set: { assigned_user_id: user._id } });
+  await db.users.updateOne({ _id: user._id }, { $set: { last_assigned_at: new Date() } });
+  if (rule.action === 'assign_ticket' && openTicket) {
+    await openTicket(db, { workspaceId: wsId, conversationId: id, customerId: conversation.customer_id ?? null, title: reason || 'Routed by a rule', reason, by: 'Routing rule', ownerId: user._id }).catch(() => {});
+  }
+  return rule.action === 'assign_ticket' ? 'assigned_ticket' : 'assigned';
+}
+
+// Is anyone who can reply on duty right now?
+export async function anyoneOnDuty(db, workspaceId) {
+  return Boolean(await db.users.exists({ workspace_id: workspaceId, is_active: { $ne: false }, on_duty: { $ne: false }, is_online: { $ne: false }, invite_pending: { $ne: true } }));
 }
 
 // TEAM-05 counters: chats waiting for a person, past the reply target, and never answered.

@@ -103,3 +103,24 @@ test('reply in chat from a ticket; solving clears the chat\'s ACT NOW; agents on
     assert.equal((await s.call(`/tickets/${c.body.number}`, { token: agent })).status, 404);
   } finally { await s.close(); }
 });
+
+test('ticket detail shows why the AI handed over and resolutions for its type; one tap solves; KPIs', async () => {
+  const s = await start();
+  try {
+    const { conversation } = await s.app.inbox.ingestMessage(inbound({ text: 'vul colour dise, change chai' }));
+    await s.db.conversations.updateOne({ _id: conversation.id }, { $set: { ai_handoff_reason: 'Customer says the wrong colour was delivered' } });
+    const c = await s.call('/tickets', { method: 'POST', token: s.owner, body: { title: 'Wrong colour delivered', type: 'exchange', conversationId: conversation.id } });
+    await s.call(`/tickets/${c.body.number}`, { method: 'PATCH', token: s.owner, body: { status: 'waiting' } });
+    const list = await s.call('/tickets', { token: s.owner });
+    assert.equal(list.body.tickets.length, 1, 'Open includes tickets waiting on the customer');
+    assert.deepEqual([list.body.counts.mine, list.body.counts.all], [1, 1]);
+    const d = await s.call(`/tickets/${c.body.number}`, { token: s.owner });
+    assert.deepEqual([d.body.ticket.why, d.body.ticket.lastMessage], ['Customer says the wrong colour was delivered', 'vul colour dise, change chai']);
+    assert.deepEqual(d.body.ticket.resolutions, ['right_item', 'exchanged', 'refund_bkash', 'store_credit']);
+    await s.call(`/tickets/${c.body.number}`, { method: 'PATCH', token: s.owner, body: { status: 'solved', resolutionKind: 'right_item', resolution: 'Send the right item' } });
+    const after = await s.call('/tickets?status=solved', { token: s.owner });
+    assert.equal(after.body.tickets[0].resolutionKind, 'right_item');
+    assert.equal(after.body.kpis.solved30, 1);
+    assert.ok(after.body.kpis.avgSolveHours >= 0);
+  } finally { await s.close(); }
+});

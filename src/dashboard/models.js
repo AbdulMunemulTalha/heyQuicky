@@ -19,6 +19,7 @@ export function defineDashboardModels(conn) {
     emails: { type: [String], default: [] },
     contact_ids: { type: [Number], default: [] },
     tags: { type: [String], default: [] },
+    ai_tags: { type: [String], default: [] }, // added by the AI from chats: Asked for discount, Gift buyer, Wholesale enquiry
     vip: { type: Boolean, default: false },
     ai_off: { type: Boolean, default: false },
     ai_off_reason: { type: String, default: '' },
@@ -310,6 +311,7 @@ export function defineDashboardModels(conn) {
     suggested_ids: { type: [Number], default: [] }, // products the AI or the caption suggests, waiting for the shop to confirm (CAT-06)
     match_source: { type: String, default: '' }, // caption | ai
     match_confidence: { type: String, default: '' }, // high | medium | low | none
+    product_sources: { type: Mixed, default: {} }, // productId → you | ai | caption ("Linked by you" / "Found by AI")
     synced_at: { type: Date, default: null },
     rules: { type: Mixed, default: { hide_spam: true, hide_phones: true, remind_once: false, react_followup: false } },
     comment_count: { type: Number, default: 0 },

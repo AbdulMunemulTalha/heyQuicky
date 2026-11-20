@@ -103,3 +103,28 @@ test('teaching from a chat: shows what was asked and replied, publishes, tests, 
     assert.match(s.seen.at(-1).system, /A: Eid delivery er jonno team confirm korbe \(when: Eid delivery\)/, 'the test reply used the new answer');
   } finally { await s.close(); }
 });
+
+test('teach popup: suggested "use this answer when…" choices, the size chart offer and attachment, voice needs a key', async () => {
+  const { teachSuggestions } = await import('../src/routes/dashboard/training.js');
+  assert.deepEqual(teachSuggestions('৪২ সাইজ হবে? / 42 size ache?', { name: 'Nokshi Three-Piece', category: 'Three-piece' }),
+    ['Someone asks for a size by number (40, 42, 44)', 'Only for Three-piece', 'Any size question']);
+  assert.deepEqual(teachSuggestions('kobe pabo?', null), ['Someone asks when the parcel will arrive', 'Any delivery question']);
+  const s = await start();
+  try {
+    const chart = await s.db.insert(s.db.sizeCharts, { workspace_id: s.ws, name: 'Three-piece', columns: ['Size', 'Chest'], rows: [['XL', '42']] });
+    const p = await s.db.insert(s.db.products, { workspace_id: s.ws, name: 'Nokshi Three-Piece', category: 'Three-piece', price: 2150, size_chart_id: chart.id });
+    const { conversation } = await s.app.inbox.ingestMessage(inbound({ text: '42 size ache?' }));
+    await s.db.insert(s.db.messages, { conversation_id: conversation.id, direction: 'out', sent_by_ai: true, kind: 'carousel', payload: { cards: [{ productId: p.id }] }, text: 'cards', status: 'sent' });
+    const ai = await s.db.insert(s.db.messages, { conversation_id: conversation.id, direction: 'out', sent_by_ai: true, text: 'Na, 42 nei', status: 'sent' });
+    const got = await s.call(`/training/teach/${ai.id}`, { token: s.owner });
+    assert.deepEqual(got.body.sizeChart, { productId: p.id, name: 'Nokshi Three-Piece' });
+    assert.equal(got.body.suggestions[1], 'Only for Three-piece');
+    assert.equal(got.body.voice, false);
+    const out = await s.call(`/training/teach/${ai.id}`, { method: 'POST', token: s.owner, body: { reason: 'made_up', answer: '42" bukker jonno XL', when: [got.body.suggestions[0]], sizeChartProductId: p.id } });
+    assert.equal(out.status, 201);
+    const taught = await s.db.taughtAnswers.findOne({ workspace_id: s.ws }).lean();
+    assert.deepEqual([taught.reason, taught.attach], ['made_up', [`size_chart:${p.id}`]]);
+    assert.match(await trainedNotes(s.db, s.ws), new RegExp(`also send the size chart: size_chart_product = ${p.id}`));
+    assert.equal((await s.call('/training/transcribe', { method: 'POST', token: s.owner, body: {} })).status, 503);
+  } finally { await s.close(); }
+});

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
 import { audit } from '../../dashboard/util.js';
@@ -6,7 +6,37 @@ import { publish, rollback } from '../../dashboard/training.js';
 import { readiness } from '../../dashboard/readiness.js';
 
 export const RULE_CATEGORIES = ['tone', 'selling', 'never', 'handoff', 'other'];
-export const TEACH_REASONS = ['wrong_info', 'missing_info', 'tone', 'should_hand_off', 'other'];
+// The six reasons in the Teach popup (older ones still accepted).
+export const TEACH_REASONS = ['wrong_info', 'misunderstood', 'should_hand_off', 'tone', 'made_up', 'too_long', 'missing_info', 'other'];
+
+// "Use this answer when…" choices, worked out from the question and the products in the chat.
+const TOPIC_WORDS = {
+  size: /size|সাইজ|মাপ|\b(3[0-9]|4[0-9]|5[0-2])\b|xl|xxl|\bs\b|\bm\b|\bl\b/i,
+  price: /price|dam|দাম|koto|কত|taka|টাকা/i,
+  delivery: /deliver|ডেলিভারি|kobe|কবে|pabo|পাব|courier|কুরিয়ার/i,
+  exchange: /exchange|bodol|বদল|return|ferot|ফেরত|refund/i,
+};
+export function teachSuggestions(question, product) {
+  const q = String(question ?? '');
+  const out = [];
+  if (TOPIC_WORDS.size.test(q)) {
+    if (/\b(3[0-9]|4[0-9]|5[0-2])\b|[৩৪৫][০-৯]/.test(q)) out.push('Someone asks for a size by number (40, 42, 44)');
+    if (product) out.push(`Only for ${product.category || product.name}`);
+    out.push('Any size question');
+  } else if (TOPIC_WORDS.exchange.test(q)) {
+    out.push('Someone asks about exchange or return');
+    if (product) out.push(`Only for ${product.category || product.name}`);
+  } else if (TOPIC_WORDS.delivery.test(q)) {
+    out.push('Someone asks when the parcel will arrive', 'Any delivery question');
+  } else if (TOPIC_WORDS.price.test(q)) {
+    out.push('Someone asks the price');
+    if (product) out.push(`Only for ${product.name}`);
+  } else {
+    out.push('Someone asks this in other words');
+    if (product) out.push(`Only for ${product.category || product.name}`);
+  }
+  return [...new Set(out)].slice(0, 3);
+}
 
 const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 
@@ -99,9 +129,24 @@ export function trainingRoutes(db, _config, { auth, agent, emit }) {
     return { m, question };
   }
 
+  // The product the chat is about: the last product card the AI sent, or a product named in the chat.
+  async function chatProduct(m) {
+    const recent = await db.messages.find({ conversation_id: m.conversation_id, _id: { $lte: m._id } }).sort({ _id: -1 }).limit(20).lean();
+    const conv = await db.conversations.findById(m.conversation_id, { workspace_id: 1 }).lean();
+    const ids = recent.flatMap((x) => (x.payload?.cards ?? []).map((c) => c.productId)).filter(Boolean);
+    if (ids.length) return db.products.findOne({ _id: ids[0], workspace_id: conv.workspace_id }).lean();
+    const products = await db.products.find({ workspace_id: conv.workspace_id, archived: { $ne: true } }, { name: 1, category: 1, size_chart_id: 1 }).limit(300).lean();
+    const text = recent.map((x) => x.text ?? '').join(' ').toLowerCase();
+    return products.find((p) => p.name && text.includes(p.name.toLowerCase())) ?? null;
+  }
+
   router.get('/training/teach/:messageId', auth, teach, async (req, res) => {
     const { m, question } = await aiMessage(req);
-    res.json({ messageId: m._id, asked: question, replied: m.text, aiReady: aiReady() });
+    const product = await chatProduct(m);
+    const sizeQuestion = TOPIC_WORDS.size.test(question);
+    res.json({ messageId: m._id, asked: question, replied: m.text, aiReady: aiReady(), voice: Boolean(agent?.transcribe),
+      suggestions: teachSuggestions(question, product),
+      sizeChart: sizeQuestion && product?.size_chart_id ? { productId: product._id, name: product.name } : null });
   });
 
   router.post('/training/teach/:messageId', auth, teach, async (req, res) => {
@@ -112,7 +157,13 @@ export function trainingRoutes(db, _config, { auth, agent, emit }) {
     if (!answer) throw new InboxError(400, 'Write the right answer');
     if (!question) throw new InboxError(400, 'Write what the customer asked');
     const when = (Array.isArray(req.body?.when) ? req.body.when : []).map((w) => clean(w, 80)).filter(Boolean).slice(0, 5);
-    const taught = await db.insert(db.taughtAnswers, { workspace_id: req.user.workspace_id, question, answer, when, from_message_id: m._id, reason });
+    // "Also send the size chart image": only for a product of this shop that has a chart.
+    let attach = [];
+    if (req.body?.sizeChartProductId) {
+      const p = await db.products.findOne({ _id: Number(req.body.sizeChartProductId), workspace_id: req.user.workspace_id, size_chart_id: { $ne: null } }, { _id: 1 }).lean();
+      if (p) attach = [`size_chart:${p._id}`];
+    }
+    const taught = await db.insert(db.taughtAnswers, { workspace_id: req.user.workspace_id, question, answer, when, attach, from_message_id: m._id, reason });
     // "Should have handed off" also becomes a rule, so the AI hands similar chats to the team.
     if (reason === 'should_hand_off') await db.insert(db.aiRules, { workspace_id: req.user.workspace_id, text: `Hand off to the team when a customer asks: "${question.slice(0, 160)}"`, category: 'handoff', author: req.user.name });
     const v = await publish(db, req.user, `Taught from a chat: ${question.slice(0, 60)}`, 'teach');
@@ -123,6 +174,14 @@ export function trainingRoutes(db, _config, { auth, agent, emit }) {
     if (aiReady()) tested = (await agent.practice(req.user, [{ role: 'user', content: question }]).catch(() => null))?.reply ?? null;
     emit(req.user.workspace_id, 'unanswered', {});
     res.status(201).json({ version: v.number, tested });
+  });
+
+  // "Hold to speak" in the Teach popup: a voice recording becomes the answer's text (needs OPENAI_API_KEY).
+  router.post('/training/transcribe', auth, teach, express.raw({ type: ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav'], limit: '10mb' }), async (req, res) => {
+    if (!agent?.transcribe) throw new InboxError(503, 'Voice input needs OPENAI_API_KEY on this server');
+    if (!Buffer.isBuffer(req.body) || !req.body.length) throw new InboxError(400, 'Record your answer first');
+    const out = await agent.transcribe(req.user.workspace_id, { bytes: req.body, mime: req.get('content-type') });
+    res.json({ text: out.text });
   });
 
   return router;

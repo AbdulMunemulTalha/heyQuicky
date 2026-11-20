@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { need, allowedActions } from '../../dashboard/permissions.js';
 import { audit } from '../../dashboard/util.js';
-import { TICKET_TYPES, TICKET_STATUSES, RESOLUTIONS, openTicket, dueAt, timelineEntry } from '../../dashboard/tickets.js';
+import { TICKET_TYPES, TICKET_STATUSES, RESOLUTIONS, RESOLUTIONS_FOR, openTicket, dueAt, timelineEntry } from '../../dashboard/tickets.js';
 
 const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 
@@ -52,7 +52,7 @@ export function ticketRoutes(db, _config, { auth, inbox, emit, notify }) {
     const status = [...TICKET_STATUSES, 'all'].includes(req.query.status) ? req.query.status : 'open';
     const base = { workspace_id: ws, ...(await scope(req)) };
     if (req.query.mine === '1') base.owner_user_id = req.user.id;
-    const where = { ...base, ...(status === 'all' ? {} : { status }) };
+    const where = { ...base, ...(status === 'all' ? {} : status === 'open' ? { status: { $ne: 'solved' } } : { status }) };
     const q = clean(req.query.q, 60);
     if (q) {
       const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -69,7 +69,14 @@ export function ticketRoutes(db, _config, { auth, inbox, emit, notify }) {
     const team = await db.users.find({ workspace_id: ws }, { name: 1, role: 1 }).sort({ name: 1 }).lean();
     res.json({
       tickets: list.map((t) => row(t, n)), status,
-      counts: { open: c.open ?? 0, waiting: c.waiting ?? 0, solved: c.solved ?? 0, actNow: await db.tickets.countDocuments({ ...base, act_now: true, status: { $ne: 'solved' } }) },
+      counts: { open: c.open ?? 0, waiting: c.waiting ?? 0, solved: c.solved ?? 0, all: (c.open ?? 0) + (c.waiting ?? 0) + (c.solved ?? 0),
+        mine: await db.tickets.countDocuments({ ...base, owner_user_id: req.user.id, status: { $ne: 'solved' } }),
+        actNow: await db.tickets.countDocuments({ ...base, act_now: true, status: { $ne: 'solved' } }) },
+      kpis: await (async () => {
+        const since = new Date(Date.now() - 30 * 86_400_000);
+        const [r] = await db.tickets.aggregate([{ $match: { ...base, status: 'solved', solved_at: { $gte: since } } }, { $group: { _id: null, n: { $sum: 1 }, avg: { $avg: { $subtract: ['$solved_at', '$created_at'] } } } }]);
+        return { solved30: r?.n ?? 0, avgSolveHours: r?.avg != null ? Math.round((r.avg / 3_600_000) * 10) / 10 : null };
+      })(),
       team: team.map((u) => ({ id: u._id, name: u.name })),
     });
   });
@@ -84,10 +91,14 @@ export function ticketRoutes(db, _config, { auth, inbox, emit, notify }) {
     const t = await load(req);
     const n = await names([t]);
     const chat = t.conversation_id ? (await db.messages.find({ conversation_id: t.conversation_id }).sort({ _id: -1 }).limit(12).lean()).reverse() : [];
+    // "Why the AI handed this over": the handoff reason and what the customer last said.
+    const conv = t.conversation_id ? await db.conversations.findById(t.conversation_id, { ai_handoff_reason: 1 }).lean() : null;
+    const lastCustomer = [...chat].reverse().find((m) => m.direction === 'in');
     const orders = t.customer_id ? await db.orders.find({ customer_id: t.customer_id, draft: { $ne: true } }, { number: 1, status: 1, created_at: 1, subtotal: 1, delivery_charge: 1, discount: 1 }).sort({ created_at: -1 }).limit(5).lean() : [];
     const team = await db.users.find({ workspace_id: req.user.workspace_id }, { name: 1 }).sort({ name: 1 }).lean();
     res.json({
-      ticket: { ...row(t, n), timeline: (t.timeline ?? []).map((e) => ({ type: e.type, text: e.text, by: e.by, at: e.at })) },
+      ticket: { ...row(t, n), timeline: (t.timeline ?? []).map((e) => ({ type: e.type, text: e.text, by: e.by, at: e.at })),
+        why: conv?.ai_handoff_reason || t.reason || '', lastMessage: lastCustomer ? (lastCustomer.text || '') : '', resolutions: RESOLUTIONS_FOR[t.type] ?? RESOLUTIONS_FOR.other },
       chat: chat.map((m) => ({ id: m._id, direction: m.direction, text: m.text || (m.attachments?.length ? `[${m.attachments[0].type}]` : ''), byAi: Boolean(m.sent_by_ai), at: m.created_at })),
       orders: orders.map((o) => ({ id: o._id, number: o.number, status: o.status, total: (o.subtotal ?? 0) + (o.delivery_charge ?? 0) - (o.discount ?? 0), at: o.created_at })),
       team: team.map((u) => ({ id: u._id, name: u.name })),

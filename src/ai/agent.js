@@ -3,15 +3,18 @@ import { withTraining, recordUnanswered } from '../dashboard/training.js';
 import { INTENTS, REPLY_SCHEMA, COMMENT_SCHEMA, POST_MATCH_SCHEMA, buildSystemPrompt, buildCommentPrompt, buildPostMatchPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
 import { priceRange } from '../dashboard/posts.js';
 import { aiCoupons } from '../dashboard/orderBuild.js';
+import { AI_TAGS } from '../dashboard/segments.js';
 import { recordPayment, advanceMessage, TRX } from '../dashboard/payments.js';
 import { toPlatform } from '../platforms/rich.js';
 import { commentAction } from '../dashboard/comments.js';
 import { openTicket } from '../dashboard/tickets.js';
+import { teamSettings, matchRule, applyRule, anyoneOnDuty } from '../dashboard/team.js';
 import { productCards, quickReplies } from '../platforms/rich.js';
 import { placeAiOrder } from '../dashboard/aiOrder.js';
 import { sendSizeChart } from '../dashboard/postbacks.js';
 import { InboxError } from '../inbox.js';
 import { canSpend, meter } from './metering.js';
+import { randomBytes } from 'node:crypto';
 import { fetchAttachment, IMAGE_TYPES, MAX_IMAGE_BYTES } from './media.js';
 import { MAX_AUDIO_BYTES } from './transcribe.js';
 import { decryptSecret } from '../secrets.js';
@@ -61,6 +64,7 @@ function normalize(data) {
     size_chart_product: Number(data?.size_chart_product) || 0,
     order: data?.order?.ready ? data.order : null,
     payment: TRX.test(String(data?.payment?.trx_id ?? '').trim().toUpperCase()) ? { trx_id: String(data.payment.trx_id).trim().toUpperCase(), method: data.payment.method === 'nagad' ? 'nagad' : 'bkash', amount: Number(data.payment.amount) || 0 } : null,
+    customer_tags: (Array.isArray(data?.customer_tags) ? data.customer_tags : []).filter((x) => x in AI_TAGS),
     act_now: Boolean(data?.act_now),
     act_now_reason: String(data?.act_now_reason ?? '').trim(),
   };
@@ -179,13 +183,32 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     }
   }
 
-  async function setHandoff(conversationId, reason) {
-    const conv = await db.conversations.findOneAndUpdate({ _id: conversationId },
+  async function setHandoff(conversationId, reason, { intent = null } = {}) {
+    let conv = await db.conversations.findOneAndUpdate({ _id: conversationId },
       { $set: { ai_handoff: true, ai_handoff_reason: reason, ai_handoff_at: new Date() } }, { new: true, lean: true });
-    if (!notify || !conv) return;
+    if (!conv) return;
+    // TEAM-07: rules on the topic or the order's value (assign, assign + ticket, or notify someone).
+    const ws = await db.workspaces.findById(conv.workspace_id, { settings: 1 }).lean();
+    const rule = await matchRule(db, ws, 'handoff', { conversation: conv, intent }).catch(() => null);
+    if (rule) {
+      const contact = await db.contacts.findById(conv.contact_id, { name: 1 }).lean();
+      await applyRule(db, rule, { conversation: conv, reason, notify, openTicket, title: `${contact?.name || 'A customer'} — routed to you` }).catch((err) => log.warn(`routing rule failed: ${err.message}`));
+      conv = await db.conversations.findById(conversationId).lean();
+    }
+    if (!notify) return;
     const contact = await db.contacts.findById(conv.contact_id, { name: 1 }).lean();
     await notify({ workspaceId: conv.workspace_id, event: 'handoff', title: `${contact?.name || 'A customer'} needs a person.`, body: String(reason ?? '').replace(/^Unanswered:\s*/i, 'The AI could not answer: ').slice(0, 200),
       link: `/inbox/${conv._id}`, ref: `handoff:${conv._id}`, userIds: conv.assigned_user_id ? [conv.assigned_user_id] : null });
+  }
+
+  async function tellIfNobodyOnDuty(conversationId) {
+    const conv = await db.conversations.findById(conversationId, { workspace_id: 1, off_duty_told_at: 1, ai_handoff_at: 1 }).lean();
+    if (!conv || (conv.off_duty_told_at && conv.off_duty_told_at >= conv.ai_handoff_at)) return;
+    const ws = await db.workspaces.findById(conv.workspace_id, { settings: 1 }).lean();
+    const team = teamSettings(ws);
+    if (!team.offDuty.on || await anyoneOnDuty(db, conv.workspace_id)) return;
+    const sent = await inbox.sendAiReply(conversationId, team.offDuty.message).catch(() => null);
+    if (sent) await db.conversations.updateOne({ _id: conversationId }, { $set: { off_duty_told_at: new Date() } });
   }
 
   async function saveDraft(conversationId, answer, forMessageId) {
@@ -250,6 +273,10 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       return 'drafted';
     }
 
+    // CRM-04: tags the AI noticed in this chat go on the customer.
+    if (answer.customer_tags.length && ctx.conversation.customer_id) {
+      await db.customers.updateOne({ _id: ctx.conversation.customer_id }, { $addToSet: { ai_tags: { $each: answer.customer_tags.map((k) => AI_TAGS[k]) } } });
+    }
     // ACT NOW (TKT-02): urgent chats jump to the top for the team.
     if (answer.act_now) {
       await db.conversations.updateOne({ _id: conversationId }, { $set: { act_now: true } });
@@ -276,10 +303,18 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     if (answer.payment) {
       const open = await db.orders.findOne({ workspace_id: ctx.conversation.workspace_id, draft: { $ne: true }, status: { $in: ['pending', 'on_hold', 'approved', 'processing', 'ready_to_ship'] },
         $or: [{ conversation_id: conversationId }, ...(ctx.conversation.customer_id ? [{ customer_id: ctx.conversation.customer_id }] : [])] }).sort({ created_at: -1 }).lean();
+      let screenshot = '';
+      const shot = [...ctx.messages].reverse().find((m) => m.direction === 'in' && m.images?.length)?.images[0];
+      if (shot) {
+        const id = randomBytes(12).toString('hex');
+        const data = Buffer.from(shot.data, 'base64');
+        await db.files.create({ _id: id, workspace_id: ctx.conversation.workspace_id, type: shot.media_type, size: data.length, data, name: 'payment-screenshot' }).catch(() => null);
+        screenshot = `/files/${id}`;
+      }
       await recordPayment(db, { workspaceId: ctx.conversation.workspace_id, orderId: open?._id ?? null, method: answer.payment.method, amount: answer.payment.amount || open?.advance?.amount || 0,
-        trxId: answer.payment.trx_id, source: 'chat', notify }).catch((err) => log.warn(`payment from chat not recorded: ${err.message}`));
+        trxId: answer.payment.trx_id, screenshot, source: 'chat', notify }).catch((err) => log.warn(`payment from chat not recorded: ${err.message}`));
     }
-    if (answer.handoff) await setHandoff(conversationId, answer.handoff_reason || 'The AI asked for a person to take over');
+    if (answer.handoff) await setHandoff(conversationId, answer.handoff_reason || 'The AI asked for a person to take over', { intent: answer.intent });
     // A question the shop information didn't cover goes to "Questions it couldn't answer" (TRN-04).
     if (answer.handoff && /^unanswered:/i.test(answer.handoff_reason ?? '')) await recordUnanswered(db, ctx.workspace._id, ctx.lastInbound?.text);
     if (answer.reply) {
@@ -305,6 +340,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     // PAY-03: an advance is needed before this order goes ahead.
     if (placed?.advance) await inbox.sendAiReply(conversationId, advanceMessage(ctx.workspace, placed.advance.amount));
     await inbox.refresh(conversationId);
+    // TEAM-04: nobody on duty → the customer hears when the team will reply (once per handoff).
+    if (answer.handoff && !placed) await tellIfNobodyOnDuty(conversationId);
     return placed ? 'order_placed' : answer.handoff ? 'handed_off' : 'sent';
   }
 
@@ -385,6 +422,9 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     const dm = String(data?.dm ?? '').trim().slice(0, 1000);
     if (data?.needs_person || (!aiPublic && !dm)) {
       await leave(String(data?.reason ?? '').trim() || 'The AI left this comment for the team');
+      // TEAM-07: "Comment on a post → keep with the AI, notify someone".
+      const rule = await matchRule(db, workspace, 'comment').catch(() => null);
+      if (rule) await applyRule(db, { ...rule, workspace_id: workspace._id }, { reason: `${comment.author_name || 'Someone'}: ${comment.text}`, notify, title: 'A comment needs you' }).catch(() => {});
       return 'left_for_team';
     }
     // The shop's own public reply for this post, if it set one (Posts → What the AI sends).
@@ -486,6 +526,11 @@ ${extraNotes}` } : trained;
       }
     },
 
+    transcribe: transcriber ? async (workspaceId, file) => {
+      const out = await transcriber.transcribe(file);
+      await meter(db, config, { workspaceId, model: transcriber.model, usage: out.usage, kind: 'voice', summary: 'Transcribed a taught answer', notify }).catch(() => {});
+      return out;
+    } : null,
     status: () => ({
       available: Boolean(provider),
       provider: provider?.name ?? null,

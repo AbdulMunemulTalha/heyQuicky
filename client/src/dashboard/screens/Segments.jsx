@@ -87,7 +87,7 @@ export default function Segments() {
 }
 
 function describe(t, c) {
-  const v = c.field === 'risk' ? t(`sg.risk.${c.value}`) : c.field === 'vip' ? t(c.value ? 'sg.yes' : 'sg.no') : c.field === 'spent' ? t.money(c.value) : c.value;
+  const v = c.field === 'risk' ? t(`sg.risk.${c.value}`) : c.field === 'vip' ? t(c.value ? 'sg.yes' : 'sg.no') : c.field === 'spent' ? t.money(c.value) : c.field === 'delivery_rate' ? t.pct(c.value) : c.value;
   return t(`sg.desc.${c.field}.${c.op}`, { v });
 }
 
@@ -119,6 +119,13 @@ function Tags({ t, d, edit, onChange }) {
         ))}
       </ul>
       <p className="small muted sg-riskhint">{t('sg.riskHint')}</p>
+      <span className="small muted">{t('sg.aiTags')}</span>
+      <ul className="sg-tags">
+        {d.aiTags.map((a) => (
+          <li key={a.key}><Pill tone="purple">{t(`sg.ai.${a.key}`)}</Pill><span className="grow" /><small className="muted">{t.num(a.count)}</small></li>
+        ))}
+      </ul>
+      <p className="small muted sg-riskhint">{t('sg.aiTagsHint')}</p>
       <span className="small muted">{t('sg.manualTags')}</span>
       {d.tags.length === 0 ? <p className="small muted">{t('sg.noTags')}</p> : (
         <ul className="sg-tags">
@@ -160,7 +167,7 @@ function SegmentEditor({ t, seg, fields, tags, onClose, onSaved }) {
     return () => clearTimeout(timer);
   }, [conds]);
   const setC = (i, patch) => setConds((list) => list.map((c, j) => (j === i ? { ...c, ...patch } : c)));
-  const defaults = { orders: 2, spent: 5000, returned: 1, active_days: 30, tag: tags[0]?.name ?? 'VIP', vip: true, risk: 'high', area: 'Dhaka' };
+  const defaults = { orders: 2, spent: 5000, returned: 1, active_days: 30, tag: tags[0]?.name ?? 'VIP', vip: true, risk: 'high', area: 'Dhaka', delivery_rate: 90 };
   async function save() {
     setBusy(true);
     try {
@@ -199,7 +206,7 @@ function SegmentEditor({ t, seg, fields, tags, onClose, onSaved }) {
             </div>
           );
         })}
-        <datalist id="sg-taglist">{[...tags.map((x) => x.name), 'VIP', 'Repeat buyer', 'First order', 'Big spender', 'Returned before', 'High COD risk'].map((n) => <option key={n} value={n} />)}</datalist>
+        <datalist id="sg-taglist">{[...tags.map((x) => x.name), 'VIP', 'Repeat buyer', 'First order', 'Big spender', 'Returned before', 'High COD risk', 'Asked for discount', 'Gift buyer', 'Wholesale enquiry'].map((n) => <option key={n} value={n} />)}</datalist>
         <div><Button size="sm" disabled={conds.length >= 8} onClick={() => setConds([...conds, { field: 'orders', op: 'gte', value: 1 }])}>{t('sg.addCond')}</Button></div>
         <div className="sg-preview" aria-live="polite">
           {preview?.error ? <span className="small sg-err">{preview.error}</span> : preview ? (
@@ -241,7 +248,7 @@ function Members({ t, seg, onClose }) {
   const [d, setD] = useState(null);
   useEffect(() => { dash(`/segments/${seg.id}/customers`).then(setD).catch((err) => toast(err.message, 'red')); }, [seg.id]);
   return (
-    <Drawer title={seg.name} onClose={onClose} width={460}>
+    <Drawer title={seg.name} onClose={onClose} width={560}>
       {!d ? <Skeleton h={200} r={10} /> : d.customers.length === 0 ? <Empty icon="customers" title={t('sg.noMembers')} /> : (
         <>
           <p className="small muted">{t('sg.showing', { n: t.num(Math.min(100, d.count)), of: t.num(d.count) })}</p>
@@ -249,11 +256,16 @@ function Members({ t, seg, onClose }) {
             {d.customers.map((c) => (
               <li key={c.id}>
                 <button type="button" onClick={() => navigate(`/customers/${c.id}`)}>
-                  <strong className="small">{c.name || '—'}</strong>
-                  <small className="muted">{t('sg.memberLine', { o: t.num(c.orders), s: t.money(c.spent) })}{c.returned ? ` · ${t('sg.returnedN', { n: t.num(c.returned) })}` : ''}</small>
+                  <strong className="small">{c.name || '—'}{c.vip && ' · VIP'}</strong>
+                  <small className="muted">{t('sg.memberLine', { o: t.num(c.orders), s: t.money(c.spent) })}</small>
+                  {c.suggested && <small className="sg-suggest">{t(`sg.sug.${c.suggested.key}`, { n: c.suggested.amount ? t.money(c.suggested.amount) : '', code: c.suggested.code ?? '' })}</small>}
                 </button>
-                {c.vip && <Pill tone="purple">VIP</Pill>}
-                {c.risk === 'high' && <Pill tone="red">{t('sg.risk.high')}</Pill>}
+                <span className="sg-rate" title={t('sg.f.delivery_rate')}>
+                  {c.deliveryRate == null ? <small className="muted">—</small> : (
+                    <><span className="sg-bar" aria-hidden="true"><span className={c.deliveryRate >= 85 ? 'good' : c.deliveryRate >= 60 ? 'mid' : 'low'} style={{ width: `${c.deliveryRate}%` }} /></span><small>{t.pct(c.deliveryRate)}</small></>
+                  )}
+                </span>
+                <Pill tone={c.risk === 'high' ? 'red' : c.risk === 'medium' ? 'yellow' : 'green'}>{t(`sg.riskShort.${c.risk}`)}</Pill>
               </li>
             ))}
           </ul>

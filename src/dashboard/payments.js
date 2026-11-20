@@ -6,29 +6,51 @@ import { orderTotal } from './orderOps.js';
 export const TRX = /^[A-Z0-9]{8,12}$/;
 export const DEFAULT_ADVANCE_MESSAGE = 'অর্ডারটি কনফার্ম করতে {amount} অগ্রিম {method} ({number}) নম্বরে Send Money করে TrxID টি এখানে দিন। বাকি টাকা ডেলিভারির সময় দিবেন।';
 
+// The four advance rules (PAY-03), each with its own amount — taka or a % of the order.
+export const ADVANCE_RULES = ['outside_dhaka', 'courier_risk', 'order_over', 'first_order'];
+const DEFAULT_RULES = {
+  outside_dhaka: { on: false, kind: 'fixed', value: 300 },
+  courier_risk: { on: true, kind: 'fixed', value: 500, below: 70 },
+  order_over: { on: false, kind: 'percent', value: 20, over: 5000 },
+  first_order: { on: false, kind: 'fixed', value: 200 },
+};
+
 export function advanceSettings(ws) {
   const a = ws?.settings?.advance ?? {};
-  return {
-    highRisk: a.high_risk !== false,
-    outsideOver: a.outside_over ?? null,
-    orderOver: a.order_over ?? null,
-    firstOrder: Boolean(a.first_order),
-    amount: a.amount ?? 300,
-    message: a.message || DEFAULT_ADVANCE_MESSAGE,
-  };
+  let rules;
+  if (a.rules) {
+    rules = Object.fromEntries(ADVANCE_RULES.map((k) => [k, { ...DEFAULT_RULES[k], ...(a.rules[k] ?? {}) }]));
+  } else {
+    // Settings saved before rules had their own amounts: one amount for every rule.
+    const amount = a.amount ?? 300;
+    rules = {
+      outside_dhaka: { ...DEFAULT_RULES.outside_dhaka, on: a.outside_over != null, value: amount },
+      courier_risk: { ...DEFAULT_RULES.courier_risk, on: a.high_risk !== false, value: amount },
+      order_over: { ...DEFAULT_RULES.order_over, on: a.order_over != null, kind: 'fixed', value: amount, over: a.order_over ?? 5000 },
+      first_order: { ...DEFAULT_RULES.first_order, on: Boolean(a.first_order), value: amount },
+    };
+  }
+  return { rules, message: a.message || DEFAULT_ADVANCE_MESSAGE };
 }
 
-// Whether this order needs an advance, and why. Returns { amount, reason } or null.
-export function advanceFor(ws, { riskLevel = 'low', zone = 'inside_dhaka', total = 0, previousOrders = 0 }) {
+const ruleAmount = (r, total) => Math.min(total, r.kind === 'percent' ? Math.round((total * r.value) / 100) : r.value);
+
+// Whether this order needs an advance, and why. When several rules match, the largest advance wins.
+// courierRate: the customer's delivery success % from the courier check (null when unknown).
+export function advanceFor(ws, { riskLevel = 'low', courierRate = null, zone = 'inside_dhaka', total = 0, previousOrders = 0 }) {
   if (!ws?.bkash_number && !ws?.nagad_number) return null; // nowhere to pay
-  const r = advanceSettings(ws);
-  const amount = Math.min(r.amount, total);
-  if (amount <= 0) return null;
-  if (r.highRisk && riskLevel === 'high') return { amount, reason: 'high_risk' };
-  if (r.outsideOver != null && zone === 'outside_dhaka' && total > r.outsideOver) return { amount, reason: 'outside_dhaka' };
-  if (r.orderOver != null && total > r.orderOver) return { amount, reason: 'order_over' };
-  if (r.firstOrder && previousOrders === 0) return { amount, reason: 'first_order' };
-  return null;
+  const { rules } = advanceSettings(ws);
+  const hits = [];
+  if (rules.outside_dhaka.on && zone === 'outside_dhaka') hits.push('outside_dhaka');
+  if (rules.courier_risk.on && (courierRate != null ? courierRate < rules.courier_risk.below : riskLevel === 'high')) hits.push('courier_risk');
+  if (rules.order_over.on && total > rules.order_over.over) hits.push('order_over');
+  if (rules.first_order.on && previousOrders === 0) hits.push('first_order');
+  let best = null;
+  for (const reason of hits) {
+    const amount = ruleAmount(rules[reason], total);
+    if (amount > 0 && (!best || amount > best.amount)) best = { amount, reason };
+  }
+  return best;
 }
 
 // What the AI tells the customer when an advance is needed ("What the AI says").

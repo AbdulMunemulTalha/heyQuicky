@@ -41,3 +41,7 @@
 #dash .tm-audit li { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--border); }
 #dash .tm-audit li:first-child { border-top: 0; }
 @media (max-width: 900px) { #dash .tm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } #dash .tm-audit li { grid-template-columns: 1fr; gap: 4px; } }
+
+#dash .tm-duty { display: inline-flex; align-items: center; gap: 8px; }
+#dash .tm-on { color: var(--green-text, #12733f); font-weight: 600; }
+#dash .tm-checks { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }

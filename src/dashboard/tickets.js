@@ -2,7 +2,16 @@
 // a status, a resolution and a timeline. ACT NOW chats open one automatically.
 export const TICKET_TYPES = ['complaint', 'refund', 'exchange', 'damaged', 'late', 'other'];
 export const TICKET_STATUSES = ['open', 'waiting', 'solved'];
-export const RESOLUTIONS = ['refunded', 'exchanged', 'replaced', 'resent', 'explained', 'other'];
+export const RESOLUTIONS = ['refunded', 'refund_bkash', 'refund_nagad', 'store_credit', 'exchanged', 'replaced', 'right_item', 'resent', 'courier', 'explained', 'other'];
+// The resolutions offered for each kind of ticket (frame TKT-01/02 "Resolution" chips).
+export const RESOLUTIONS_FOR = {
+  exchange: ['right_item', 'exchanged', 'refund_bkash', 'store_credit'],
+  refund: ['refund_bkash', 'refund_nagad', 'store_credit', 'exchanged'],
+  damaged: ['replaced', 'refund_bkash', 'store_credit'],
+  late: ['resent', 'courier', 'refund_bkash'],
+  complaint: ['explained', 'exchanged', 'refund_bkash', 'store_credit'],
+  other: ['explained', 'refund_bkash', 'store_credit'],
+};
 // How long before an open ticket counts as overdue.
 export const DUE_HOURS = { act_now: 1, normal: 24 };
 

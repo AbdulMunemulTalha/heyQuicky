@@ -9,7 +9,8 @@ export async function trainedNotes(db, workspaceId) {
   ]);
   const parts = [];
   if (knowledge.length) parts.push(`Knowledge book:\n${knowledge.map((k) => `- ${k.title ? `${k.title}: ` : ''}${k.text}`).join('\n')}`);
-  if (taught.length) parts.push(`Answers the shop taught (use them when a customer asks this):\n${taught.map((t) => `- Q: ${t.question}\n  A: ${t.answer}${t.when?.length ? ` (when: ${t.when.join('; ')})` : ''}`).join('\n')}`);
+  const chart = (t) => (t.attach ?? []).find((a) => a.startsWith('size_chart:'))?.split(':')[1];
+  if (taught.length) parts.push(`Answers the shop taught (use them when a customer asks this):\n${taught.map((t) => `- Q: ${t.question}\n  A: ${t.answer}${t.when?.length ? ` (when: ${t.when.join('; ')})` : ''}${chart(t) ? ` (also send the size chart: size_chart_product = ${chart(t)})` : ''}`).join('\n')}`);
   if (rules.length) parts.push(`Rules the shop always wants followed:\n${rules.map((r) => `- ${r.text}`).join('\n')}`);
   return parts.join('\n\n');
 }

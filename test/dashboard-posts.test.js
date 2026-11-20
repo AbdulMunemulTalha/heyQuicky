@@ -134,3 +134,18 @@ test('the AI matches a post from its picture (falling back to the caption) and c
   assert.equal(graph[1].body.message.attachment.payload.template_type, 'generic', 'the private reply is the product carousel');
   assert.deepEqual(graph[1].body.message.attachment.payload.elements.map((e) => e.title), ['Jamdani Kurti', 'Silk Orna']);
 });
+
+test('each product in a post shows where it came from: linked by you, found by AI or in the caption', async () => {
+  const s = await start();
+  try {
+    const a = await s.db.insert(s.db.products, { workspace_id: s.ws, name: 'Jamdani Kurti', price: 1450 });
+    const b = await s.db.insert(s.db.products, { workspace_id: s.ws, name: 'Silk Orna', price: 650 });
+    const post = await s.db.insert(s.db.posts, { workspace_id: s.ws, channel_id: s.page._id, external_id: 'PAGE1_33', platform: 'facebook', caption: 'x', suggested_ids: [a.id], match: 'ai_match', match_source: 'ai' });
+    await s.call(`/posts/${post.id}/products`, { method: 'PUT', token: s.owner, body: { productIds: [a.id, b.id] } });
+    let d = await s.call(`/posts/${post.id}`, { token: s.owner });
+    assert.deepEqual(d.body.products.map((p) => [p.name, p.source]), [['Jamdani Kurti', 'ai'], ['Silk Orna', 'you']]);
+    await s.call(`/posts/${post.id}/products`, { method: 'PUT', token: s.owner, body: { productIds: [a.id] } });
+    d = await s.call(`/posts/${post.id}`, { token: s.owner });
+    assert.deepEqual(d.body.products.map((p) => p.source), ['ai'], 'kept when the list changes');
+  } finally { await s.close(); }
+});

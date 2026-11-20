@@ -8,7 +8,7 @@ import './payments.css';
 
 const STATUSES = ['waiting', 'approved', 'rejected'];
 const REJECT_REASONS = ['not_received', 'wrong_amount', 'wrong_trx', 'other'];
-const CHECK_TONE = { short: 'red', more: 'yellow', other_number: 'yellow', number_reused: 'yellow', no_order: 'blue' };
+const CHECK_TONE = { matches: 'green', short: 'red', more: 'yellow', other_number: 'yellow', number_reused: 'yellow', no_order: 'blue' };
 
 // Phase 2 · Payments (PAY-01 / PAY-03): verify bKash / Nagad advances and set when to ask for one.
 export default function Payments({ query }) {
@@ -46,8 +46,9 @@ function Verify({ t, query }) {
       {d && (
         <div className="pm-kpis">
           <Kpi label={t('pm.kWaiting')} value={t.num(d.counts.waiting)} sub={t.money(d.waitingAmount)} tone={d.counts.waiting ? 'yellow' : undefined} />
-          <Kpi label={t('pm.kToday')} value={t.money(d.approvedToday.amount)} sub={t('pm.payments', { n: t.num(d.approvedToday.count) })} />
-          <Kpi label={t('pm.kRejected')} value={t.num(d.counts.rejected)} />
+          <Kpi label={t('pm.kToday2')} value={`${t.num(d.approvedToday.count)} · ${t.money(d.approvedToday.amount)}`} tone="green" />
+          <Kpi label={t('pm.kRejectedToday')} value={t.num(d.rejectedToday)} tone={d.rejectedToday ? 'red' : undefined} />
+          <Kpi label={t('pm.kSpeed')} value={d.avgApproveMin == null ? '—' : t('tm.minutes', { n: t.num(d.avgApproveMin) })} />
         </div>
       )}
       <div className="pm-bar">
@@ -78,6 +79,7 @@ function PaymentCard({ t, p, edit, onDone }) {
   return (
     <Card className={`pm-card${p.checks.includes('short') ? ' warn' : ''}`}>
       <div className="pm-top">
+        {p.screenshot ? <a href={p.screenshot} target="_blank" rel="noreferrer" className="pm-shot" aria-label={t('pm.screenshot')}><img src={p.screenshot} alt={t('pm.screenshot')} /></a> : null}
         <span className={`pm-method ${p.method}`}>{p.method === 'nagad' ? 'Nagad' : 'bKash'}</span>
         <div className="grow">
           <strong className="pm-amount">{t.money(p.amount)}</strong>
@@ -151,13 +153,8 @@ function AddPayment({ t, onClose, onDone }) {
   );
 }
 
-const RULES = [
-  { key: 'highRisk', kind: 'bool' },
-  { key: 'outsideOver', kind: 'amount' },
-  { key: 'orderOver', kind: 'amount' },
-  { key: 'firstOrder', kind: 'bool' },
-];
-const ruleOn = (a, r) => (r.kind === 'bool' ? Boolean(a[r.key]) : a[r.key] != null);
+// The four advance rules from the design, each with its own advance (৳ or % of the order).
+const RULES = ['outside_dhaka', 'courier_risk', 'order_over', 'first_order'];
 
 function Rules({ t }) {
   const { me } = useDash();
@@ -165,28 +162,67 @@ function Rules({ t }) {
   const [f, setF] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [menu, setMenu] = useState(false);
-  const load = useCallback(() => dash('/payments/rules').then((x) => { setD(x); setF({ bkash: x.bkash, bkashType: x.bkashType, nagad: x.nagad, ...x.advance }); }, setError), []);
+  const load = useCallback(() => dash('/payments/rules').then((x) => {
+    setD(x);
+    setF({ bkash: x.bkash, bkashType: x.bkashType, nagad: x.nagad, message: x.advance.message,
+      rules: Object.fromEntries(RULES.map((k) => [k, { ...x.advance.rules[k], value: String(x.advance.rules[k].value), below: String(x.advance.rules[k].below ?? ''), over: String(x.advance.rules[k].over ?? '') }])) });
+  }, setError), []);
   useEffect(() => { load(); }, [load]);
   if (error) return <ErrorState thing={t('pm.tab.rules')} error={error} onRetry={load} />;
   if (!f) return <Skeleton h={320} r={12} />;
   const editable = ['owner', 'admin'].includes(me?.user?.role);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  const setR = (k, patch) => setF((x) => ({ ...x, rules: { ...x.rules, [k]: { ...x.rules[k], ...patch } } }));
+  const digits = (v) => v.replace(/\D/g, '');
   async function save() {
     setBusy(true);
+    const rules = Object.fromEntries(RULES.map((k) => {
+      const r = f.rules[k];
+      return [k, { on: r.on, kind: r.kind, value: Number(r.value), ...(k === 'courier_risk' ? { below: Number(r.below) } : {}), ...(k === 'order_over' ? { over: Number(r.over) } : {}) }];
+    }));
     try {
-      await dash('/payments/rules', { method: 'PATCH', body: { bkash: f.bkash, bkashType: f.bkashType, nagad: f.nagad,
-        advance: { highRisk: f.highRisk, firstOrder: f.firstOrder, outsideOver: f.outsideOver === '' ? null : f.outsideOver, orderOver: f.orderOver === '' ? null : f.orderOver, amount: f.amount, message: f.message } } });
+      await dash('/payments/rules', { method: 'PATCH', body: { bkash: f.bkash, bkashType: f.bkashType, nagad: f.nagad, advance: { rules, message: f.message } } });
       toast(t('common.saved'), 'green'); load();
     } catch (err) { toast(err.message, 'red'); }
     setBusy(false);
   }
-  const preview = (f.message || d.defaultMessage).replace(/\{amount\}/g, t.money(Number(f.amount) || 0)).replace(/\{method\}/g, f.bkash ? 'বিকাশ' : 'নগদ').replace(/\{number\}/g, f.bkash || f.nagad || '01XXXXXXXXX');
-  const off = RULES.filter((r) => !ruleOn(f, r));
+  // The chat preview uses the first rule that's on, with an example order of ৳2,500.
+  const example = RULES.map((k) => f.rules[k]).find((r) => r.on);
+  const exampleAmount = example ? (example.kind === 'percent' ? Math.round((2500 * Number(example.value || 0)) / 100) : Number(example.value || 0)) : 300;
+  const preview = (f.message || d.defaultMessage).replace(/\{amount\}/g, t.money(exampleAmount)).replace(/\{method\}/g, f.bkash ? 'বিকাশ' : 'নগদ').replace(/\{number\}/g, f.bkash || f.nagad || '01XXXXXXXXX');
   return (
     <div className="pm-rules">
-      <Card title={t('pm.numbers')}>
-        <div className="pm-form">
+      <Card title={t('pm.askWhen')}>
+        <ul className="pm-rulelist">
+          {RULES.map((k) => {
+            const r = f.rules[k];
+            return (
+              <li key={k} className={r.on ? '' : 'off'}>
+                <div className="grow">
+                  <strong className="small">
+                    {k === 'order_over' ? (
+                      <>{t('pm.rule2.order_over')} ৳<input className="input pm-num pm-inline" inputMode="numeric" value={r.over} onChange={(e) => setR(k, { over: digits(e.target.value) })} disabled={!editable} aria-label={t('pm.ruleOver')} /></>
+                    ) : t(`pm.rule2.${k}`)}
+                  </strong>
+                  <small className="muted">
+                    {k === 'courier_risk' ? (
+                      <>{t('pm.ruleHint2.courier_risk')} <input className="input pm-num pm-inline" inputMode="numeric" value={r.below} onChange={(e) => setR(k, { below: digits(e.target.value) })} disabled={!editable} aria-label={t('pm.ruleBelow')} />%</>
+                    ) : t(`pm.ruleHint2.${k}`)}
+                  </small>
+                </div>
+                <span className="pm-amt">
+                  <input className="input pm-num" inputMode="numeric" value={r.value} onChange={(e) => setR(k, { value: digits(e.target.value) })} disabled={!editable} aria-label={t('pm.ruleAmount', { r: t(`pm.rule2.${k}`) })} />
+                  <select className="input pm-kind" value={r.kind} onChange={(e) => setR(k, { kind: e.target.value })} disabled={!editable} aria-label={t('pm.ruleKind')}>
+                    <option value="fixed">৳</option><option value="percent">%</option>
+                  </select>
+                </span>
+                <Toggle size="sm" checked={r.on} disabled={!editable} onChange={(on) => setR(k, { on })} label={t(`pm.rule2.${k}`)} />
+              </li>
+            );
+          })}
+        </ul>
+        <small className="faint">{t('pm.rulesHint2')}</small>
+        <div className="pm-numbers">
           <label className="small"><strong>{t('pm.bkashNumber')}</strong>
             <div className="row" style={{ gap: 8 }}>
               <input className="input" inputMode="tel" value={f.bkash} onChange={(e) => set('bkash', e.target.value)} placeholder="01XXXXXXXXX" disabled={!editable} />
@@ -196,40 +232,20 @@ function Rules({ t }) {
             </div>
           </label>
           <label className="small"><strong>{t('pm.nagadNumber')}</strong><input className="input" inputMode="tel" value={f.nagad} onChange={(e) => set('nagad', e.target.value)} placeholder="01XXXXXXXXX" disabled={!editable} /></label>
-          {!f.bkash && !f.nagad && <p className="small pm-note">{t('pm.noNumbers')}</p>}
         </div>
-      </Card>
-
-      <Card title={t('pm.askWhen')} action={editable && off.length > 0 && (
-        <div className="pm-menuwrap">
-          <Button size="sm" onClick={() => setMenu(!menu)} aria-expanded={menu}>{t('pm.addRule')}</Button>
-          {menu && <ul className="pm-menu" role="menu">{off.map((r) => <li key={r.key}><button type="button" role="menuitem" onClick={() => { set(r.key, r.kind === 'bool' ? true : 2000); setMenu(false); }}>{t(`pm.rule.${r.key}`, { n: '…' })}</button></li>)}</ul>}
-        </div>
-      )}>
-        {RULES.filter((r) => ruleOn(f, r)).length === 0 ? <p className="small muted">{t('pm.noRules')}</p> : (
-          <ul className="pm-rulelist">
-            {RULES.filter((r) => ruleOn(f, r)).map((r) => (
-              <li key={r.key}>
-                <span className="grow small">
-                  {r.kind === 'amount' ? (
-                    <>{t(`pm.rule.${r.key}`, { n: '' })} <input className="input pm-num" inputMode="numeric" value={f[r.key] ?? ''} onChange={(e) => set(r.key, e.target.value.replace(/\D/g, ''))} disabled={!editable} aria-label={t(`pm.rule.${r.key}`, { n: '' })} /></>
-                  ) : t(`pm.rule.${r.key}`)}
-                </span>
-                {editable && <Toggle size="sm" checked onChange={() => set(r.key, r.kind === 'bool' ? false : null)} label={t('pm.ruleOff')} />}
-              </li>
-            ))}
-          </ul>
-        )}
-        <label className="small pm-amountrow"><strong>{t('pm.advanceAmount')}</strong>
-          <input className="input pm-num" inputMode="numeric" value={f.amount} onChange={(e) => set('amount', e.target.value.replace(/\D/g, ''))} disabled={!editable} /> <span className="muted">৳</span>
-        </label>
-        <small className="faint">{t('pm.rulesHint')}</small>
+        {!f.bkash && !f.nagad && <p className="small pm-note">{t('pm.noNumbers')}</p>}
       </Card>
 
       <Card title={t('pm.aiSays')}>
+        <div className="pm-preview">
+          <div className="pm-chat">
+            <div className="bubble-c shop bn-ok">{preview}</div>
+            <div className="bubble-c cust">TrxID BKH8X2K9QP</div>
+            <div className="bubble-c shop bn-ok">{t('pm.previewThanks')}</div>
+          </div>
+        </div>
         <textarea className="input" rows={3} value={f.message} onChange={(e) => set('message', e.target.value)} maxLength={400} disabled={!editable} aria-label={t('pm.aiSays')} />
         <small className="faint">{t('pm.placeholders')}</small>
-        <div className="pm-preview"><div className="bubble-c bn-ok">{preview}</div></div>
         {editable && <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}><Button variant="primary" busy={busy} onClick={save}>{t('common.save')}</Button></div>}
       </Card>
     </div>

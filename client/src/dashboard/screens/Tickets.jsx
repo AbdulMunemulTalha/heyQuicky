@@ -3,7 +3,7 @@ import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
 import { navigate, setQuery } from '../lib/router.jsx';
-import { Button, Card, Checkbox, Chips, Empty, ErrorState, Modal, Pill, Skeleton, Tabs, toast } from '../ui/kit.jsx';
+import { Button, Card, Checkbox, Chips, Empty, ErrorState, Kpi, Modal, Pill, Skeleton, Tabs, toast } from '../ui/kit.jsx';
 import './tickets.css';
 
 const STATUSES = ['open', 'waiting', 'solved'];
@@ -52,14 +52,23 @@ export default function Tickets({ params, query }) {
           {can('reply') && <Button variant="dark" onClick={() => openOverlay('newTicket', { onDone: (n) => navigate(`/tickets/${n}`) })}>{t('tk.new')}</Button>}
         </div>
       </header>
+      {d && (
+        <div className="tk-kpis">
+          <Kpi label={t('tk.kOpen')} value={t.num((d.counts.open ?? 0) + (d.counts.waiting ?? 0))} />
+          <Kpi label={t('tk.kActNow')} value={t.num(d.counts.actNow)} tone={d.counts.actNow ? 'red' : undefined} />
+          <Kpi label={t('tk.kAvg')} value={d.kpis.avgSolveHours == null ? '—' : d.kpis.avgSolveHours >= 24 ? t('tk.days', { n: t.num(Math.round(d.kpis.avgSolveHours / 2.4) / 10) }) : t('tk.hours', { n: t.num(d.kpis.avgSolveHours) })} />
+          <Kpi label={t('tk.kSolved')} value={t.num(d.kpis.solved30)} tone="green" />
+        </div>
+      )}
       <div className="tk-layout">
         <Card pad={false} className="tk-listcard">
           <div className="tk-filters">
-            <Tabs label={t('tk.title')} value={status} onChange={(v) => setQuery({ status: v === 'open' ? null : v })}
-              items={STATUSES.map((s) => ({ key: s, label: t(`tk.status.${s}`), count: d?.counts[s] }))} />
+            <Tabs label={t('tk.title')} value={mine ? 'mine' : status} onChange={(v) => setQuery({ status: v === 'open' || v === 'mine' ? null : v, mine: v === 'mine' ? '1' : null })}
+              items={[{ key: 'open', label: t('tk.status.open'), count: (d?.counts.open ?? 0) + (d?.counts.waiting ?? 0) }, { key: 'mine', label: t('tk.mine'), count: d?.counts.mine },
+                { key: 'solved', label: t('tk.status.solved'), count: d?.counts.solved }, { key: 'all', label: t('tk.all'), count: d?.counts.all }]} />
             <div className="row" style={{ gap: 8 }}>
               <input className="input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('tk.search')} aria-label={t('tk.search')} />
-              <button type="button" className={`chip${mine ? ' on' : ''}`} aria-pressed={mine} onClick={() => setQuery({ mine: mine ? null : '1' })}>{t('tk.mine')}</button>
+
             </div>
           </div>
           {!d ? <div style={{ padding: 16 }}><Skeleton h={60} r={10} /></div> : d.tickets.length === 0 ? (
@@ -169,18 +178,32 @@ function Detail({ t, n, onChanged }) {
           <div>
             <dt>{t('tk.statusLabel')}</dt>
             <dd className="row" style={{ gap: 6 }}>
-              {edit && x.status !== 'solved' && (
-                <>
-                  {x.status === 'open' ? <Button size="sm" onClick={() => patch({ status: 'waiting' }, t('tk.nowWaiting'))}>{t('tk.markWaiting')}</Button>
-                    : <Button size="sm" onClick={() => patch({ status: 'open' })}>{t('tk.markOpen')}</Button>}
-                  <Button size="sm" variant="primary" onClick={() => setSolving(true)}>{t('tk.solve')}</Button>
-                </>
-              )}
-              {edit && x.status === 'solved' && <Button size="sm" onClick={() => patch({ status: 'open' }, t('tk.reopened'))}>{t('tk.reopen')}</Button>}
+              <select className="input" value={x.status} disabled={!edit} aria-label={t('tk.statusLabel')}
+                onChange={(e) => (e.target.value === 'solved' ? setSolving(true) : patch({ status: e.target.value }, e.target.value === 'open' && x.status === 'solved' ? t('tk.reopened') : t('common.saved')))}>
+                {['open', 'waiting', 'solved'].map((st) => <option key={st} value={st}>{t(`tk.statusOpt.${st}`)}</option>)}
+              </select>
               {edit && x.status !== 'solved' && <button type="button" className={`chip${x.actNow ? ' on' : ''}`} aria-pressed={x.actNow} onClick={() => patch({ actNow: !x.actNow })}>{t('ov.tag.actNow')}</button>}
             </dd>
           </div>
         </dl>
+        {x.why && (
+          <div className="tk-why">
+            <strong className="small">{t('tk.why')}</strong>
+            <p className="small bn-ok">{x.why}</p>
+          </div>
+        )}
+        {x.lastMessage && <div className="tk-last bn-ok">{x.lastMessage}</div>}
+        {edit && x.status !== 'solved' && (
+          <div className="tk-resolve">
+            <span className="small muted">{t('tk.resolution')}</span>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {x.resolutions.map((r) => (
+                <button key={r} type="button" className="chip" onClick={() => patch({ status: 'solved', resolutionKind: r, resolution: t(`tk.res.${r}`) }, t('tk.solvedWith', { r: t(`tk.res.${r}`) }))}>{t(`tk.res.${r}`)}</button>
+              ))}
+              <button type="button" className="chip" onClick={() => setSolving(true)}>{t('tk.resOther')}</button>
+            </div>
+          </div>
+        )}
         {x.status === 'solved' && (
           <div className="tk-resolution">
             <span className="small muted">{t('tk.resolution')}</span>

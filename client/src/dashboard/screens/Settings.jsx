@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { dash, session } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
-import { Link } from '../lib/router.jsx';
+import { Link, navigate } from '../lib/router.jsx';
 import { ConnectContext } from '../../components/common.jsx';
 import { Button, Card, Checkbox, ErrorState, Modal, Pill, Skeleton, Toggle, toast } from '../ui/kit.jsx';
 import './settings.css';
@@ -306,7 +306,6 @@ function Payments({ t }) {
   async function save(body, local) {
     try { await dash('/settings/payments', { method: 'PATCH', body }); setD((x) => ({ ...x, ...local })); toast(t('common.saved'), 'green'); } catch (e) { toast(e.message, 'red'); load(); }
   }
-  const adv = d.advance;
   return (
     <Card title={t('set.howPay')}>
       <fieldset className="set-fieldset" disabled={!edit}>
@@ -318,14 +317,8 @@ function Payments({ t }) {
           <Checkbox checked={d.screenshotsToWhatsapp} onChange={(on) => save({ screenshotsToWhatsapp: on }, { screenshotsToWhatsapp: on })} label={t('set.screenshots')} />
         </div>
         <h3 className="set-h3">{t('set.askAdvance')}</h3>
-        <Checkbox checked={adv.highRisk} onChange={(on) => save({ advance: { highRisk: on } }, { advance: { ...adv, highRisk: on } })} label={t('set.advHighRisk')} />
-        <div className="row set-adv-row">
-          <Checkbox checked={adv.outsideOver !== null} onChange={(on) => save({ advance: { outsideOver: on ? 3000 : null } }, { advance: { ...adv, outsideOver: on ? 3000 : null } })} label={t('set.advOutside')} />
-          {adv.outsideOver !== null && <MoneyInline value={adv.outsideOver} label={t('set.advOutside')} onSave={(n) => save({ advance: { outsideOver: n } }, { advance: { ...adv, outsideOver: Number(n) } })} />}
-        </div>
-        <label className="row set-adv-amount"><span className="small">{t('set.advAmount')}</span>
-          <MoneyInline value={adv.amount} label={t('set.advAmount')} onSave={(n) => save({ advance: { amount: n } }, { advance: { ...adv, amount: Number(n) } })} /></label>
-        <p className="small faint">{t('set.advNote')}</p>
+        <p className="small muted">{t('set.advMoved')}</p>
+        <Button size="sm" onClick={() => navigate('/payments?tab=rules')}>{t('set.advManage')}</Button>
       </fieldset>
     </Card>
   );
@@ -340,10 +333,6 @@ function NumberField({ t, id, label, value, onSave }) {
   );
 }
 
-function MoneyInline({ value, label, onSave }) {
-  const [v, setV] = useState(String(value ?? ''));
-  return <span className="set-money"><span>৳</span><input inputMode="numeric" value={v} onChange={(e) => setV(digitsOnly(e.target.value))} onBlur={() => v && v !== String(value) && onSave(v)} aria-label={label} /></span>;
-}
 
 // ---------- Team ----------
 export const ROLE_HINT = { owner: 'set.role.ownerHint', admin: 'set.role.adminHint', moderator: 'set.role.moderatorHint', agent: 'set.role.agentHint' };

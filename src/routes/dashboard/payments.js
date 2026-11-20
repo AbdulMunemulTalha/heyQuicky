@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
-import { audit, bdPhone } from '../../dashboard/util.js';
+import { audit, bdPhone, dhakaDayStart } from '../../dashboard/util.js';
 import { orderTotal } from '../../dashboard/orderOps.js';
-import { advanceSettings, approvePayment, rejectPayment, recordPayment, DEFAULT_ADVANCE_MESSAGE } from '../../dashboard/payments.js';
+import { advanceSettings, approvePayment, rejectPayment, recordPayment, DEFAULT_ADVANCE_MESSAGE, ADVANCE_RULES } from '../../dashboard/payments.js';
 
 const STATUSES = ['waiting', 'approved', 'rejected'];
 
@@ -23,10 +23,14 @@ export function paymentRoutes(db, _config, { auth, inbox, emit, notify }) {
     // The same TrxID or payer number used on another order is worth a second look.
     const sameNumber = await db.payments.aggregate([{ $match: { workspace_id: ws, from_number: { $in: list.map((p) => p.from_number).filter(Boolean) } } }, { $group: { _id: '$from_number', orders: { $addToSet: '$order_id' } } }]);
     const numberOrders = new Map(sameNumber.map((x) => [x._id, x.orders.filter(Boolean).length]));
-    const [counts, waitingSum, today] = await Promise.all([
+    const dayStart = dhakaDayStart(new Date());
+    const [counts, waitingSum, today, rejectedToday, speed] = await Promise.all([
       db.payments.aggregate([{ $match: { workspace_id: ws } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
       db.payments.aggregate([{ $match: { workspace_id: ws, status: 'waiting' } }, { $group: { _id: null, sum: { $sum: '$amount' } } }]),
-      db.payments.aggregate([{ $match: { workspace_id: ws, status: 'approved', decided_at: { $gte: new Date(Date.now() - 86_400_000) } } }, { $group: { _id: null, sum: { $sum: '$amount' }, n: { $sum: 1 } } }]),
+      db.payments.aggregate([{ $match: { workspace_id: ws, status: 'approved', decided_at: { $gte: dayStart } } }, { $group: { _id: null, sum: { $sum: '$amount' }, n: { $sum: 1 } } }]),
+      db.payments.countDocuments({ workspace_id: ws, status: 'rejected', decided_at: { $gte: dayStart } }),
+      // "Avg time to approve" over the last 7 days.
+      db.payments.aggregate([{ $match: { workspace_id: ws, status: 'approved', decided_at: { $gte: new Date(Date.now() - 7 * 86_400_000) } } }, { $group: { _id: null, avg: { $avg: { $subtract: ['$decided_at', '$created_at'] } } } }]),
     ]);
     const c = Object.fromEntries(counts.map((x) => [x._id, x.n]));
     res.json({
@@ -35,6 +39,7 @@ export function paymentRoutes(db, _config, { auth, inbox, emit, notify }) {
         const o = orders.get(p.order_id);
         const expected = p.expected ?? o?.advance?.amount ?? null;
         const checks = [];
+        if (expected != null && p.amount === expected) checks.push('matches');
         if (expected != null && p.amount < expected) checks.push('short');
         if (expected != null && p.amount > expected) checks.push('more');
         if (o && p.from_number && bdPhone(p.from_number) && bdPhone(p.from_number) !== o.phone) checks.push('other_number');
@@ -47,7 +52,8 @@ export function paymentRoutes(db, _config, { auth, inbox, emit, notify }) {
         };
       }),
       counts: { waiting: c.waiting ?? 0, approved: c.approved ?? 0, rejected: c.rejected ?? 0 },
-      waitingAmount: waitingSum[0]?.sum ?? 0, approvedToday: { amount: today[0]?.sum ?? 0, count: today[0]?.n ?? 0 },
+      waitingAmount: waitingSum[0]?.sum ?? 0, approvedToday: { amount: today[0]?.sum ?? 0, count: today[0]?.n ?? 0 }, rejectedToday,
+      avgApproveMin: speed[0]?.avg != null ? Math.round(speed[0].avg / 60_000) : null,
     });
   });
 
@@ -118,11 +124,21 @@ export function paymentRoutes(db, _config, { auth, inbox, emit, notify }) {
     }
     if (['personal', 'merchant', 'agent'].includes(b.bkashType)) set['settings.bkash_type'] = b.bkashType;
     const a = b.advance ?? {};
-    if (typeof a.highRisk === 'boolean') set['settings.advance.high_risk'] = a.highRisk;
-    if (typeof a.firstOrder === 'boolean') set['settings.advance.first_order'] = a.firstOrder;
-    if (a.outsideOver !== undefined) set['settings.advance.outside_over'] = money(a.outsideOver, 'order amount');
-    if (a.orderOver !== undefined) set['settings.advance.order_over'] = money(a.orderOver, 'order amount');
-    if (a.amount !== undefined) { const n = money(a.amount, 'advance amount', 100_000); if (n == null) throw new InboxError(400, 'Enter the advance amount'); set['settings.advance.amount'] = n; }
+    // Each rule: on / off, its own advance (৳ or % of the order) and its threshold (PAY-03).
+    if (a.rules !== undefined) {
+      const current = advanceSettings(await db.workspaces.findById(req.user.workspace_id, { settings: 1 }).lean()).rules;
+      const rules = {};
+      for (const k of ADVANCE_RULES) {
+        const r = { ...current[k], ...(a.rules?.[k] ?? {}) };
+        const kind = r.kind === 'percent' ? 'percent' : 'fixed';
+        const value = Number(r.value);
+        if (!Number.isFinite(value) || value < 1 || (kind === 'percent' ? value > 100 : value > 100_000)) throw new InboxError(400, kind === 'percent' ? 'An advance in % must be 1 to 100' : 'Enter the advance amount (৳1 to ৳1,00,000)');
+        rules[k] = { on: Boolean(r.on), kind, value: Math.round(value) };
+        if (k === 'courier_risk') { const below = Number(r.below); if (!Number.isFinite(below) || below < 1 || below > 100) throw new InboxError(400, 'Delivery success must be 1 to 100%'); rules[k].below = Math.round(below); }
+        if (k === 'order_over') { const over = money(r.over, 'order amount'); if (over == null) throw new InboxError(400, 'Enter the order amount'); rules[k].over = over; }
+      }
+      set['settings.advance.rules'] = rules;
+    }
     if (a.message !== undefined) {
       const m = String(a.message).trim().slice(0, 400);
       if (m && !m.includes('{amount}')) throw new InboxError(400, 'Keep {amount} in the message so the customer knows how much to send');

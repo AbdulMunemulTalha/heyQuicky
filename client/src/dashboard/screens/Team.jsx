@@ -3,7 +3,7 @@ import { dash, session } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
 import { navigate, setQuery } from '../lib/router.jsx';
-import { Button, Card, Chips, Empty, ErrorState, Kpi, Modal, Pill, Skeleton, Tabs, Toggle, toast } from '../ui/kit.jsx';
+import { Button, Card, Checkbox, Chips, Empty, ErrorState, Kpi, Modal, Pill, Skeleton, Tabs, Toggle, toast } from '../ui/kit.jsx';
 import { InviteDialog, ROLE_HINT } from './Settings.jsx';
 import './team.css';
 
@@ -61,6 +61,9 @@ function Members({ t, d, onChange }) {
     try { await dash(`/settings/team/${m.id}`, { method: 'PATCH', body }); toast(ok, 'green'); onChange(); } catch (e) { toast(e.message, 'red'); }
   }
   const canInvite = can('invite');
+  async function duty(m, onDuty) {
+    try { await dash(`/team/members/${m.id}/duty`, { method: 'PATCH', body: { onDuty } }); toast(onDuty ? t('tm.nowOn', { n: m.name }) : t('tm.nowOff', { n: m.name }), 'green'); onChange(); } catch (e) { toast(e.message, 'red'); }
+  }
   return (
     <Card pad={false} title={t('tm.members')} action={canInvite && <Button variant="primary" size="sm" onClick={() => setInvite(true)}>{t('tm.invite')}</Button>}>
       <div className="tm-tablewrap">
@@ -81,7 +84,9 @@ function Members({ t, d, onChange }) {
                   ) : <span>{t(`role.${m.role}`)}</span>}
                   <br /><small className="muted">{t(ROLE_HINT[m.role])}</small>
                 </td>
-                <td>{!m.active ? <Pill tone="gray">{t('set.removed')}</Pill> : m.pending ? <Pill tone="blue">{t('tm.pending')}</Pill> : <Pill tone={m.onDuty ? 'green' : 'gray'}>{m.onDuty ? t('set.onDuty') : t('set.away')}</Pill>}</td>
+                <td>{!m.active ? <Pill tone="gray">{t('set.removed')}</Pill> : m.pending ? <Pill tone="blue">{t('tm.pending')}</Pill> : d.canEdit ? (
+                  <span className="tm-duty"><Toggle size="sm" checked={m.onDuty} onChange={(on) => duty(m, on)} label={t('tm.dutyFor', { n: m.name })} /><small className={m.onDuty ? 'tm-on' : 'muted'}>{m.onDuty ? t('set.onDuty') : t('set.away')}</small></span>
+                ) : <Pill tone={m.onDuty ? 'green' : 'gray'}>{m.onDuty ? t('set.onDuty') : t('set.away')}</Pill>}</td>
                 <td>{t.num(m.openChats)}</td>
                 <td>{t.num(m.repliesToday)}</td>
                 <td>{m.firstReplyMin == null ? <span className="muted">—</span> : t('tm.minutes', { n: t.num(m.firstReplyMin) })}</td>
@@ -151,7 +156,7 @@ function Permissions({ t }) {
 
 function Duty({ t, d, onChange }) {
   const s = d.settings;
-  const [f, setF] = useState({ share: s.share, shareRoles: s.shareRoles, replyMin: String(s.replyMin), warnMin: String(s.warnMin), hours: s.hours });
+  const [f, setF] = useState({ share: s.share, shareRoles: s.shareRoles, replyMin: String(s.replyMin), warnMin: String(s.warnMin), hours: s.hours, dutyOnly: s.dutyOnly, offDuty: s.offDuty });
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const setH = (k, v) => setF((x) => ({ ...x, hours: { ...x.hours, [k]: v } }));
@@ -196,20 +201,25 @@ function Duty({ t, d, onChange }) {
       </Card>
       <Card title={t('tm.shared')}>
         <fieldset className="tm-share">
-          {['balanced', 'queue'].map((m) => (
+          {['round_robin', 'balanced', 'queue'].map((m) => (
             <label key={m} className={`tm-opt${f.share === m ? ' on' : ''}`}>
               <input type="radio" name="share" checked={f.share === m} onChange={() => set('share', m)} disabled={!edit} />
               <span><strong>{t(`tm.share.${m}`)}</strong><small className="muted">{t(`tm.shareHint.${m}`)}</small></span>
             </label>
           ))}
         </fieldset>
-        {f.share === 'balanced' && (
+        {f.share !== 'queue' && (
           <>
             <span className="small"><strong>{t('tm.shareWith')}</strong></span>
             <Chips label={t('tm.shareWith')} multi value={f.shareRoles} onChange={(v) => edit && v.length && set('shareRoles', v)} items={['admin', 'moderator', 'agent'].map((r) => ({ key: r, label: t(`role.${r}`) }))} />
           </>
         )}
         <p className="small muted">{t('tm.dutyAlerts')}</p>
+        <div className="tm-checks">
+          <Checkbox checked={f.dutyOnly} disabled={!edit} onChange={(v) => set('dutyOnly', v)} label={t('tm.dutyOnly')} hint={t('tm.dutyOnlyHint')} />
+          <Checkbox checked={f.offDuty.on} disabled={!edit} onChange={(v) => set('offDuty', { ...f.offDuty, on: v })} label={t('tm.offDuty')} />
+          {f.offDuty.on && <textarea className="input" rows={2} value={f.offDuty.message} onChange={(e) => set('offDuty', { ...f.offDuty, message: e.target.value })} maxLength={300} disabled={!edit} aria-label={t('tm.offDuty')} />}
+        </div>
       </Card>
       {edit && <div className="tm-save"><Button variant="primary" busy={busy} onClick={save}>{t('common.save')}</Button></div>}
     </div>
@@ -217,7 +227,9 @@ function Duty({ t, d, onChange }) {
 }
 
 function Routing({ t, d, onChange }) {
-  const [rules, setRules] = useState(d.settings.rules.map((r) => ({ field: r.field, value: r.value, userId: r.user_id })));
+  const [rules, setRules] = useState(d.settings.rules.map((r) => ({ field: r.field, value: r.value, action: r.action ?? 'assign', userId: r.user_id })));
+  const ACTIONS = { channel: ['assign'], tag: ['assign'], new_customer: ['assign'], topic: ['assign', 'assign_ticket', 'notify'], order_over: ['assign', 'assign_ticket', 'notify'], comment: ['notify'] };
+  const DEFAULT_VALUE = { channel: 'messenger', tag: 'VIP', new_customer: true, topic: 'complaint', order_over: '10000', comment: true };
   const [busy, setBusy] = useState(false);
   const people = d.members.filter((m) => m.active && !m.pending);
   const setR = (i, patch) => setRules((list) => list.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -228,16 +240,22 @@ function Routing({ t, d, onChange }) {
   }
   const move = (i, dir) => setRules((list) => { const next = [...list]; const [x] = next.splice(i, 1); next.splice(i + dir, 0, x); return next; });
   return (
-    <Card title={t('tm.routingTitle')} action={d.canEdit && <Button size="sm" disabled={rules.length >= 20} onClick={() => setRules([...rules, { field: 'channel', value: 'instagram', userId: people[0]?.id }])}>{t('tm.addRule')}</Button>}>
+    <Card title={t('tm.routingTitle')} action={d.canEdit && <Button size="sm" disabled={rules.length >= 20} onClick={() => setRules([...rules, { field: 'channel', value: 'instagram', action: 'assign', userId: people[0]?.id }])}>{t('tm.addRule')}</Button>}>
       <p className="small muted">{t('tm.routingHint')}</p>
       {rules.length === 0 ? <Empty icon="customers" title={t('tm.noRules')}>{t('tm.noRulesSub')}</Empty> : (
         <ol className="tm-rules">
           {rules.map((r, i) => (
             <li key={i}>
               <span className="tm-if">{t('tm.if')}</span>
-              <select className="input" value={r.field} onChange={(e) => setR(i, { field: e.target.value, value: e.target.value === 'channel' ? 'messenger' : e.target.value === 'tag' ? 'VIP' : true })} disabled={!d.canEdit} aria-label={t('tm.ruleWhen')}>
-                {['channel', 'tag', 'new_customer'].map((k) => <option key={k} value={k}>{t(`tm.rf.${k}`)}</option>)}
+              <select className="input" value={r.field} onChange={(e) => { const k = e.target.value; setR(i, { field: k, value: DEFAULT_VALUE[k], action: ACTIONS[k][0] }); }} disabled={!d.canEdit} aria-label={t('tm.ruleWhen')}>
+                {['channel', 'tag', 'new_customer', 'topic', 'order_over', 'comment'].map((k) => <option key={k} value={k}>{t(`tm.rf.${k}`)}</option>)}
               </select>
+              {r.field === 'topic' && (
+                <select className="input" value={r.value} onChange={(e) => setR(i, { value: e.target.value })} disabled={!d.canEdit} aria-label={t('tm.ruleValue')}>
+                  {['complaint', 'order_status', 'payment', 'delivery', 'new_order', 'price'].map((k) => <option key={k} value={k}>{t(`tm.topic.${k}`)}</option>)}
+                </select>
+              )}
+              {r.field === 'order_over' && <span className="tm-mins">৳<input className="input" inputMode="numeric" value={r.value} onChange={(e) => setR(i, { value: e.target.value.replace(/\D/g, '') })} disabled={!d.canEdit} aria-label={t('tm.ruleValue')} /></span>}
               {r.field === 'channel' && (
                 <select className="input" value={r.value} onChange={(e) => setR(i, { value: e.target.value })} disabled={!d.canEdit} aria-label={t('tm.ruleValue')}>
                   {['messenger', 'instagram', 'whatsapp'].map((p) => <option key={p} value={p}>{t(`ag.ch.${p}`)}</option>)}
@@ -245,8 +263,11 @@ function Routing({ t, d, onChange }) {
               )}
               {r.field === 'tag' && <input className="input" value={r.value} onChange={(e) => setR(i, { value: e.target.value })} disabled={!d.canEdit} aria-label={t('tm.ruleValue')} maxLength={40} />}
               <span className="tm-if">{t('tm.then')}</span>
+              <select className="input" value={r.action} onChange={(e) => setR(i, { action: e.target.value })} disabled={!d.canEdit || ACTIONS[r.field].length < 2} aria-label={t('tm.ruleAction')}>
+                {ACTIONS[r.field].map((a) => <option key={a} value={a}>{t(`tm.act.${a}`)}</option>)}
+              </select>
               <select className="input" value={r.userId ?? ''} onChange={(e) => setR(i, { userId: Number(e.target.value) })} disabled={!d.canEdit} aria-label={t('tm.ruleWho')}>
-                {people.map((m) => <option key={m.id} value={m.id}>{t('tm.assignTo', { n: m.name })}</option>)}
+                {people.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
               {d.canEdit && (
                 <span className="tm-ruleactions">

@@ -49,7 +49,7 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
 
   const risk = riskFor({ delivered: customer.stats?.delivered, returned: customer.stats?.returned, cancelled: customer.stats?.cancelled, codAmount: priced.cod, outsideDhaka: zone === 'outside_dhaka' });
   // PAY-03: the shop's rules may ask for an advance first (high risk, outside Dhaka over ৳X, …).
-  const advance = advanceFor(ws, { riskLevel: risk.level, zone, total: priced.total, previousOrders: customer.stats?.orders ?? 0 });
+  const advance = advanceFor(ws, { riskLevel: risk.level, courierRate: customer.courier_check?.rate ?? null, zone, total: priced.total, previousOrders: customer.stats?.orders ?? 0 });
   const status = advance || risk.level === 'high' ? 'on_hold' : 'pending';
   const holdReason = advance ? `Waiting for ৳${advance.amount} advance (${advance.reason.replace(/_/g, ' ')})` : status === 'on_hold' ? `High return risk (${risk.score}%)` : '';
   const { order_seq: number } = await db.workspaces.findOneAndUpdate({ _id: ws._id }, { $inc: { order_seq: 1 } }, { new: true, lean: true });

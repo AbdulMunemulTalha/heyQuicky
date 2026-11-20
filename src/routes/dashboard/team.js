@@ -2,7 +2,12 @@ import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { ACTIONS, DEFAULT_PERMISSIONS, permissionsFor } from '../../dashboard/permissions.js';
 import { audit, dhakaDayStart } from '../../dashboard/util.js';
-import { teamSettings, slaCounts, SHARE_MODES, RULE_FIELDS } from '../../dashboard/team.js';
+import { teamSettings, slaCounts, SHARE_MODES, RULE_FIELDS, RULE_ACTIONS, TOPICS } from '../../dashboard/team.js';
+import { distributeUnassigned } from '../../assignment.js';
+
+// Which actions each kind of rule allows: arriving chats are assigned; handoffs can also open a
+// ticket or just notify; comments have no chat, so they notify.
+const ACTIONS_FOR = { channel: ['assign'], tag: ['assign'], new_customer: ['assign'], topic: RULE_ACTIONS, order_over: RULE_ACTIONS, comment: ['notify'] };
 
 const SHARE_ROLES = ['admin', 'moderator', 'agent'];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -70,16 +75,37 @@ export function teamRoutes(db, _config, { auth, emit }) {
       set['settings.team.rules'] = b.rules.map((r) => {
         if (!RULE_FIELDS.includes(r?.field)) throw new InboxError(400, 'Unknown rule');
         if (!members.has(Number(r.userId))) throw new InboxError(400, 'Pick a teammate for every rule');
-        const value = r.field === 'new_customer' ? true : String(r.value ?? '').trim().slice(0, 40);
+        const action = ACTIONS_FOR[r.field].includes(r.action) ? r.action : ACTIONS_FOR[r.field][0];
+        let value = ['new_customer', 'comment'].includes(r.field) ? true : String(r.value ?? '').trim().slice(0, 40);
         if (r.field === 'channel' && !['messenger', 'instagram', 'whatsapp'].includes(value)) throw new InboxError(400, 'Pick a channel');
         if (r.field === 'tag' && !value) throw new InboxError(400, 'Enter the tag');
-        return { field: r.field, value, user_id: Number(r.userId) };
+        if (r.field === 'topic' && !(value in TOPICS)) throw new InboxError(400, 'Pick a topic');
+        if (r.field === 'order_over') { value = Number(String(value).replace(/\D/g, '')); if (!value) throw new InboxError(400, 'Enter the order amount'); }
+        return { field: r.field, value, action, user_id: Number(r.userId) };
       });
+    }
+    if (typeof b.dutyOnly === 'boolean') set['settings.team.duty_only'] = b.dutyOnly;
+    if (b.offDuty !== undefined) {
+      const message = String(b.offDuty?.message ?? '').trim().slice(0, 300);
+      if (b.offDuty?.on && !message) throw new InboxError(400, 'Write what the AI tells customers when nobody is on duty');
+      set['settings.team.off_duty'] = { on: Boolean(b.offDuty?.on), message };
     }
     if (!Object.keys(set).length) throw new InboxError(400, 'Nothing to change');
     await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: set });
     await audit(db, req.user, 'Changed team duty, targets or routing', { where: 'Team' });
     res.json({ settings: teamSettings(await db.workspaces.findById(req.user.workspace_id, { settings: 1 }).lean()) });
+  });
+
+  // The owner (or an admin) switches a teammate on or off duty from Members.
+  router.patch('/team/members/:id/duty', auth, ownerOrAdmin, async (req, res) => {
+    if (typeof req.body?.onDuty !== 'boolean') throw new InboxError(400, 'Say on or off duty');
+    const u = await db.users.findOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id, is_active: { $ne: false } }, { name: 1 }).lean();
+    if (!u) throw new InboxError(404, 'Teammate not found');
+    await db.users.updateOne({ _id: u._id }, { $set: { on_duty: req.body.onDuty, is_online: req.body.onDuty } });
+    if (req.body.onDuty) await distributeUnassigned(db, req.user.workspace_id);
+    await audit(db, req.user, `Put ${u.name} ${req.body.onDuty ? 'on' : 'off'} duty`, { where: 'Team' });
+    emit(req.user.workspace_id, 'team', { userId: u._id, onDuty: req.body.onDuty });
+    res.json({ onDuty: req.body.onDuty });
   });
 
   // Permissions grid (TEAM-02): ticks per role; the owner always has everything.

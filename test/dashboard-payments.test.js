@@ -23,14 +23,22 @@ async function start() {
 const order = (db, ws, extra = {}) => db.insert(db.orders, { workspace_id: ws, number: 1201, customer_name: 'Mitu', phone: '01712345678', address: 'x', area: 'outside_dhaka',
   subtotal: 2500, delivery_charge: 130, discount: 0, cod_amount: 2630, status: 'on_hold', hold_reason: 'Waiting for ৳300 advance (outside dhaka)', advance: { amount: 300, method: 'bkash', verified: false }, items: [{ name: 'Saree' }], ...extra });
 
-test('advance rules decide when to ask, and the AI\'s message fills in the amount and number', () => {
-  const ws = { bkash_number: '01711111111', settings: { advance: { high_risk: true, outside_over: 2000, amount: 300, first_order: false } } };
-  assert.deepEqual(advanceFor(ws, { riskLevel: 'high', zone: 'inside_dhaka', total: 900 }), { amount: 300, reason: 'high_risk' });
-  assert.deepEqual(advanceFor(ws, { zone: 'outside_dhaka', total: 2630 }), { amount: 300, reason: 'outside_dhaka' });
-  assert.equal(advanceFor(ws, { zone: 'outside_dhaka', total: 1500 }), null);
-  assert.equal(advanceFor({ ...ws, settings: { advance: { ...ws.settings.advance, first_order: true } } }, { total: 500, previousOrders: 0 }).reason, 'first_order');
-  assert.equal(advanceFor({ settings: ws.settings }, { riskLevel: 'high', total: 900 }), null, 'no payment number, no advance');
-  assert.equal(advanceFor(ws, { riskLevel: 'high', total: 200 }).amount, 200, 'never more than the order');
+test('each advance rule has its own amount (৳ or %); the largest matching advance wins; old settings still work', () => {
+  const rules = { outside_dhaka: { on: true, kind: 'fixed', value: 300 }, courier_risk: { on: true, kind: 'fixed', value: 500, below: 70 },
+    order_over: { on: true, kind: 'percent', value: 20, over: 5000 }, first_order: { on: false, kind: 'fixed', value: 200 } };
+  const ws = { bkash_number: '01711111111', settings: { advance: { rules } } };
+  assert.deepEqual(advanceFor(ws, { zone: 'outside_dhaka', total: 2630 }), { amount: 300, reason: 'outside_dhaka' }, 'every outside-Dhaka order, no minimum');
+  assert.equal(advanceFor(ws, { zone: 'inside_dhaka', total: 2630 }), null);
+  assert.deepEqual(advanceFor(ws, { courierRate: 55, total: 900 }), { amount: 500, reason: 'courier_risk' }, 'delivery success below 70%');
+  assert.equal(advanceFor(ws, { courierRate: 85, riskLevel: 'high', total: 900 }), null, 'the courier rate decides when it is known');
+  assert.deepEqual(advanceFor(ws, { riskLevel: 'high', total: 900 }), { amount: 500, reason: 'courier_risk' }, 'no courier record: our own risk level');
+  assert.deepEqual(advanceFor(ws, { zone: 'outside_dhaka', total: 8000 }), { amount: 1600, reason: 'order_over' }, '20% of ৳8,000 beats ৳300');
+  assert.equal(advanceFor({ ...ws, settings: { advance: { rules: { ...rules, first_order: { on: true, kind: 'fixed', value: 200 } } } } }, { total: 500, previousOrders: 0 }).amount, 200);
+  assert.equal(advanceFor({ settings: ws.settings }, { zone: 'outside_dhaka', total: 900 }), null, 'no payment number, no advance');
+  assert.equal(advanceFor(ws, { courierRate: 10, total: 200 }).amount, 200, 'never more than the order');
+  // Settings saved before per-rule amounts: one amount, high risk on, outside Dhaka on.
+  const old = { bkash_number: '01711111111', settings: { advance: { high_risk: true, outside_over: 2000, amount: 250 } } };
+  assert.deepEqual(advanceFor(old, { zone: 'outside_dhaka', total: 900 }), { amount: 250, reason: 'outside_dhaka' });
   assert.match(advanceMessage(ws, 300), /৳300 অগ্রিম বিকাশ \(01711111111\)/);
 });
 
@@ -78,13 +86,16 @@ test('adding a payment by hand, approving it onto an order, and the advance rule
     const o = await s.db.orders.findOne({ number: 1201 }).lean();
     assert.deepEqual([o.paid_in_full, o.cod_amount, o.payment_method], [true, 0, 'paid']);
 
-    assert.equal((await s.call('/payments/rules', { method: 'PATCH', token: s.mod, body: { advance: { amount: 500 } } })).status, 403);
+    assert.equal((await s.call('/payments/rules', { method: 'PATCH', token: s.mod, body: { advance: { rules: { first_order: { on: true } } } } })).status, 403);
     assert.equal((await s.call('/payments/rules', { method: 'PATCH', token: s.owner, body: { advance: { message: 'Pay now please' } } })).status, 400, 'the message keeps {amount}');
-    const r = await s.call('/payments/rules', { method: 'PATCH', token: s.owner, body: { bkash: '০১৭১১১১১১১১', bkashType: 'merchant', advance: { highRisk: false, orderOver: 3000, firstOrder: true, amount: 500, message: 'অগ্রিম {amount} দিন {number}' } } });
+    assert.equal((await s.call('/payments/rules', { method: 'PATCH', token: s.owner, body: { advance: { rules: { order_over: { kind: 'percent', value: 150 } } } } })).status, 400, 'a % above 100 is refused');
+    const r = await s.call('/payments/rules', { method: 'PATCH', token: s.owner, body: { bkash: '০১৭১১১১১১১১', bkashType: 'merchant', advance: { message: 'অগ্রিম {amount} দিন {number}',
+      rules: { outside_dhaka: { on: true, kind: 'fixed', value: 300 }, courier_risk: { on: false }, order_over: { on: true, kind: 'percent', value: 20, over: 5000 }, first_order: { on: true, kind: 'fixed', value: 200 } } } } });
     assert.equal(r.status, 200);
     const rules = await s.call('/payments/rules', { token: s.owner });
-    assert.deepEqual([rules.body.bkash, rules.body.bkashType, rules.body.advance.highRisk, rules.body.advance.orderOver, rules.body.advance.firstOrder, rules.body.advance.amount],
-      ['01711111111', 'merchant', false, 3000, true, 500]);
+    assert.deepEqual([rules.body.bkash, rules.body.bkashType], ['01711111111', 'merchant']);
+    assert.deepEqual(rules.body.advance.rules.order_over, { on: true, kind: 'percent', value: 20, over: 5000 });
+    assert.deepEqual([rules.body.advance.rules.courier_risk.on, rules.body.advance.rules.courier_risk.below], [false, 70], 'untouched fields keep their values');
   } finally { await s.close(); }
 });
 
@@ -118,4 +129,33 @@ test('the AI records a TrxID from chat for the team, and asks for an advance whe
   assert.ok(notes.some((n) => /Payment to check: ৳300 by bKash/.test(n.title)));
   await say('abar dilam BK12AB34CD');
   assert.equal(await ctx.db.payments.countDocuments({ trx_id: 'BK12AB34CD' }), 1, 'the same TrxID is recorded once');
+});
+
+test('payment cards: amount-matches badge, today counters and time to approve, and the screenshot from chat is kept', async () => {
+  const s = await start();
+  try {
+    const o = await order(s.db, s.ws);
+    const ok = await s.db.insert(s.db.payments, { workspace_id: s.ws, order_id: o.id, method: 'bkash', amount: 300, expected: 300, trx_id: 'OK12345678', from_number: '01712345678', created_at: new Date(Date.now() - 6 * 60_000) });
+    let list = await s.call('/payments', { token: s.owner });
+    assert.deepEqual(list.body.payments[0].checks, ['matches']);
+    await s.call(`/payments/${ok.id}/approve`, { method: 'POST', token: s.owner, body: {} });
+    list = await s.call('/payments?status=approved', { token: s.owner });
+    assert.deepEqual([list.body.approvedToday.count, list.body.approvedToday.amount, list.body.rejectedToday], [1, 300, 0]);
+    assert.ok(list.body.avgApproveMin >= 5, 'about six minutes from sent to approved');
+  } finally { await s.close(); }
+
+  // A screenshot in chat: the AI reads the TrxID and the image is saved with the payment.
+  const ctx = await setup({ env: { DRY_RUN: '1' } });
+  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { ai_mode: 'auto' } });
+  const answer = { reply: 'ধন্যবাদ, যাচাই করে জানাচ্ছি', handoff: false, handoff_reason: '', intent: 'payment', payment: { trx_id: 'SS12AB34CD', method: 'bkash', amount: 300 } };
+  const provider = { name: 'fake', model: 'fake-1', async generateJson() { return { data: answer, usage: {} }; } };
+  const inbox = createInbox(ctx.db, ctx.config);
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+  const agent = createAgent(ctx.db, inbox, provider, { replyDelayMs: 0, log: { warn() {} }, config: ctx.config, fetchMedia: async () => ({ bytes: jpeg, mime: 'image/jpeg' }) });
+  const { conversation, message } = await inbox.ingestMessage(inbound({ text: '', attachments: [{ type: 'image', url: 'https://cdn/x.jpg' }] }));
+  await agent.respond(conversation.id, message.id);
+  const p = await ctx.db.payments.findOne({ trx_id: 'SS12AB34CD' }).lean();
+  assert.match(p.screenshot, /^\/files\/[a-f0-9]{24}$/);
+  const file = await ctx.db.files.findById(p.screenshot.slice(7)).lean();
+  assert.equal(file.type, 'image/jpeg');
 });

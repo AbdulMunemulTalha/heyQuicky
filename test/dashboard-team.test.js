@@ -113,3 +113,69 @@ test('audit log: filter by person, area and period, export CSV; owners and admin
     assert.equal((await s.call('/team/audit', { token: s.nadia })).status, 403);
   } finally { await s.close(); }
 });
+
+test('round-robin, handoff rules on topic and order value, comment rules, duty switches and the nobody-on-duty message', async () => {
+  const { createInbox } = await import('../src/inbox.js');
+  const { createAgent } = await import('../src/ai/agent.js');
+  const { ensureAssigned } = await import('../src/assignment.js');
+  const ctx = await setup({ env: { DRY_RUN: '1' } });
+  const nadia = await ctx.db.users.findOne({ name: 'Nadia' }).lean();
+  const karim = await ctx.db.users.findOne({ name: 'Karim' }).lean();
+  // Round-robin: whoever was assigned longest ago, even if busier.
+  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { 'settings.team.share': 'round_robin' } });
+  await ctx.db.users.updateOne({ _id: nadia._id }, { $set: { last_assigned_at: new Date(Date.now() - 3_600_000) } });
+  await ctx.db.users.updateOne({ _id: karim._id }, { $set: { last_assigned_at: new Date() } });
+  for (let i = 0; i < 3; i++) await ctx.db.insert(ctx.db.conversations, { workspace_id: ctx.ws, channel_id: 1, contact_id: 900 + i, status: 'open', assigned_user_id: nadia._id });
+  const c = await ctx.db.insert(ctx.db.conversations, { workspace_id: ctx.ws, channel_id: 1, contact_id: 999, status: 'open' });
+  assert.equal(await ensureAssigned(ctx.db, { ...c, id: c.id }), nadia._id, 'round-robin ignores her 3 open chats');
+
+  // Handoff rules: a complaint goes to Karim with a ticket; the AI says nobody's on duty when that's true.
+  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { ai_mode: 'auto', 'settings.team.rules': [{ field: 'topic', value: 'complaint', action: 'assign_ticket', user_id: karim._id }, { field: 'comment', value: true, action: 'notify', user_id: nadia._id }] } });
+  const provider = { name: 'fake', model: 'fake-1', async generateJson(req) {
+    if (req.schema.properties.public_reply) return { data: { public_reply: '', dm: '', needs_person: true, reason: 'Angry comment' }, usage: {} };
+    return { data: { reply: 'দুঃখিত, টিম দেখছে', handoff: true, handoff_reason: 'Wants a refund', intent: 'complaint' }, usage: {} };
+  } };
+  const inbox = createInbox(ctx.db, ctx.config);
+  const notes = [];
+  const agent = createAgent(ctx.db, inbox, provider, { replyDelayMs: 0, log: { warn() {} }, config: ctx.config, notify: async (n) => { notes.push(n); return []; } });
+  const { conversation, message } = await inbox.ingestMessage(inbound({ contactExternalId: 'angry', text: 'refund chai' }));
+  assert.equal(await agent.respond(conversation.id, message.id), 'handed_off');
+  const conv = await ctx.db.conversations.findById(conversation.id).lean();
+  assert.equal(conv.assigned_user_id, karim._id, 'the complaint rule assigned Karim');
+  assert.equal((await ctx.db.tickets.findOne({ conversation_id: conversation.id }).lean()).owner_user_id, karim._id, 'and opened a ticket');
+  assert.equal(conv.off_duty_told_at, null, 'people are on duty, so no off-duty message');
+
+  // Nobody on duty: the customer is told once.
+  await ctx.db.users.updateMany({ workspace_id: ctx.ws }, { $set: { on_duty: false, is_online: false } });
+  const second = await inbox.ingestMessage(inbound({ contactExternalId: 'late', text: 'refund' }));
+  await agent.respond(second.conversation.id, second.message.id);
+  const out = await ctx.db.messages.find({ conversation_id: second.conversation.id, direction: 'out' }).sort({ _id: 1 }).lean();
+  assert.match(out.at(-1).text, /টিম এখন অফলাইনে/);
+
+  // A comment that needs a person notifies the teammate in the comment rule.
+  const { ingestComment } = await import('../src/dashboard/comments.js');
+  const cm = await ingestComment(ctx.db, { ...ctx.config, dryRun: true }, { platform: 'messenger', accountId: 'PAGE1', verb: 'add', postId: 'PAGE1_1', commentId: 'CX1', authorId: 'U1', authorName: 'Rafi', text: 'worst shop', at: new Date() });
+  assert.equal(await agent.replyToComment(cm.comment.id), 'left_for_team');
+  assert.ok(notes.some((n) => n.title === 'A comment needs you' && n.userIds?.[0] === nadia._id));
+
+  // "Only on-duty members get alerts" off: everyone in the role is alerted.
+  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { 'settings.team.duty_only': false } });
+  const sent = await notify(ctx.db, () => {}, null, { workspaceId: ctx.ws, event: 'handoff', title: 'x' });
+  assert.ok((await ctx.db.notifications.find({ _id: { $in: sent } }).lean()).some((n) => n.user_id === nadia._id), 'off-duty Nadia still alerted');
+});
+
+test('owners switch teammates on or off duty; rule actions are limited to what each kind allows', async () => {
+  const s = await start();
+  try {
+    const nadia = await s.db.users.findOne({ name: 'Nadia' }).lean();
+    assert.equal((await s.call(`/team/members/${nadia._id}/duty`, { method: 'PATCH', token: s.nadia, body: { onDuty: false } })).status, 403);
+    assert.equal((await s.call(`/team/members/${nadia._id}/duty`, { method: 'PATCH', token: s.owner, body: { onDuty: false } })).status, 200);
+    assert.equal((await s.db.users.findById(nadia._id).lean()).on_duty, false);
+    const r = await s.call('/team/settings', { method: 'PATCH', token: s.owner, body: { share: 'round_robin', dutyOnly: false, offDuty: { on: true, message: 'Team is offline' },
+      rules: [{ field: 'channel', value: 'whatsapp', action: 'notify', userId: nadia._id }, { field: 'order_over', value: '10,000', action: 'assign_ticket', userId: nadia._id }, { field: 'comment', action: 'assign', userId: nadia._id }] } });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body.settings.rules.map((x) => [x.field, x.value, x.action]), [['channel', 'whatsapp', 'assign'], ['order_over', 10000, 'assign_ticket'], ['comment', true, 'notify']]);
+    assert.deepEqual([r.body.settings.share, r.body.settings.dutyOnly, r.body.settings.offDuty.message], ['round_robin', false, 'Team is offline']);
+    assert.equal((await s.call('/team/settings', { method: 'PATCH', token: s.owner, body: { rules: [{ field: 'topic', value: 'gossip', userId: nadia._id }] } })).status, 400);
+  } finally { await s.close(); }
+});

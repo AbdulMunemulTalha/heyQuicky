@@ -75,7 +75,7 @@ export function postRoutes(db, config, { auth, agent, emit, fetchImpl }) {
     res.json({
       post: { id: post._id, platform: post.platform, caption: post.caption, image: post.image, postedAt: post.posted_at, comments: post.comment_count ?? 0,
         channelName: channel?.name ?? '', channelPlatform: channel?.platform ?? '', match: post.match, matchSource: post.match_source ?? '', confidence: post.match_confidence ?? '' },
-      products: linked.map(brief),
+      products: linked.map((p) => ({ ...brief(p), source: post.product_sources?.[p._id] ?? 'you' })),
       suggested: (post.product_ids ?? []).length ? [] : (post.suggested_ids ?? []).map((id) => products.get(id)).filter(Boolean).map(brief),
       range, rules: rulesOf(post), preview,
       recent: recent.map((c) => ({ id: c._id, author: c.author_name, text: c.text, status: c.replied_by === 'AI' ? 'ai_replied' : c.status, reply: c.public_reply, at: c.created_at })),
@@ -90,7 +90,10 @@ export function postRoutes(db, config, { auth, agent, emit, fetchImpl }) {
     const found = await db.products.find({ _id: { $in: ids }, workspace_id: req.user.workspace_id }, { _id: 1 }).lean();
     if (found.length !== ids.length) throw new InboxError(404, 'Product not found');
     const ordered = ids.filter((id) => found.some((f) => f._id === id));
-    await db.posts.updateOne({ _id: post._id }, { $set: { product_ids: ordered, suggested_ids: [], match: ordered.length ? 'linked' : 'none' } });
+    // Where each product came from: kept for ones already linked; a confirmed suggestion keeps its source (AI or caption).
+    const before = post.product_sources ?? {};
+    const sources = Object.fromEntries(ordered.map((id) => [id, before[id] ?? ((post.suggested_ids ?? []).includes(id) ? (post.match_source || 'ai') : 'you')]));
+    await db.posts.updateOne({ _id: post._id }, { $set: { product_ids: ordered, suggested_ids: [], product_sources: sources, match: ordered.length ? 'linked' : 'none' } });
     emit(req.user.workspace_id, 'post', { id: post._id });
     res.json({ products: ordered.length });
   });

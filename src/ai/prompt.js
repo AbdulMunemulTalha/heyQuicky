@@ -64,10 +64,14 @@ export const REPLY_SCHEMA = {
       required: ['trx_id', 'method', 'amount'],
       additionalProperties: false,
     },
+    customer_tags: {
+      type: 'array', items: { type: 'string', enum: ['asked_discount', 'gift_buyer', 'wholesale'] },
+      description: 'Tags that clearly fit from this chat: asked_discount (asked for a discount or offer), gift_buyer (buying as a gift), wholesale (asks about bulk or wholesale prices). Empty when none.',
+    },
     act_now: { type: 'boolean', description: 'True when this needs the team urgently: refund, damaged or wrong item, angry customer, threat of a bad review, or a safety issue.' },
     act_now_reason: { type: 'string', description: 'When act_now is true: one short English sentence for the team. Otherwise empty.' },
   },
-  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'payment', 'act_now', 'act_now_reason'],
+  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'payment', 'customer_tags', 'act_now', 'act_now_reason'],
   additionalProperties: false,
 };
 

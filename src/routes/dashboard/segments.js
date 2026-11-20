@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
 import { audit } from '../../dashboard/util.js';
-import { AUTO_TAGS, FIELDS, autoTagCounts, cleanConditions, riskOf, segmentMembers } from '../../dashboard/segments.js';
+import { AUTO_TAGS, AI_TAGS, FIELDS, autoTagCounts, cleanConditions, riskOf, segmentMembers, deliveryRate, suggestedAction } from '../../dashboard/segments.js';
+import { advanceSettings } from '../../dashboard/payments.js';
 
 const COLOURS = ['gray', 'blue', 'green', 'yellow', 'orange', 'red', 'purple'];
 const TAG = /^[\p{L}\p{N}][\p{L}\p{N} &'-]{0,29}$/u;
@@ -16,9 +17,10 @@ export function segmentRoutes(db, _config, { auth }) {
 
   router.get('/segments', auth, async (req, res) => {
     const ws = req.user.workspace_id;
-    const [segments, used, tagDocs, autoCounts] = await Promise.all([
+    const [segments, used, aiUsed, tagDocs, autoCounts] = await Promise.all([
       db.segments.find({ workspace_id: ws }).sort({ created_at: 1 }).lean(),
       db.customers.aggregate([{ $match: { workspace_id: ws, blocked: { $ne: true } } }, { $unwind: '$tags' }, { $group: { _id: '$tags', n: { $sum: 1 } } }]),
+      db.customers.aggregate([{ $match: { workspace_id: ws, blocked: { $ne: true } } }, { $unwind: '$ai_tags' }, { $group: { _id: '$ai_tags', n: { $sum: 1 } } }]),
       db.tags.find({ workspace_id: ws }).lean(),
       autoTagCounts(db, ws),
     ]);
@@ -30,6 +32,7 @@ export function segmentRoutes(db, _config, { auth }) {
     res.json({
       segments: withCounts,
       autoTags: Object.entries(AUTO_TAGS).map(([key, t]) => ({ key, label: t.label, count: autoCounts[key] ?? 0 })),
+      aiTags: Object.entries(AI_TAGS).map(([key, label]) => ({ key, label, count: aiUsed.find((x) => x._id === label)?.n ?? 0 })),
       tags: [...counts.values()].filter((t) => t.name !== 'VIP').sort((a, b) => b.n - a.n).map((t) => ({ name: t.name, count: t.n, colour: colours.get(t.name.toLowerCase()) ?? 'gray' })),
       fields: Object.fromEntries(Object.entries(FIELDS).map(([k, f]) => [k, { ops: f.ops, type: f.type }])),
     });
@@ -80,8 +83,14 @@ export function segmentRoutes(db, _config, { auth }) {
     const s = await load(req);
     const { ids, count } = await segmentMembers(db, s.workspace_id, s.conditions);
     const list = await db.customers.find({ _id: { $in: ids.slice(0, 100) } }).sort({ 'stats.spent': -1 }).lean();
+    // Suggested action: the segment's own coupon if it has a live one, and the high-risk advance from Payments.
+    const ws = await db.workspaces.findById(s.workspace_id, { settings: 1 }).lean();
+    const coupon = await db.coupons.findOne({ workspace_id: s.workspace_id, audience: 'segment', segment_id: s._id, active: { $ne: false } }, { code: 1 }).lean();
+    const advance = advanceSettings(ws).rules.courier_risk;
+    const advanceAmount = advance.kind === 'fixed' ? advance.value : null;
     res.json({ count, customers: list.map((c) => ({ id: c._id, name: c.name, phone: c.phones?.[0] ?? '', orders: c.stats?.orders ?? 0, spent: c.stats?.spent ?? 0,
-      returned: c.stats?.returned ?? 0, risk: riskOf(c).level, vip: Boolean(c.vip), tags: c.tags ?? [], lastActive: c.last_active_at })) });
+      returned: c.stats?.returned ?? 0, deliveryRate: deliveryRate(c), risk: riskOf(c).level, vip: Boolean(c.vip), tags: [...(c.tags ?? []), ...(c.ai_tags ?? [])], lastActive: c.last_active_at,
+      suggested: suggestedAction(c, { advance: advanceAmount, coupon: coupon?.code ?? null }) })) });
   });
 
   // "Tag everyone" in a segment.

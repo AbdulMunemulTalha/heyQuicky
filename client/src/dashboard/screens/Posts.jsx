@@ -169,6 +169,7 @@ function Detail({ t, id, edit, onChanged }) {
               <li key={x.id}>
                 <span className="po-swatch" style={x.image ? { backgroundImage: `url("${x.image}")` } : { background: x.colour || 'var(--gray-soft)' }} aria-hidden="true" />
                 <span className="grow"><strong className="small">{x.name}</strong><small className="muted">{t.money(x.price)}{!x.inStock && ` · ${t('po.out')}`}</small></span>
+                <Pill tone={x.source === 'you' ? 'green' : 'blue'}>{t(`po.src.${x.source}`)}</Pill>
                 {edit && <Button size="sm" variant="ghost" onClick={() => setProducts(ids.filter((i) => i !== x.id))}>{t('common.delete')}</Button>}
               </li>
             ))}

@@ -196,6 +196,7 @@ function defineModels(conn) {
     done_by: { type: String, default: '' },
     done_at: { type: Date, default: null },
     act_now: { type: Boolean, default: false },
+    off_duty_told_at: { type: Date, default: null }, // the AI told the customer nobody was on duty (TEAM-04)
     tags: { type: [String], default: [] },
     // A person took over: the AI stays quiet until this time, then picks the chat up again.
     human_until: { type: Date, default: null },
