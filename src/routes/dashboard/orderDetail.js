@@ -215,7 +215,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
     const s = stage(order.status);
     res.json({
       id: order._id, number: order.number ?? order._id, status: s, next: NEXT[s] ?? [], at: order.created_at, source: order.source, takenBy: order.taken_by,
-      draft: Boolean(order.draft), holdReason: order.hold_reason, cancelReason: order.cancel_reason, cancelRequestedAt: order.cancel_requested_at ?? null,
+      draft: Boolean(order.draft), holdReason: order.hold_reason, chasing: Boolean(order.chase?.active), cancelReason: order.cancel_reason, cancelRequestedAt: order.cancel_requested_at ?? null,
       items: (order.product_items?.length ? order.product_items : order.items.map((i) => ({ name: i.name, qty: i.qty, price: i.price }))).map((i) => {
         const p = products.get(i.product_id);
         const v = p?.variant_list?.find((x) => x.sku === i.sku);

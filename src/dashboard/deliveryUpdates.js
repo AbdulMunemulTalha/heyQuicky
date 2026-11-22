@@ -1,5 +1,6 @@
 import { trackingUrl } from '../platforms/rich.js';
 import { reviewRequest } from '../platforms/rich.js';
+import { startChase } from './money.js';
 
 // CRR-03 / CRR-05 / CRR-06: Settings → Delivery updates (frame "Delivery updates").
 // Each step of a parcel's trip can send the customer a card with one button; the shop writes the
@@ -111,6 +112,7 @@ export function createDeliveryUpdater(db, inbox, config, { log = console, notify
     if (out !== 'sent') await inbox.sendAiReply(order.conversation_id, fillMessage(DEFAULT_STEPS.failed.message, order, ws)).catch(() => null);
     await db.conversations.updateOne({ _id: order.conversation_id }, { $set: { ai_handoff: true, ai_handoff_reason: `Delivery failed for order #${order.number ?? order._id} — agree a new time with the customer`, ai_handoff_at: new Date() } });
     await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'delivery_handoff', by: 'ai', text: 'Delivery failed — the AI asked for a new time and handed the chat to the team' });
+    await startChase(db, null, await db.orders.findById(order._id).lean(), { reason: 'Delivery failed — rider couldn\'t reach them' }).catch(() => null);
     await notify?.({ workspaceId: order.workspace_id, event: 'handoff', title: `Delivery failed: order #${order.number ?? order._id}`, body: `${order.customer_name} wasn't reached. The AI asked for a new time.`, link: `/inbox/${order.conversation_id}`, ref: `failed:${order._id}` });
     return out === 'sent' ? 'sent' : 'handed_off';
   }

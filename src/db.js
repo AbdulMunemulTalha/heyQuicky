@@ -279,6 +279,9 @@ function defineModels(conn) {
     review: { type: Schema.Types.Mixed, default: null }, // { rating 1-5, at } from the review card in chat // the customer asked to cancel from the bill page
     draft: { type: Boolean, default: false },
     send_confirmation: { type: Boolean, default: true },
+    delivered_at: { type: Date, default: null },
+    // OMS-07 "To chase": { active, reason, tries: [{ kind: call|whatsapp, at, by }], next_at, owner_user_id, added_at, result }
+    chase: { type: Schema.Types.Mixed, default: null },
     created_at: createdAt,
     updated_at: createdAt,
   }, opts);

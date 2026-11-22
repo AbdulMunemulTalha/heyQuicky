@@ -14,6 +14,7 @@ import { createAgent } from './ai/agent.js';
 import { createTranscriber } from './ai/transcribe.js';
 import { onStatusChange, onCourierStatus } from './dashboard/orderOps.js';
 import { createDeliveryUpdater } from './dashboard/deliveryUpdates.js';
+import { recordReturn } from './dashboard/money.js';
 import { apiRoutes } from './routes/api.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { connectRoutes } from './routes/connect.js';
@@ -78,7 +79,10 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
     transcriber: createTranscriber({ apiKey: config.ai.openaiKey, model: config.ai.transcribeModel }) });
   inbox.setInboundHandler(agent.onInbound);
   const deliveryUpdates = createDeliveryUpdater(db, inbox, config, { notify });
-  onStatusChange(db, deliveryUpdates.onStatus);
+  onStatusChange(db, async (order, from, to) => {
+    if (to === 'returned') await recordReturn(db, order).catch((err) => console.warn(`return record for order ${order._id}: ${err.message}`));
+    return deliveryUpdates.onStatus(order, from, to);
+  });
   onCourierStatus(db, deliveryUpdates.onCourier);
   inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit, publicUrl: config.publicUrl }));
 

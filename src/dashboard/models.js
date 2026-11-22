@@ -69,6 +69,32 @@ export function defineDashboardModels(conn) {
     payout_id: { type: Number, default: null },
   });
 
+  // OMS-05: money a courier paid out for delivered parcels ("Mark received" on Money & follow-up).
+  const payout = S({
+    courier: { type: String, required: true },
+    from: { type: Date, required: true },
+    to: { type: Date, required: true },
+    parcels: { type: Number, default: 0 },
+    collected: { type: Number, default: 0 },
+    fees: { type: Number, default: 0 },
+    amount: { type: Number, default: 0 },
+    received_at: { type: Date, default: () => new Date() },
+    by_user_id: { type: Number, default: null },
+  });
+
+  // OMS-05: a parcel that came back, an exchange or a damaged item, and what happened to the stock.
+  const returnItem = S({
+    order_id: { type: Number, required: true, index: true },
+    ticket_id: { type: Number, default: null },
+    type: { type: String, enum: ['return', 'exchange', 'damaged'], required: true },
+    reason: { type: String, default: '' },
+    parcel: { type: String, enum: ['coming', 'picked', 'back'], default: 'coming' },
+    stock: { type: String, enum: ['waiting', 'restocked', 'cant_sell'], default: 'waiting' },
+    loss: { type: Number, default: 0 },
+    claim: { type: Mixed, default: null }, // { at, by } when claimed from the courier
+    done_at: { type: Date, default: null },
+  });
+
   // A shop's courier account. Keys are encrypted with TOKEN_ENCRYPTION_KEY like channel tokens.
   const courierAccount = S({
     courier: { type: String, required: true },
@@ -359,6 +385,8 @@ export function defineDashboardModels(conn) {
     notes: conn.model('Note', note, 'notes'),
     orderEvents: conn.model('OrderEvent', orderEvent, 'order_events'),
     consignments: conn.model('Consignment', consignment, 'consignments'),
+    payouts: conn.model('Payout', payout, 'payouts'),
+    returns: conn.model('Return', returnItem, 'returns'),
     courierAccounts: conn.model('CourierAccount', courierAccount, 'courier_accounts'),
     payments: conn.model('Payment', payment, 'payments'),
     aiReplies: conn.model('AiReply', aiReply, 'ai_replies'),

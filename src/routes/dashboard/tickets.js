@@ -3,6 +3,7 @@ import { InboxError } from '../../inbox.js';
 import { need, allowedActions } from '../../dashboard/permissions.js';
 import { audit } from '../../dashboard/util.js';
 import { TICKET_TYPES, TICKET_STATUSES, RESOLUTIONS, RESOLUTIONS_FOR, openTicket, dueAt, timelineEntry } from '../../dashboard/tickets.js';
+import { recordReturnFromTicket } from '../../dashboard/money.js';
 
 const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 
@@ -174,7 +175,11 @@ export function ticketRoutes(db, _config, { auth, inbox, emit, notify }) {
     await db.tickets.updateOne({ _id: t._id }, { $set: set, ...(events.length ? { $push: { timeline: { $each: events } } } : {}) });
     // Solving the ticket clears the chat's ACT NOW flag too.
     if (set.act_now === false && t.conversation_id) await db.conversations.updateOne({ _id: t.conversation_id }, { $set: { act_now: false } });
-    if (set.status === 'solved') await audit(db, req.user, `Solved ticket #${t.number}`, { where: 'Tickets' });
+    if (set.status === 'solved') {
+      await audit(db, req.user, `Solved ticket #${t.number}`, { where: 'Tickets' });
+      // An exchange or a replaced damaged item goes on Money → Returns.
+      await recordReturnFromTicket(db, { ...t, ...set }, set.resolution_kind).catch(() => null);
+    }
     emit(req.user.workspace_id, 'ticket', { number: t.number });
     res.json({ ok: true });
   });

@@ -75,6 +75,9 @@ export default function OrderDetail({ params }) {
           <Button onClick={printLabel}>{t('od.printLabel')}</Button>
           {o.billToken && <Button onClick={() => copyBill(`${window.location.origin}/b/${o.billToken}`)} title={t('od.billHint')}>{t('od.bill')}</Button>}
           {can('edit_orders') && ['pending', 'on_hold', 'approved', 'processing'].includes(o.status) && <Button onClick={() => navigate(`/orders/${o.number}/edit`)}>{t('od.edit')}</Button>}
+          {can('edit_orders') && (o.chasing
+            ? <Button onClick={() => navigate('/orders/chase')}>{t('od.onChase')}</Button>
+            : ['pending', 'on_hold', 'approved', 'processing', 'ready_to_ship', 'in_transit'].includes(o.status) && <Button busy={busy} onClick={() => post('chase', {}, t('od.chaseAdded'))}>{t('od.cantReach')}</Button>)}
           <span className="od-main-actions">
           {can('cancel_orders') && o.next.includes('cancelled') && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t('ord.cancelOrder')}</Button>}
           {can('edit_orders') && nextAction && o.next.includes(nextAction) && (

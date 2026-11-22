@@ -60,7 +60,7 @@ export async function changeStatus(db, user, order, to, { reason = '', restock =
   if (from === to) return order;
   if (!STAGES.includes(to)) throw new InboxError(400, 'Unknown order status');
   if (!NEXT[from]?.includes(to)) throw new InboxError(409, `An order that is ${from.replace(/_/g, ' ')} can't move to ${to.replace(/_/g, ' ')}`);
-  const set = { status: to, updated_at: new Date() };
+  const set = { status: to, updated_at: new Date(), ...(to === 'delivered' ? { delivered_at: new Date() } : {}) };
   if (to === 'cancelled') {
     if (!CANCEL_REASONS.includes(reason)) throw new InboxError(400, 'Pick a reason for cancelling');
     set.cancel_reason = reason;
