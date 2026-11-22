@@ -12,7 +12,7 @@ import { createImporter } from './importer.js';
 import { createAiProvider } from './ai/provider.js';
 import { createAgent } from './ai/agent.js';
 import { createTranscriber } from './ai/transcribe.js';
-import { onStatusChange } from './dashboard/orderOps.js';
+import { onStatusChange, onCourierStatus } from './dashboard/orderOps.js';
 import { createDeliveryUpdater } from './dashboard/deliveryUpdates.js';
 import { apiRoutes } from './routes/api.js';
 import { webhookRoutes } from './routes/webhooks.js';
@@ -77,7 +77,9 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs, notify, config, emit, fetchImpl,
     transcriber: createTranscriber({ apiKey: config.ai.openaiKey, model: config.ai.transcribeModel }) });
   inbox.setInboundHandler(agent.onInbound);
-  onStatusChange(db, createDeliveryUpdater(db, inbox, config));
+  const deliveryUpdates = createDeliveryUpdater(db, inbox, config, { notify });
+  onStatusChange(db, deliveryUpdates.onStatus);
+  onCourierStatus(db, deliveryUpdates.onCourier);
   inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit, publicUrl: config.publicUrl }));
 
   io.use(async (socket, next) => {
@@ -125,5 +127,5 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.get('/bn', (_req, res) => res.sendFile('bn.html', { root: PUBLIC_DIR }));
   app.use(express.static(PUBLIC_DIR));
 
-  return { app, server, io, inbox, orders, importer, agent, adapters, notify };
+  return { app, server, io, inbox, orders, importer, agent, adapters, notify, deliveryUpdates };
 }

@@ -27,7 +27,7 @@ if (config.sqliteImportPath && existsSync(config.sqliteImportPath) && !(await db
   console.log(`Done: ${Object.values(counts).reduce((a, b) => a + b, 0)} records copied.`);
 }
 await runMigrations(db, { log: (line) => console.log(line) });
-const { server, inbox, io, notify } = createApp(db, config);
+const { server, inbox, io, notify, deliveryUpdates } = createApp(db, config);
 // Parcels on the way are checked with their courier every 30 minutes (CRR-02).
 // Follow-up reminders for customers who went quiet are checked every 5 minutes (FUP-01).
 startFollowups(db, inbox);
@@ -35,6 +35,8 @@ startFollowups(db, inbox);
 startPageSubscriptions(db, config);
 startSlaWatch(db, notify);
 startCourierSync(db, config, { emit: (ws, event, payload) => io.to(`workspace:${ws}`).emit(event, payload), notify });
+// A day after delivery the customer is asked for a rating (CRR-06), checked every 30 minutes.
+setInterval(() => deliveryUpdates.sendDueReviews().catch((err) => console.warn('review requests:', err.message)), 30 * 60_000).unref();
 
 server.listen(config.port, () => {
   inbox.fillMissingNames().catch((err) => console.warn('name backfill failed:', err.message));

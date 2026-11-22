@@ -46,6 +46,13 @@ export async function adjustStock(db, order, sign, { notify = null } = {}) {
 // Something to run after every status change (CRR-04 delivery updates), one per database.
 const statusListeners = new WeakMap();
 export function onStatusChange(db, fn) { statusListeners.set(db, fn); }
+// The courier reported a new status of its own (picked up, out for delivery, failed…) — Delivery updates listen.
+const courierListeners = new WeakMap();
+export function onCourierStatus(db, fn) { courierListeners.set(db, fn); }
+export function courierStatusChanged(db, order, status) {
+  const listener = courierListeners.get(db);
+  return listener ? Promise.resolve(listener(order, status)).catch((err) => { console.warn(`after courier status of order ${order._id}: ${err.message}`); return 'error'; }) : Promise.resolve('none');
+}
 
 // Moves an order to another stage, writing the history and keeping the customer's numbers right.
 export async function changeStatus(db, user, order, to, { reason = '', restock = true, emit = () => {}, by = 'user', text = '' } = {}) {

@@ -117,7 +117,8 @@ function absolute(url, base) {
 export function toPlatform(platform, { kind, payload, text }) {
   if (platform === 'whatsapp') return whatsapp(kind, payload, text);
   // Messenger and Instagram share the Send API shape for templates and quick replies.
-  const btn = (b) => (b.type === 'url' ? { type: 'web_url', url: b.value, title: clip(b.title, 20) } : { type: 'postback', title: clip(b.title, 20), payload: b.value });
+  const btn = (b) => (b.type === 'url' ? { type: 'web_url', url: b.value, title: clip(b.title, 20) }
+    : b.type === 'phone' ? { type: 'phone_number', title: clip(b.title, 20), payload: b.value } : { type: 'postback', title: clip(b.title, 20), payload: b.value });
   switch (kind) {
     case 'carousel':
       return { attachment: { type: 'template', payload: { template_type: 'generic', elements: payload.cards.map((c) => ({

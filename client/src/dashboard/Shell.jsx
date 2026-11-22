@@ -69,7 +69,7 @@ export function Sidebar({ open, onClose }) {
   const ws = me.workspace;
   const status = aiStatus(t, ws);
   const creditPct = Math.min(100, Math.round((ws.credit / Math.max(ws.credit, 500)) * 100));
-  const settingsKey = path === '/settings' ? 'billing' : path.split('/')[2];
+  const settingsKey = path === '/settings' ? 'billing' : ({ 'delivery-updates': 'courier' }[path.split('/')[2]] ?? path.split('/')[2]);
 
   async function toggleDuty() {
     const onDuty = !me.user.onDuty;

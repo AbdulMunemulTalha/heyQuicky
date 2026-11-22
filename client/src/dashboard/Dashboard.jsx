@@ -34,6 +34,7 @@ const screens = {
   product: lazy(() => import('./screens/ProductForm.jsx')),
   analytics: lazy(() => import('./screens/Analytics.jsx')),
   settings: lazy(() => import('./screens/Settings.jsx')),
+  deliveryUpdates: lazy(() => import('./screens/DeliveryUpdates.jsx')),
   notifySettings: lazy(() => import('./screens/NotificationSettings.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
 };
@@ -78,6 +79,7 @@ const ROUTES = [
   ['/settings', 'settings'],
   ['/settings/channels', 'settings'],
   ['/settings/courier', 'settings'],
+  ['/settings/delivery-updates', 'deliveryUpdates'],
   ['/settings/payments', 'settings'],
   ['/settings/team', 'team'],
   ['/settings/audit', 'team'],

@@ -34,7 +34,12 @@ export function createPostbackHandler(db, inbox, { notify = null, emit = () => {
         await notify?.({ workspaceId: ws, event: 'handoff', title: `${order.customer_name} wasn't happy with order #${order.number ?? order._id}`, body: `Rated ${stars}/5. Reach out and make it right.`, link: `/inbox/${conversationId}`, ref: `rate:${order._id}` });
         await inbox.sendAiReply(conversationId, 'দুঃখিত 😞 আমাদের টিম এখনই আপনার সাথে কথা বলবে।');
       } else {
-        await inbox.sendAiReply(conversationId, 'অনেক ধন্যবাদ! আবার কেনাকাটা করলে জানাবেন 💛');
+        const wsDoc = await db.workspaces.findById(ws, { 'settings.delivery_review': 1 }).lean();
+        const code = stars >= 4 ? String(wsDoc?.settings?.delivery_review?.coupon ?? '').trim().toUpperCase() : '';
+        const coupon = code ? await db.coupons.findOne({ workspace_id: ws, code, active: { $ne: false } }).lean() : null;
+        await inbox.sendAiReply(conversationId, coupon
+          ? `অনেক ধন্যবাদ! 💛 পরের অর্ডারে ${coupon.code} কোডটা ব্যবহার করুন — ${coupon.type === 'percent' ? `${coupon.value}% ছাড়` : coupon.type === 'amount' ? `৳${coupon.value} ছাড়` : 'ফ্রি ডেলিভারি'}।`
+          : 'অনেক ধন্যবাদ! আবার কেনাকাটা করলে জানাবেন 💛');
       }
       return true;
     }

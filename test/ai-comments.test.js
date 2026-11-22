@@ -107,26 +107,59 @@ test('the shop\'s reply delay sets the pace, and the customer sees "typing…" w
   assert.deepEqual(typing, [conversation.id]);
 });
 
-test('delivery updates go to the customer\'s chat on packed / shipped / delivered, unless the shop turns them off', async () => {
-  const { changeStatus, onStatusChange } = await import('../src/dashboard/orderOps.js');
-  const { createDeliveryUpdater } = await import('../src/dashboard/deliveryUpdates.js');
+test('delivery updates: each step goes once with the shop\'s words, courier steps, failed delivery hands off, shipped cancels alert the team', async () => {
+  const { changeStatus, onStatusChange, onCourierStatus, courierStatusChanged } = await import('../src/dashboard/orderOps.js');
+  const { createDeliveryUpdater, stepForCourier } = await import('../src/dashboard/deliveryUpdates.js');
   const ctx = await setup({ env: { DRY_RUN: '1' } });
   const inbox = createInbox(ctx.db, ctx.config);
+  const alerts = [];
+  const updater = createDeliveryUpdater(ctx.db, inbox, ctx.config, { log: {}, notify: async (n) => { alerts.push(n); } });
   const results = [];
-  const updater = createDeliveryUpdater(ctx.db, inbox, ctx.config, { log: {} });
   let done;
-  onStatusChange(ctx.db, async (...a) => { results.push(await updater(...a)); done?.(); });
+  onStatusChange(ctx.db, async (...x) => { results.push(await updater.onStatus(...x)); done?.(); });
+  onCourierStatus(ctx.db, updater.onCourier);
   const { conversation } = await inbox.ingestMessage(inbound({ text: 'order dilam' }));
-  const order = await ctx.db.insert(ctx.db.orders, { workspace_id: ctx.ws, number: 1201, conversation_id: conversation.id, customer_name: 'Mitu', phone: '01712345678', address: 'x', area: 'inside_dhaka',
+  const order = await ctx.db.insert(ctx.db.orders, { workspace_id: ctx.ws, number: 1201, conversation_id: conversation.id, customer_name: 'Mitu Akter', phone: '01712345678', address: 'x', area: 'inside_dhaka',
     cod_amount: 1520, subtotal: 1450, delivery_charge: 70, discount: 0, status: 'ready_to_ship', courier: 'Steadfast', consignment_id: 'SF-1', items: [{ name: 'Kurti' }] });
-  const move = async (o, to) => { const wait = new Promise((r) => { done = r; }); const out = await changeStatus(ctx.db, null, o, to, { by: 'courier' }); await wait; return out; };
+  const move = async (o, to, extra = {}) => { const wait = new Promise((r) => { done = r; }); const out = await changeStatus(ctx.db, null, o, to, { by: 'courier', ...extra }); await wait; return out; };
+  const cards = () => ctx.db.messages.find({ conversation_id: conversation.id, kind: 'delivery_card' }).sort({ _id: 1 }).lean();
+
+  // Handed to the courier → "booked", in the shop's own words.
+  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { 'settings.delivery_steps': { booked: { on: true, title: 'Booked!', message: '{name}, #{order} · {tracking} · {cod}', button: 'track' } } } });
   const shipped = await move(await ctx.db.orders.findById(order.id).lean(), 'in_transit');
-  const cards = await ctx.db.messages.find({ conversation_id: conversation.id, kind: 'delivery_card' }).lean();
-  assert.equal(cards.length, 1);
-  assert.match(cards[0].text, /রাস্তায় আছে — অর্ডার #1201/);
-  assert.ok(await ctx.db.orderEvents.exists({ order_id: order.id, text: /Delivery update sent in chat \(in transit\)/ }));
-  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { 'settings.delivery_updates': false } });
+  let list = await cards();
+  assert.equal(list.length, 1);
+  assert.equal(list[0].payload.title, 'Booked!');
+  assert.equal(list[0].payload.subtitle, 'Mitu, #1201 · SF-1 · ৳1,520');
+  assert.ok(await ctx.db.orderEvents.exists({ order_id: order.id, type: 'delivery_update', to: 'booked' }));
+
+  // The courier's own statuses: picked up and out for delivery; repeats are not sent again.
+  assert.deepEqual(['Picked', 'out_for_delivery', 'hold', 'weird'].map(stepForCourier), ['picked', 'out_for_delivery', 'failed', null]);
+  assert.equal(await courierStatusChanged(ctx.db, shipped, 'picked'), 'sent');
+  assert.equal(await courierStatusChanged(ctx.db, shipped, 'picked'), 'already');
+  assert.equal(await courierStatusChanged(ctx.db, shipped, 'out_for_delivery'), 'sent');
+  list = await cards();
+  assert.equal(list.length, 3);
+  assert.match(list[2].payload.subtitle, /আজ আপনার পার্সেল পৌঁছাবে। ক্যাশ ৳1,520/);
+  assert.equal(list[2].payload.buttons[0].type, 'url', 'no rider number yet, so the card offers tracking');
+
+  // Delivery failed: the step is off by default, but the AI still asks for a new time and the chat goes to the team.
+  assert.equal(await courierStatusChanged(ctx.db, shipped, 'hold'), 'handed_off');
+  const conv = await ctx.db.conversations.findById(conversation.id).lean();
+  assert.equal(conv.ai_handoff, true);
+  assert.match(conv.ai_handoff_reason, /Delivery failed for order #1201/);
+  assert.ok(alerts.some((n) => n.event === 'handoff' && /Delivery failed/.test(n.title)));
+
+  // A step the shop switched off is not sent.
+  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { 'settings.delivery_steps.delivered': { on: false, title: 'x', message: 'y', button: 'bill' } } });
   await move(shipped, 'delivered');
-  assert.deepEqual(results, ['sent', 'off']);
-  assert.equal(await ctx.db.messages.countDocuments({ conversation_id: conversation.id, kind: 'delivery_card' }), 1);
+  assert.equal(results.at(-1), 'off');
+  assert.equal((await cards()).length, 3);
+
+  // CRR-05: an order cancelled after it was shipped alerts the on-duty team.
+  const second = await ctx.db.insert(ctx.db.orders, { workspace_id: ctx.ws, number: 1202, conversation_id: conversation.id, customer_name: 'Mitu', phone: '01712345678', address: 'x', area: 'inside_dhaka',
+    cod_amount: 900, subtotal: 830, delivery_charge: 70, discount: 0, status: 'in_transit', courier: 'Pathao', consignment_id: 'PT-9', items: [{ name: 'Orna' }] });
+  await move(await ctx.db.orders.findById(second.id).lean(), 'cancelled', { reason: 'customer_cancelled' });
+  assert.equal(results.at(-1), 'alerted');
+  assert.ok(alerts.some((n) => n.event === 'escalation' && /Stop the parcel: order #1202/.test(n.title)));
 });

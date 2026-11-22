@@ -10,6 +10,7 @@ import { COURIERS } from '../../adapters/couriers.js';
 import { encryptSecret } from '../../secrets.js';
 import { hashPassword } from '../../auth.js';
 import { isDuplicateKey, normalizeEmail } from '../../db.js';
+import { BUTTONS, DEFAULT_STEPS, STEPS, deliverySettings } from '../../dashboard/deliveryUpdates.js';
 
 const ROLES = ['admin', 'moderator', 'agent'];
 const monthStart = dhakaMonthStart;
@@ -124,6 +125,61 @@ export function settingsRoutes(db, config, { auth, adapters }) {
     await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: { 'settings.delivery_updates': req.body.on } });
     await audit(db, req.user, `Turned automatic delivery updates ${req.body.on ? 'on' : 'off'}`, { where: 'Delivery & courier' });
     res.json({ updates: req.body.on });
+  });
+
+  // CRR-03 / CRR-05 / CRR-06: Settings → Delivery updates (frame "Delivery updates").
+  router.get('/settings/delivery-updates', auth, async (req, res) => {
+    const ws = await db.workspaces.findById(req.user.workspace_id).lean();
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const [sent, accounts, rates, coupons] = await Promise.all([
+      db.orderEvents.aggregate([{ $match: { workspace_id: ws._id, type: 'delivery_update', created_at: { $gte: since } } }, { $group: { _id: '$to', n: { $sum: 1 } } }]),
+      db.courierAccounts.find({ workspace_id: ws._id }).lean(),
+      // Delivered share per courier over the last 90 days ("96% delivered").
+      db.orders.aggregate([{ $match: { workspace_id: ws._id, status: { $in: ['delivered', 'returned'] }, courier: { $nin: ['', null] }, created_at: { $gte: new Date(Date.now() - 90 * 86_400_000) } } },
+        { $group: { _id: '$courier', done: { $sum: 1 }, delivered: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } } } }]),
+      db.coupons.find({ workspace_id: ws._id, active: { $ne: false } }, { code: 1 }).sort({ code: 1 }).lean(),
+    ]);
+    const byCourier = new Map(rates.map((r) => [r._id, r]));
+    const acc = new Map(accounts.map((a) => [a.courier, a]));
+    res.json({
+      ...deliverySettings(ws),
+      sent: Object.fromEntries(sent.map((x) => [x._id, x.n])),
+      couriers: Object.entries(COURIERS).map(([key, c]) => {
+        const a = acc.get(key);
+        const r = byCourier.get(c.name);
+        return { key, name: c.name, connected: Boolean(a?.connected), autoBook: Boolean(a?.auto_book), deliveredPct: r?.done ? Math.round((r.delivered / r.done) * 100) : null };
+      }),
+      coupons: coupons.map((c) => c.code),
+      sample: { customer_name: 'Sadia Rahman', number: 1042, consignment_id: 'SF-82913', cod_amount: 2220, area: 'inside_dhaka', delivery_inside_days: ws.delivery_inside_days || '' },
+      canEdit: ['owner', 'admin'].includes(req.user.role),
+    });
+  });
+
+  router.put('/settings/delivery-updates', auth, ownerOrAdmin, async (req, res) => {
+    const b = req.body ?? {};
+    const set = {};
+    const text = (v, max, what) => { const t = String(v ?? '').trim().slice(0, max); if (!t) throw new InboxError(400, `Write the ${what}`); return t; };
+    if (b.steps !== undefined) {
+      const steps = {};
+      for (const k of STEPS) {
+        const x = b.steps?.[k];
+        if (!x) continue;
+        if (x.button !== undefined && !BUTTONS.includes(x.button)) throw new InboxError(400, 'Pick a button: track parcel, call rider or see bill');
+        steps[k] = { on: Boolean(x.on), title: text(x.title, 60, 'card title'), message: text(x.message, 400, 'message'), button: x.button ?? DEFAULT_STEPS[k].button };
+      }
+      set['settings.delivery_steps'] = steps;
+      set['settings.delivery_updates'] = Object.values(steps).some((x) => x.on);
+    }
+    if (b.alerts !== undefined) set['settings.delivery_alerts'] = { cancel_after_ship: Boolean(b.alerts?.cancel_after_ship), handoff_failed: Boolean(b.alerts?.handoff_failed) };
+    if (b.review !== undefined) {
+      const code = String(b.review?.coupon ?? '').trim().toUpperCase();
+      if (code && !(await db.coupons.exists({ workspace_id: req.user.workspace_id, code }))) throw new InboxError(404, `There is no coupon called ${code} — make it in Coupons first`);
+      set['settings.delivery_review'] = { on: Boolean(b.review?.on), coupon: code };
+    }
+    if (!Object.keys(set).length) throw new InboxError(400, 'Nothing to change');
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: set });
+    await audit(db, req.user, 'Changed delivery updates', { where: 'Delivery updates' });
+    res.json(deliverySettings(await db.workspaces.findById(req.user.workspace_id).lean()));
   });
 
   // Connect a courier with the shop's own merchant keys (stored encrypted, never sent back).

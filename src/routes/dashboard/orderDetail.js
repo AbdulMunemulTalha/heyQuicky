@@ -7,7 +7,7 @@ import { audit, bdPhone, escapeRegex } from '../../dashboard/util.js';
 import { riskFor } from '../../dashboard/risk.js';
 import { decryptSecret } from '../../secrets.js';
 import { COURIERS, courierClient, toPipeline } from '../../adapters/couriers.js';
-import { NEXT, stage, orderTotal, changeStatus, bookCourier, adjustStock } from '../../dashboard/orderOps.js';
+import { NEXT, stage, orderTotal, changeStatus, bookCourier, adjustStock, courierStatusChanged } from '../../dashboard/orderOps.js';
 import { zonesFor, priceOrder, cleanCustomer } from '../../dashboard/orderBuild.js';
 
 const SOURCES = { phone: 'team', messenger: 'team', instagram: 'team', whatsapp: 'team', walk_in: 'team', website: 'website' };
@@ -343,6 +343,7 @@ export async function syncConsignment(db, config, order, { emit = () => {}, fetc
   const { status } = await client.track(c.consignment_id);
   if (status && status !== c.status) {
     await db.consignments.updateOne({ _id: c._id }, { $set: { status }, $push: { events: { status, at: new Date(), text: status } } });
+    await courierStatusChanged(db, order, status);
     const to = toPipeline(status);
     if (to !== stage(order.status) && NEXT[stage(order.status)]?.includes(to)) {
       await changeStatus(db, null, order, to, { emit, by: 'courier', text: `${COURIERS[c.courier]?.name}: ${status}`, reason: to === 'cancelled' ? 'other' : '' });
