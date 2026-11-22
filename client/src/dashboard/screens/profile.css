@@ -1,0 +1,35 @@
+/* Phase 2 · Profile & account (UX-11) */
+#dash .pf-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+#dash .pf-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+#dash .pf-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+#dash .pf-card h3 { margin: 0; font-size: 14px; font-weight: 600; }
+#dash .pf-head { display: flex; justify-content: space-between; align-items: center; }
+#dash .pf-photo { display: flex; align-items: center; gap: 10px; }
+#dash .pf-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+#dash .pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#dash .pf-grid .field, #dash .pf-form .field { display: flex; flex-direction: column; gap: 5px; margin: 0; }
+#dash .pf-grid .field-label, #dash .pf-form .field-label { font-size: 12.5px; font-weight: 600; }
+#dash .pf-rows li { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--border); font-size: 13px; }
+#dash .pf-rows li:first-child { border-top: 0; padding-top: 2px; }
+#dash .pf-rows.tight li { padding: 8px 0; }
+#dash .pf-rows .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#dash .pf-dev { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--panel-2); flex: none; }
+#dash .pf-link { all: unset; cursor: pointer; font-size: 12px; color: var(--muted); text-decoration: underline; }
+#dash .pf-danger { color: var(--red-text, #b42318); border-color: var(--red-soft, #fbd5d5); }
+#dash .pf-choices { display: grid; gap: 10px; }
+#dash .pf-choices.two { grid-template-columns: 1fr 1fr; }
+#dash .pf-choices.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#dash .pf-choice { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+#dash .pf-choice.on { border-color: var(--accent, #2f6fed); background: var(--accent-tint, #eef2ff); box-shadow: 0 0 0 1px var(--accent, #2f6fed); }
+#dash .pf-choice:focus-visible { outline: 2px solid var(--accent, #2f6fed); outline-offset: 2px; }
+#dash .pf-theme { align-items: center; text-align: center; gap: 8px; padding: 8px 8px 10px; }
+#dash .pf-thumb { position: relative; display: block; width: 100%; height: 56px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+#dash .pf-thumb i, #dash .pf-thumb b { position: absolute; display: block; }
+#dash .pf-thumb i { left: 0; top: 0; bottom: 0; width: 26%; }
+#dash .pf-thumb b { left: 34%; right: 8%; top: 12px; height: 7px; border-radius: 3px; }
+#dash .th-light { background: #fff; } #dash .th-light i { background: #f3f4f6; } #dash .th-light b { background: #111; }
+#dash .th-dark { background: #17181c; } #dash .th-dark i { background: #0e0f12; } #dash .th-dark b { background: #f2f3f5; }
+#dash .th-system { background: linear-gradient(90deg, #fff 50%, #17181c 50%); } #dash .th-system i { background: #f3f4f6; } #dash .th-system b { background: #888; }
+#dash .pf-form { display: flex; flex-direction: column; gap: 12px; }
+#dash .pf-err { color: var(--red-text, #b42318); }
+@media (max-width: 1000px) { #dash .pf-cols, #dash .pf-grid { grid-template-columns: minmax(0, 1fr); } }
