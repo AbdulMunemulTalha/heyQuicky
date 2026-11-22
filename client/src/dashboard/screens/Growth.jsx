@@ -3,7 +3,7 @@ import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
 import { navigate, setQuery } from '../lib/router.jsx';
-import { Button, Card, Checkbox, Empty, ErrorState, Kpi, Pill, Segmented, Skeleton, toast } from '../ui/kit.jsx';
+import { Button, Card, Checkbox, Empty, ErrorState, Kpi, Modal, Pill, Segmented, Skeleton, toast } from '../ui/kit.jsx';
 import './growth.css';
 
 const TABS = ['followups', 'leads', 'broadcasts'];
@@ -105,18 +105,10 @@ function Leads({ t, query }) {
   const tab = query.leads === 'contacted' ? 'contacted' : 'to_chase';
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [logFor, setLogFor] = useState(null);
+  const [callFor, setCallFor] = useState(null);
   const load = useCallback(() => dash(`/growth/leads?tab=${tab}`).then(setData, setError), [tab]);
   useEffect(() => { load(); }, [load]);
-
-  async function log(lead, outcome) {
-    try {
-      await dash(`/growth/leads/${lead.id}/log`, { method: 'POST', body: { outcome } });
-      toast(t(`gr.logged.${outcome}`), 'green');
-      setLogFor(null);
-      load();
-    } catch (err) { toast(err.message, 'red'); }
-  }
+  const closeCall = useCallback(() => setCallFor(null), []);
 
   if (error) return <ErrorState thing={t('gr.tab.leads')} error={error} onRetry={load} />;
   return (
@@ -148,14 +140,7 @@ function Leads({ t, query }) {
                       <Button size="sm" onClick={() => window.open(`https://wa.me/88${l.phone}`, '_blank', 'noopener')}>WhatsApp</Button>
                       <Button size="sm" onClick={() => { navigator.clipboard?.writeText(l.phone); toast(t('gr.copied')); }}>{t('gr.copy')}</Button>
                     </>}
-                    <span className="log-wrap">
-                      <Button size="sm" variant="dark" onClick={() => setLogFor(logFor === l.id ? null : l.id)}>{t('gr.logCall')}</Button>
-                      {logFor === l.id && (
-                        <span className="status-menu log-menu" role="menu">
-                          {['ordered', 'call_later', 'no_answer', 'not_interested'].map((o) => <button key={o} type="button" role="menuitem" onClick={() => log(l, o)}>{t(`gr.out.${o}`)}</button>)}
-                        </span>
-                      )}
-                    </span>
+                    <Button size="sm" variant="dark" onClick={() => setCallFor(l)}>{t(l.stage === 'call_scheduled' ? 'gr.cb.open' : 'gr.cb.schedule')}</Button>
                   </td>
                 </tr>
               ))}
@@ -163,7 +148,70 @@ function Leads({ t, query }) {
           </table>
         </div>
       )}
+      {callFor && <CallbackDialog t={t} lead={callFor} onClose={closeCall} onDone={() => { setCallFor(null); load(); }} />}
     </Card>
+  );
+}
+
+// FUP-04 · Schedule a call (frame "Schedule a callback"): the time the customer asked for in chat is filled in;
+// pick an owner and save (they're reminded when it's time), or log what happened in one tap.
+const pad = (n) => String(n).padStart(2, '0');
+// A Date → the date and time inputs, in Bangladesh time.
+function dhakaParts(d) {
+  const x = new Date(new Date(d).getTime() + 6 * 3_600_000);
+  return { date: `${x.getUTCFullYear()}-${pad(x.getUTCMonth() + 1)}-${pad(x.getUTCDate())}`, time: `${pad(x.getUTCHours())}:${pad(x.getUTCMinutes())}` };
+}
+function CallbackDialog({ t, lead, onClose, onDone }) {
+  const [d, setD] = useState(null);
+  const [f, setF] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    dash(`/growth/leads/${lead.id}/callback`).then((x) => {
+      setD(x);
+      // Nothing said in chat: two hours from now, on the half hour.
+      const start = x.fromChat?.at ?? x.lead.callbackAt ?? new Date(Math.ceil((Date.now() + 2 * 3_600_000) / 1_800_000) * 1_800_000);
+      setF({ ...dhakaParts(start), ownerId: x.lead.ownerId ?? '' });
+    }).catch((err) => { toast(err.message, 'red'); onClose(); });
+  }, [lead.id, onClose]);
+  const at = f ? new Date(`${f.date}T${f.time}:00+06:00`) : null;
+  const owner = d?.team.find((u) => u.id === Number(f?.ownerId));
+  async function save() {
+    setBusy(true);
+    try { await dash(`/growth/leads/${lead.id}/callback`, { method: 'POST', body: { at: at.toISOString(), ownerId: Number(f.ownerId) } }); toast(t('gr.cb.saved', { w: t.dateTime(at.toISOString()), n: owner?.name ?? '' }), 'green'); onDone(); } catch (err) { toast(err.message, 'red'); }
+    setBusy(false);
+  }
+  async function log(outcome) {
+    setBusy(true);
+    try {
+      await dash(`/growth/leads/${lead.id}/log`, { method: 'POST', body: { outcome, ...(outcome === 'call_later' ? { at: at.toISOString() } : {}) } });
+      toast(t(`gr.logged.${outcome}`), 'green'); onDone();
+    } catch (err) { toast(err.message, 'red'); }
+    setBusy(false);
+  }
+  return (
+    <Modal title={t('gr.cb.title')} subtitle={[lead.name, lead.product, lead.amount ? t.money(lead.amount) : ''].filter(Boolean).join(' · ')} onClose={onClose} width={440} footer={(
+      <><Button onClick={onClose}>{t('common.cancel')}</Button>
+        <Button variant="primary" busy={busy} disabled={!f || Number.isNaN(at?.getTime())} onClick={save}>{owner ? t('gr.cb.saveRemind', { n: owner.name }) : t('common.save')}</Button></>
+    )}>
+      {!d || !f ? <Skeleton h={160} r={10} /> : (
+        <div className="gr-cb">
+          {d.fromChat && <div className="gr-cb-chat"><strong>{t('gr.cb.fromChat')}</strong> <span className="bn-ok">“{d.fromChat.quote}”</span> — {t('gr.cb.filled')}</div>}
+          <div className="gr-cb-when">
+            <input className="input" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} aria-label={t('gr.cb.day')} />
+            <input className="input" type="time" value={f.time} onChange={(e) => setF({ ...f, time: e.target.value })} aria-label={t('gr.cb.time')} />
+          </div>
+          <select className="input" value={f.ownerId} onChange={(e) => setF({ ...f, ownerId: e.target.value })} aria-label={t('gr.cb.who')}>
+            {d.team.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <strong className="small">{t('gr.cb.after')}</strong>
+          <div className="gr-cb-outcomes">
+            {['ordered', 'call_later', 'no_answer', 'not_interested'].map((o) => (
+              <button key={o} type="button" className={`gr-cb-out o-${o}`} disabled={busy} onClick={() => log(o)}>{t(`gr.out.${o}`)}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 

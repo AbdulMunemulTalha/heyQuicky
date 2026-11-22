@@ -210,6 +210,7 @@ export function defineDashboardModels(conn) {
     owner_user_id: { type: Number, default: null },
     follow_up_at: { type: Date, default: null },
     callback_at: { type: Date, default: null },
+    callback_reminded_at: { type: Date, default: null },
     outcome: { type: String, default: '' },
     order_id: { type: Number, default: null },
     last_seen_at: { type: Date, default: () => new Date() },

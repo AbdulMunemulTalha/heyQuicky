@@ -5,6 +5,7 @@ import { audit, clampInt, dhakaDayStart } from '../../dashboard/util.js';
 import { WINDOW_MS, runFollowups } from '../../dashboard/followups.js';
 
 import { segmentMembers } from '../../dashboard/segments.js';
+import { callbackFromMessages } from '../../dashboard/callbacks.js';
 
 const AUDIENCES = ['hot', 'warm', 'last_24h', 'customers_24h'];
 const okAudience = (a) => AUDIENCES.includes(a) || /^segment:\d+$/.test(String(a ?? ''));
@@ -90,7 +91,33 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
     });
   });
 
-  // "Log call": one tap for what happened (FUP-04 adds the full callback popup in Phase 2).
+  // FUP-04 · Schedule a call: the time the customer asked for, read from their chat, and the team to pick an owner from.
+  router.get('/growth/leads/:id/callback', auth, async (req, res) => {
+    const p = await db.prospects.findOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id }).lean();
+    if (!p) throw new InboxError(404, 'Lead not found');
+    const said = p.conversation_id ? await db.messages.find({ conversation_id: p.conversation_id, direction: 'in' }, { text: 1 }).sort({ _id: -1 }).limit(20).lean() : [];
+    const team = await db.users.find({ workspace_id: req.user.workspace_id, is_active: { $ne: false }, invite_pending: { $ne: true } }, { name: 1 }).sort({ name: 1 }).lean();
+    res.json({
+      lead: { id: p._id, name: p.name || 'Customer', product: p.product, amount: p.amount, stage: p.stage, callbackAt: p.callback_at, ownerId: p.owner_user_id ?? req.user.id },
+      fromChat: callbackFromMessages(said),
+      team: team.map((u) => ({ id: u._id, name: u.name })),
+    });
+  });
+
+  router.post('/growth/leads/:id/callback', auth, need(db, 'reply'), async (req, res) => {
+    const at = new Date(req.body?.at);
+    if (Number.isNaN(at.getTime())) throw new InboxError(400, 'Pick a day and time for the call');
+    if (at < new Date(Date.now() - 5 * 60_000)) throw new InboxError(400, 'Pick a time that hasn\'t passed');
+    const owner = req.body?.ownerId ? await db.users.findOne({ _id: Number(req.body.ownerId), workspace_id: req.user.workspace_id }, { name: 1 }).lean() : { _id: req.user.id, name: req.user.name };
+    if (!owner) throw new InboxError(404, 'Teammate not found');
+    const r = await db.prospects.updateOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id },
+      { $set: { stage: 'call_scheduled', callback_at: at, owner_user_id: owner._id, callback_reminded_at: null, outcome: 'call_later' } });
+    if (!r.matchedCount) throw new InboxError(404, 'Lead not found');
+    emit(req.user.workspace_id, 'lead', { id: Number(req.params.id) });
+    res.json({ ok: true, at, owner: owner.name });
+  });
+
+  // "Log call": one tap for what happened (also inside the Schedule a call popup).
   router.post('/growth/leads/:id/log', auth, need(db, 'reply'), async (req, res) => {
     const outcome = String(req.body?.outcome ?? '');
     if (!(outcome in OUTCOMES)) throw new InboxError(400, 'Pick what happened on the call');

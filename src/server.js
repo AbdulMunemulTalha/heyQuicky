@@ -8,6 +8,7 @@ import { startCourierSync } from './routes/dashboard/orderDetail.js';
 import { startFollowups } from './dashboard/followups.js';
 import { startPageSubscriptions } from './dashboard/pageSubscriptions.js';
 import { startSlaWatch } from './dashboard/team.js';
+import { remindCallbacks } from './dashboard/callbacks.js';
 
 const config = loadConfig();
 
@@ -35,6 +36,8 @@ startFollowups(db, inbox);
 startPageSubscriptions(db, config);
 startSlaWatch(db, notify);
 startCourierSync(db, config, { emit: (ws, event, payload) => io.to(`workspace:${ws}`).emit(event, payload), notify });
+// Scheduled callbacks remind their owner when it's time to call (FUP-04).
+setInterval(() => remindCallbacks(db, notify).catch((err) => console.warn('callback reminders:', err.message)), 60_000).unref();
 // A day after delivery the customer is asked for a rating (CRR-06), checked every 30 minutes.
 setInterval(() => deliveryUpdates.sendDueReviews().catch((err) => console.warn('review requests:', err.message)), 30 * 60_000).unref();
 
