@@ -21,6 +21,8 @@ export function dashboardRoutes(db, config, ctx) {
       db.workspaces.findById(req.user.workspace_id).lean(),
     ]);
     const group = workspace.brand_group ?? workspace._id;
+    // AI credit is shared by every brand, kept on the main shop.
+    const credit = group === workspace._id ? workspace.credit_balance ?? 0 : (await db.workspaces.findById(group, { credit_balance: 1 }).lean())?.credit_balance ?? 0;
     const [brands, channels] = await Promise.all([
       db.workspaces.find({ $or: [{ _id: group }, { brand_group: group }] }, { name: 1, onboarding_step: 1 }).lean(),
       db.channels.find({ workspace_id: workspace._id }, { platform: 1, name: 1, needs_reconnect: 1 }).lean(),
@@ -33,8 +35,8 @@ export function dashboardRoutes(db, config, ctx) {
       },
       workspace: {
         id: workspace._id, name: workspace.name, category: workspace.category, aiMode: workspace.ai_mode ?? 'suggest',
-        onboardingStep: workspace.onboarding_step, credit: workspace.credit_balance ?? 0,
-        repliesLeft: Math.floor((workspace.credit_balance ?? 0) / await averageReplyCost(db, workspace._id)), plan: workspace.plan ?? 'starter',
+        onboardingStep: workspace.onboarding_step, credit,
+        repliesLeft: Math.floor(credit / await averageReplyCost(db, workspace._id)), plan: workspace.plan ?? 'starter',
         wentLiveAt: workspace.went_live_at, modules: modulesFor(workspace),
         channels: channels.map((c) => ({ id: c._id, platform: c.platform, name: c.name, needsReconnect: Boolean(c.needs_reconnect) })),
         // AI replies pause at zero credit only when AI_CREDIT_ENFORCED is on (src/ai/metering.js).

@@ -30,14 +30,15 @@ export function settingsRoutes(db, config, { auth, adapters }) {
   // ---- Billing & AI credit (BIL-01/02/03/05/06) ----
   router.get('/settings/billing', auth, need(db, 'billing'), async (req, res) => {
     const wsId = req.user.workspace_id;
-    const ws = await db.workspaces.findById(wsId).lean();
+    // Credit, caps and top-ups belong to the main shop (shared by every brand).
+    const ws = await db.workspaces.findById(req.user.team_id ?? wsId).lean();
     const since = monthStart();
     const [month, saved, replies, pending, avg] = await Promise.all([
       db.aiReplies.aggregate([{ $match: { workspace_id: wsId, kind: { $ne: 'saved' }, created_at: { $gte: since } } },
         { $group: { _id: null, n: { $sum: 1 }, cost: { $sum: '$cost' }, saved: { $sum: '$saved' } } }]),
       db.aiReplies.countDocuments({ workspace_id: wsId, kind: 'saved', created_at: { $gte: since } }),
       db.aiReplies.find({ workspace_id: wsId }).sort({ created_at: -1 }).limit(30).lean(),
-      db.credit.find({ workspace_id: wsId, type: 'top_up', status: 'pending' }).sort({ created_at: -1 }).lean(),
+      db.credit.find({ workspace_id: req.user.team_id ?? wsId, type: 'top_up', status: 'pending' }).sort({ created_at: -1 }).lean(),
       averageReplyCost(db, wsId),
     ]);
     const balance = ws.credit_balance ?? 0;
@@ -57,7 +58,7 @@ export function settingsRoutes(db, config, { auth, adapters }) {
     if (req.body?.monthly !== undefined) set['settings.caps.monthly'] = req.body.monthly === null || req.body.monthly === '' ? null : money(req.body.monthly, 'monthly spend cap', { max: 10_000_000 });
     if (req.body?.alertBelow !== undefined) set['settings.caps.alert_below'] = money(req.body.alertBelow, 'alert amount', { max: 1_000_000 });
     if (!Object.keys(set).length) throw new InboxError(400, 'Nothing to change');
-    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: set });
+    await db.workspaces.updateOne({ _id: req.user.team_id ?? req.user.workspace_id }, { $set: set });
     await audit(db, req.user, `Changed AI spend limits (${Object.entries(set).map(([k, v]) => `${k.split('.').pop()} ${v ?? 'none'}`).join(', ')})`, { where: 'Billing' });
     res.json({ ok: true });
   });
@@ -250,7 +251,7 @@ export function settingsRoutes(db, config, { auth, adapters }) {
 
   // ---- Team (TEAM-01, TEAM-04) ----
   router.get('/settings/team', auth, async (req, res) => {
-    const users = await db.users.find({ workspace_id: req.user.workspace_id }).lean();
+    const users = await db.users.find({ workspace_id: req.user.team_id }).lean();
     const order = { owner: 0, admin: 1, moderator: 2, agent: 3 };
     users.sort((a, b) => (order[a.role] - order[b.role]) || a.name.localeCompare(b.name));
     res.json({
@@ -269,7 +270,7 @@ export function settingsRoutes(db, config, { auth, adapters }) {
     const password = randomBytes(6).toString('base64url');
     let user;
     try {
-      user = await db.insert(db.users, { workspace_id: req.user.workspace_id, name, email, password_hash: hashPassword(password), role });
+      user = await db.insert(db.users, { workspace_id: req.user.team_id, name, email, password_hash: hashPassword(password), role });
     } catch (err) {
       if (isDuplicateKey(err)) throw new InboxError(409, 'Someone already uses this email');
       throw err;
@@ -283,7 +284,7 @@ export function settingsRoutes(db, config, { auth, adapters }) {
   });
 
   router.patch('/settings/team/:id', auth, need(db, 'invite'), async (req, res) => {
-    const member = await db.users.findOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id }).lean();
+    const member = await db.users.findOne({ _id: Number(req.params.id), workspace_id: req.user.team_id }).lean();
     if (!member) throw new InboxError(404, 'Teammate not found');
     if (member.role === 'owner') throw new InboxError(403, "The owner's access can't be changed here");
     if (member._id === req.user.id) throw new InboxError(403, "You can't change your own access");

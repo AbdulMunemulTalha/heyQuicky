@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { dhakaDayStart, csv } from '../../dashboard/util.js';
 import { orderTotal } from '../../dashboard/orderOps.js';
 import { replyStats, summarize } from './overview.js';
+import { teamId } from '../../dashboard/brands.js';
 
 const RANGES = [7, 30, 90];
 const DAYS = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri']; // the Bangladeshi week starts on Saturday
@@ -17,7 +18,7 @@ export async function analytics(db, wsId, range, now = new Date()) {
   const [orders, prevOrders, users, aiSpend, stats, heat, interested] = await Promise.all([
     db.orders.find({ ...base, created_at: { $gte: from } }, fields).lean(),
     db.orders.find({ ...base, created_at: { $gte: prevFrom, $lt: from }, status: { $ne: 'cancelled' } }, { subtotal: 1, delivery_charge: 1, discount: 1 }).lean(),
-    db.users.find({ workspace_id: wsId }, { name: 1 }).lean(),
+    db.users.find({ workspace_id: await teamId(db, wsId) }, { name: 1 }).lean(),
     db.aiReplies.aggregate([{ $match: { workspace_id: wsId, created_at: { $gte: from }, kind: { $in: ['reply', 'followup'] } } }, { $group: { _id: null, cost: { $sum: '$cost' } } }]),
     replyStats(db, wsId, from, now),
     messageHeat(db, wsId, from),

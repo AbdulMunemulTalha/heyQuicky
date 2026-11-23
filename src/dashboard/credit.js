@@ -1,14 +1,17 @@
+import { teamId } from './brands.js';
 // AI credit ledger. Every change goes through here so workspace.credit_balance and the ledger agree.
 
-export async function addCredit(db, workspaceId, amount, { type = 'top_up', method = '', ref = '', status = 'done' } = {}) {
+export async function addCredit(db, brandId, amount, { type = 'top_up', method = '', ref = '', status = 'done' } = {}) {
+  const workspaceId = await teamId(db, brandId);
   const ws = await db.workspaces.findOneAndUpdate({ _id: workspaceId }, { $inc: { credit_balance: amount } }, { new: true, lean: true });
   return db.insert(db.credit, { workspace_id: workspaceId, type, amount, balance_after: ws.credit_balance, method, ref, status });
 }
 
 // Charges one AI reply. Returns false (and charges nothing) when there's no credit left,
 // so the caller can stop the AI and fall back to saved replies (SR-10).
-export async function chargeReply(db, workspaceId, cost, ref = '') {
+export async function chargeReply(db, brandId, cost, ref = '') {
   if (cost <= 0) return true;
+  const workspaceId = await teamId(db, brandId);
   const ws = await db.workspaces.findOneAndUpdate(
     { _id: workspaceId, credit_balance: { $gte: cost } }, { $inc: { credit_balance: -cost } }, { new: true, lean: true });
   if (!ws) return false;
@@ -32,7 +35,8 @@ export async function averageReplyCost(db, workspaceId) {
 export const TOPUP_MIN = 100;
 export const TOPUP_MAX = 100_000;
 
-export async function requestTopup(db, workspaceId, { amount, method, trxId }) {
+export async function requestTopup(db, brandId, { amount, method, trxId }) {
+  const workspaceId = await teamId(db, brandId);
   const ws = await db.workspaces.findById(workspaceId, { credit_balance: 1 }).lean();
   return db.insert(db.credit, { workspace_id: workspaceId, type: 'top_up', amount, balance_after: ws?.credit_balance ?? 0, method, ref: trxId, status: 'pending' });
 }

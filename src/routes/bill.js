@@ -3,6 +3,7 @@ import { bdPhone, asciiDigits } from '../dashboard/util.js';
 import { orderTotal } from '../dashboard/orderOps.js';
 import { zonesFor } from '../dashboard/orderBuild.js';
 import { trackingUrl } from '../platforms/rich.js';
+import { teamId } from '../dashboard/brands.js';
 
 // Screen 20 / ORD-03: the customer's bill — a public page behind an unguessable link (/b/:token),
 // Bangla first, readable on any phone without JavaScript. Shows the live status, lets the customer
@@ -138,7 +139,7 @@ export function billRoutes(db, config, { notify = null } = {}) {
       order.conversation_id ? db.conversations.findById(order.conversation_id, { channel_id: 1 }).lean().then((c) => (c ? db.channels.findById(c.channel_id).lean() : null)) : null,
       db.payments.findOne({ order_id: order._id, status: 'waiting' }).lean(),
     ]);
-    const owner = await db.users.findOne({ workspace_id: order.workspace_id, role: 'owner' }, { phone: 1 }).lean();
+    const owner = await db.users.findOne({ workspace_id: await teamId(db, order.workspace_id), role: 'owner' }, { phone: 1 }).lean();
     const page_ = channel ?? await db.channels.findOne({ workspace_id: order.workspace_id, platform: 'messenger' }).lean();
     const shopPhone = ws?.phone || owner?.phone || '';
     const stage = STAGE[order.status] ?? order.status;

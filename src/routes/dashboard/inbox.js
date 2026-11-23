@@ -5,6 +5,7 @@ import { can, need } from '../../dashboard/permissions.js';
 import { audit, escapeRegex, clampInt } from '../../dashboard/util.js';
 import { setting } from '../../dashboard/settings.js';
 import { stageOf } from './overview.js';
+import { teamId } from '../../dashboard/brands.js';
 
 const TABS = ['waiting', 'unread', 'open', 'done', 'spam', 'snoozed'];
 const CHANNELS = ['messenger', 'instagram', 'whatsapp', 'web'];
@@ -250,7 +251,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     const userId = req.body?.userId === null ? null : Number(req.body?.userId);
     let assignee = null;
     if (userId !== null) {
-      assignee = await db.users.findOne({ _id: userId, workspace_id: req.user.workspace_id, is_active: true }).lean();
+      assignee = await db.users.findOne({ _id: userId, workspace_id: req.user.team_id, is_active: true }).lean();
       if (!assignee) throw new InboxError(400, 'Pick a teammate');
     }
     const set = { assigned_user_id: userId };
@@ -328,7 +329,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     const conv = await load(req, idOf(req));
     const text = String(req.body?.text ?? '').trim().slice(0, 1000);
     if (!text) throw new InboxError(400, 'Write a note');
-    const team = await db.users.find({ workspace_id: conv.workspace_id, is_active: true }, { name: 1 }).lean();
+    const team = await db.users.find({ workspace_id: await teamId(db, conv.workspace_id), is_active: true }, { name: 1 }).lean();
     const mentions = team.filter((u) => new RegExp(`@${escapeRegex(u.name)}\\b`, 'i').test(text)).map((u) => u._id);
     const note = await db.insert(db.notes, { workspace_id: conv.workspace_id, conversation_id: conv._id, customer_id: conv.customer_id, author_user_id: req.user.id, text, mentions });
     const [row] = await hydrate([conv]);
@@ -370,7 +371,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     let result;
     if (action === 'assign') {
       const userId = Number(req.body?.userId);
-      if (!(await db.users.exists({ _id: userId, workspace_id: req.user.workspace_id, is_active: true }))) throw new InboxError(400, 'Pick a teammate');
+      if (!(await db.users.exists({ _id: userId, workspace_id: req.user.team_id, is_active: true }))) throw new InboxError(400, 'Pick a teammate');
       result = await db.conversations.updateMany(where, { $set: { assigned_user_id: userId } });
     } else if (action === 'tag') {
       const tag = String(req.body?.tag ?? '').trim().slice(0, 30);
@@ -410,7 +411,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
   });
 
   router.get('/team/members', auth, async (req, res) => {
-    const users = await db.users.find({ workspace_id: req.user.workspace_id, is_active: true }, { name: 1, role: 1, on_duty: 1, is_online: 1, invite_pending: 1 }).lean();
+    const users = await db.users.find({ workspace_id: req.user.team_id, is_active: true }, { name: 1, role: 1, on_duty: 1, is_online: 1, invite_pending: 1 }).lean();
     const open = await db.conversations.aggregate([
       { $match: { workspace_id: req.user.workspace_id, status: 'open', spam: { $ne: true }, assigned_user_id: { $ne: null } } },
       { $group: { _id: '$assigned_user_id', n: { $sum: 1 } } }]);

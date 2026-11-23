@@ -4,6 +4,7 @@ import { messagingWindow, sendText, sendRich, sendSenderAction, fetchProfileName
 import { toPlatform, parsePostback } from './platforms/rich.js';
 import { decryptSecret } from './secrets.js';
 import { looksLikeSpam } from './dashboard/spam.js';
+import { teamId } from './dashboard/brands.js';
 
 export class InboxError extends Error {
   constructor(status, message) {
@@ -436,7 +437,7 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       await requireConversation(user, conversationId);
       if (assigneeId !== null) {
         const assignee = Number.isInteger(assigneeId)
-          && await db.users.exists({ _id: assigneeId, workspace_id: user.workspace_id, is_active: true });
+          && await db.users.exists({ _id: assigneeId, workspace_id: user.team_id ?? await teamId(db, user.workspace_id), is_active: true });
         if (!assignee) throw new InboxError(400, 'Unknown team member');
       }
       await assignConversation(db, conversationId, assigneeId);

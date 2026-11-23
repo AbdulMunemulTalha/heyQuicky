@@ -4,6 +4,7 @@ import { ACTIONS, DEFAULT_PERMISSIONS, permissionsFor } from '../../dashboard/pe
 import { audit, dhakaDayStart } from '../../dashboard/util.js';
 import { teamSettings, slaCounts, SHARE_MODES, RULE_FIELDS, RULE_ACTIONS, TOPICS } from '../../dashboard/team.js';
 import { distributeUnassigned } from '../../assignment.js';
+import { teamId } from '../../dashboard/brands.js';
 
 // Which actions each kind of rule allows: arriving chats are assigned; handoffs can also open a
 // ticket or just notify; comments have no chat, so they notify.
@@ -22,7 +23,7 @@ export function teamRoutes(db, _config, { auth, emit }) {
 
   router.get('/team', auth, async (req, res) => {
     const ws = await db.workspaces.findById(req.user.workspace_id).lean();
-    const users = await db.users.find({ workspace_id: ws._id }, { name: 1, email: 1, role: 1, on_duty: 1, is_online: 1, is_active: 1, invite_pending: 1, last_seen_at: 1 }).sort({ role: 1, name: 1 }).lean();
+    const users = await db.users.find({ workspace_id: await teamId(db, ws._id) }, { name: 1, email: 1, role: 1, on_duty: 1, is_online: 1, is_active: 1, invite_pending: 1, last_seen_at: 1 }).sort({ role: 1, name: 1 }).lean();
     const ids = users.map((u) => u._id);
     const today = dhakaDayStart(new Date());
     const week = new Date(Date.now() - 7 * 86_400_000);
@@ -72,7 +73,7 @@ export function teamRoutes(db, _config, { auth, emit }) {
     }
     if (b.rules !== undefined) {
       if (!Array.isArray(b.rules) || b.rules.length > 20) throw new InboxError(400, 'Up to 20 rules');
-      const members = new Set((await db.users.find({ workspace_id: req.user.workspace_id, is_active: { $ne: false } }, { _id: 1 }).lean()).map((u) => u._id));
+      const members = new Set((await db.users.find({ workspace_id: req.user.team_id, is_active: { $ne: false } }, { _id: 1 }).lean()).map((u) => u._id));
       set['settings.team.rules'] = b.rules.map((r) => {
         if (!RULE_FIELDS.includes(r?.field)) throw new InboxError(400, 'Unknown rule');
         if (!members.has(Number(r.userId))) throw new InboxError(400, 'Pick a teammate for every rule');
@@ -100,7 +101,7 @@ export function teamRoutes(db, _config, { auth, emit }) {
   // The owner (or an admin) switches a teammate on or off duty from Members.
   router.patch('/team/members/:id/duty', auth, ownerOrAdmin, async (req, res) => {
     if (typeof req.body?.onDuty !== 'boolean') throw new InboxError(400, 'Say on or off duty');
-    const u = await db.users.findOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id, is_active: { $ne: false } }, { name: 1 }).lean();
+    const u = await db.users.findOne({ _id: Number(req.params.id), workspace_id: req.user.team_id, is_active: { $ne: false } }, { name: 1 }).lean();
     if (!u) throw new InboxError(404, 'Teammate not found');
     await db.users.updateOne({ _id: u._id }, { $set: { on_duty: req.body.onDuty, is_online: req.body.onDuty } });
     if (req.body.onDuty) await distributeUnassigned(db, req.user.workspace_id);

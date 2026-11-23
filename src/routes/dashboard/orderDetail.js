@@ -9,6 +9,7 @@ import { decryptSecret } from '../../secrets.js';
 import { COURIERS, courierClient, toPipeline } from '../../adapters/couriers.js';
 import { NEXT, stage, orderTotal, changeStatus, bookCourier, adjustStock, courierStatusChanged } from '../../dashboard/orderOps.js';
 import { zonesFor, priceOrder, cleanCustomer } from '../../dashboard/orderBuild.js';
+import { teamId } from '../../dashboard/brands.js';
 
 const SOURCES = { phone: 'team', messenger: 'team', instagram: 'team', whatsapp: 'team', walk_in: 'team', website: 'website' };
 
@@ -287,7 +288,7 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
     const text = String(req.body?.text ?? '').trim().slice(0, 1000);
     if (!text) throw new InboxError(400, 'Write a note');
     const ev = await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'note', by: 'user', user_id: req.user.id, text });
-    const team = await db.users.find({ workspace_id: order.workspace_id, is_active: true }, { name: 1 }).lean();
+    const team = await db.users.find({ workspace_id: await teamId(db, order.workspace_id), is_active: true }, { name: 1 }).lean();
     for (const u of team.filter((x) => x._id !== req.user.id && new RegExp(`@${escapeRegex(x.name)}\\b`, 'i').test(text))) {
       await notify({ workspaceId: order.workspace_id, userIds: [u._id], event: 'mention', title: `${req.user.name} mentioned you`, body: `on order #${order.number}: "${text.slice(0, 80)}"`, link: `/orders/${order.number}` });
     }

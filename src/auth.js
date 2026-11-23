@@ -32,8 +32,13 @@ export async function userForToken(db, token) {
   const session = await db.sessions.findOne({ _id: token, expires_at: { $gt: new Date() } }).lean();
   if (!session) return null;
   const user = await db.users.findOne({ _id: session.user_id, is_active: true },
-    { workspace_id: 1, name: 1, email: 1, role: 1, is_online: 1 }).lean();
-  return user ? { id: user._id, workspace_id: user.workspace_id, name: user.name, email: user.email, role: user.role, is_online: user.is_online } : null;
+    { workspace_id: 1, active_workspace_id: 1, name: 1, email: 1, role: 1, is_online: 1 }).lean();
+  if (!user) return null;
+  let workspaceId = user.workspace_id;
+  // UX-10: a brand the person switched to, if it still belongs to their shop's group.
+  if (user.active_workspace_id && user.active_workspace_id !== user.workspace_id
+    && await db.workspaces.exists({ _id: user.active_workspace_id, brand_group: user.workspace_id })) workspaceId = user.active_workspace_id;
+  return { id: user._id, workspace_id: workspaceId, team_id: user.workspace_id, name: user.name, email: user.email, role: user.role, is_online: user.is_online };
 }
 
 export function bearerToken(req) {

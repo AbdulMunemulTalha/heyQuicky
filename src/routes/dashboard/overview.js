@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { dhakaDayStart } from '../../dashboard/util.js';
 import { setting, DEFAULT_SLA } from '../../dashboard/settings.js';
+import { teamId } from '../../dashboard/brands.js';
 
 const total = (o) => (o.subtotal ?? 0) + (o.delivery_charge ?? 0) - (o.discount ?? 0);
 // The order pipeline as the dashboard names it; older 'confirmed'/'shipped' map onto it.
@@ -60,7 +61,7 @@ export function overviewRoutes(db, _config, { auth }) {
       db.orders.countDocuments({ workspace_id: ws, status: 'delivered', updated_at: { $gte: dhakaDayStart(now, -6) } }),
       db.channels.find({ workspace_id: ws }, { platform: 1 }).lean(),
       db.products.countDocuments({ workspace_id: ws, archived: { $ne: true } }),
-      db.users.countDocuments({ workspace_id: ws, is_active: true }),
+      db.users.countDocuments({ workspace_id: await teamId(db, ws), is_active: true }),
       db.courierAccounts.countDocuments({ workspace_id: ws, connected: true }),
       db.unanswered.find({ workspace_id: ws, status: 'open' }).sort({ count: -1 }).limit(1).lean(),
       db.payments.find({ workspace_id: ws, status: 'waiting' }).sort({ created_at: 1 }).lean(),

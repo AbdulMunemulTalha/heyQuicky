@@ -1,0 +1,30 @@
+/* UX-10 · Brand / page switcher and Add a brand */
+#dash .br-backdrop { position: fixed; inset: 0; z-index: 70; }
+#dash .br-panel { position: fixed; top: 118px; left: 12px; z-index: 71; width: 300px; padding: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .14); display: flex; flex-direction: column; gap: 6px; }
+#dash .br-title { font-size: 11.5px; color: var(--muted); padding: 0 6px; }
+#dash .br-list { display: flex; flex-direction: column; gap: 2px; }
+#dash .br-item { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; }
+#dash .br-item:hover:not(:disabled), #dash .br-item:focus-visible { background: var(--hover, var(--panel-2)); }
+#dash .br-item.on { background: var(--accent-tint, #eef2ff); }
+#dash .br-item .avatar { border-radius: 8px; }
+#dash .br-name { flex: 1; display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+#dash .br-name strong { font-size: 13px; }
+#dash .br-name small { font-size: 11.5px; }
+#dash .br-name small.live { color: var(--green-text, #12733f); }
+#dash .br-name small.practice { color: var(--yellow-text, #a16207); }
+#dash .br-check { color: var(--accent, #2f6fed); font-weight: 700; }
+#dash .br-add { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 8px; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 12px;
+  color: var(--accent, #2f6fed); font-weight: 600; font-size: 13px; }
+#dash .br-add span { width: 30px; height: 30px; border-radius: 8px; border: 1px dashed var(--accent, #2f6fed); display: grid; place-items: center; }
+#dash .br-add:hover, #dash .br-add:focus-visible { text-decoration: underline; }
+#dash .br-note { margin: 2px 6px 0; font-size: 11.5px; color: var(--muted); }
+#dash .br-form { display: flex; flex-direction: column; gap: 10px; }
+#dash .br-form .field { display: flex; flex-direction: column; gap: 5px; margin: 0; }
+#dash .br-form .field-label { font-size: 12.5px; font-weight: 600; }
+#dash .br-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#dash .br-choice { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+#dash .br-choice.on { border-color: var(--accent, #2f6fed); background: var(--accent-tint, #eef2ff); box-shadow: 0 0 0 1px var(--accent, #2f6fed); }
+#dash .br-choice small { font-size: 11.5px; }
+#dash .br-go { width: 100%; justify-content: center; margin-top: 4px; }
+@media (max-width: 700px) { #dash .br-panel { left: 8px; right: 8px; width: auto; top: 64px; } }

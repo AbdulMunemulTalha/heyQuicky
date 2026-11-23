@@ -1,4 +1,5 @@
 import { teamSettings, ruleAssignee } from './dashboard/team.js';
+import { teamId } from './dashboard/brands.js';
 
 // Picks the on-duty teammate (of the roles that share chats, Team → Duty & targets) with the
 // fewest open conversations. Ties go to whoever was assigned least recently (never-assigned
@@ -10,7 +11,7 @@ export async function pickModerator(db, workspaceId, roles = null, mode = null) 
     mode ??= team.share;
   }
   const moderators = await db.users
-    .find({ workspace_id: workspaceId, role: { $in: roles }, is_active: true, is_online: true, on_duty: { $ne: false } }, { last_assigned_at: 1 })
+    .find({ workspace_id: await teamId(db, workspaceId), role: { $in: roles }, is_active: true, is_online: true, on_duty: { $ne: false } }, { last_assigned_at: 1 })
     .lean();
   if (!moderators.length) return null;
   const counts = await db.conversations.aggregate([

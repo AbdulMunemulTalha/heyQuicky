@@ -96,7 +96,7 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
     const p = await db.prospects.findOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id }).lean();
     if (!p) throw new InboxError(404, 'Lead not found');
     const said = p.conversation_id ? await db.messages.find({ conversation_id: p.conversation_id, direction: 'in' }, { text: 1 }).sort({ _id: -1 }).limit(20).lean() : [];
-    const team = await db.users.find({ workspace_id: req.user.workspace_id, is_active: { $ne: false }, invite_pending: { $ne: true } }, { name: 1 }).sort({ name: 1 }).lean();
+    const team = await db.users.find({ workspace_id: req.user.team_id, is_active: { $ne: false }, invite_pending: { $ne: true } }, { name: 1 }).sort({ name: 1 }).lean();
     res.json({
       lead: { id: p._id, name: p.name || 'Customer', product: p.product, amount: p.amount, stage: p.stage, callbackAt: p.callback_at, ownerId: p.owner_user_id ?? req.user.id },
       fromChat: callbackFromMessages(said),
@@ -108,7 +108,7 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
     const at = new Date(req.body?.at);
     if (Number.isNaN(at.getTime())) throw new InboxError(400, 'Pick a day and time for the call');
     if (at < new Date(Date.now() - 5 * 60_000)) throw new InboxError(400, 'Pick a time that hasn\'t passed');
-    const owner = req.body?.ownerId ? await db.users.findOne({ _id: Number(req.body.ownerId), workspace_id: req.user.workspace_id }, { name: 1 }).lean() : { _id: req.user.id, name: req.user.name };
+    const owner = req.body?.ownerId ? await db.users.findOne({ _id: Number(req.body.ownerId), workspace_id: req.user.team_id }, { name: 1 }).lean() : { _id: req.user.id, name: req.user.name };
     if (!owner) throw new InboxError(404, 'Teammate not found');
     const r = await db.prospects.updateOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id },
       { $set: { stage: 'call_scheduled', callback_at: at, owner_user_id: owner._id, callback_reminded_at: null, outcome: 'call_later' } });

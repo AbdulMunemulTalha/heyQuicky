@@ -106,6 +106,8 @@ function defineModels(conn) {
     two_step: { type: Boolean, default: false },
     invite_pending: { type: Boolean, default: false },
     password_changed_at: { type: Date, default: null },
+    // UX-10: the brand this person is working in (another workspace in their shop's brand group).
+    active_workspace_id: { type: Number, default: null },
     created_at: createdAt,
   }, opts);
 

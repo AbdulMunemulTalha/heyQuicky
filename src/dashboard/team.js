@@ -1,4 +1,5 @@
 // Team settings (TEAM-04/05/07): who shares handed-over chats, working hours, reply targets with
+import { teamId } from './brands.js';
 // a warning to the owner, and IF → THEN routing rules. Stored in workspace.settings.team.
 
 const TZ_OFFSET_MIN = 6 * 60; // Bangladesh, no daylight saving
@@ -48,7 +49,7 @@ export function hoursLine(ws) {
   return `The team answers ${h.days.map((d) => names[d]).join(', ')}, ${h.start}–${h.end} (Bangladesh time).`;
 }
 
-const onDutyUser = (db, workspaceId, userId) => db.users.findOne({ _id: userId, workspace_id: workspaceId, is_active: { $ne: false }, on_duty: { $ne: false }, is_online: { $ne: false } }, { _id: 1, name: 1 }).lean();
+const onDutyUser = async (db, workspaceId, userId) => db.users.findOne({ _id: userId, workspace_id: await teamId(db, workspaceId), is_active: { $ne: false }, on_duty: { $ne: false }, is_online: { $ne: false } }, { _id: 1, name: 1 }).lean();
 
 // The first rule for this moment that matches. ctx: { conversation, intent, comment }.
 export async function matchRule(db, ws, stage, ctx = {}) {
@@ -101,7 +102,7 @@ export async function applyRule(db, rule, { conversation = null, reason = '', no
 
 // Is anyone who can reply on duty right now?
 export async function anyoneOnDuty(db, workspaceId) {
-  return Boolean(await db.users.exists({ workspace_id: workspaceId, is_active: { $ne: false }, on_duty: { $ne: false }, is_online: { $ne: false }, invite_pending: { $ne: true } }));
+  return Boolean(await db.users.exists({ workspace_id: await teamId(db, workspaceId), is_active: { $ne: false }, on_duty: { $ne: false }, is_online: { $ne: false }, invite_pending: { $ne: true } }));
 }
 
 // TEAM-05 counters: chats waiting for a person, past the reply target, and never answered.

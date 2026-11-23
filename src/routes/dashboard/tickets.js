@@ -4,6 +4,7 @@ import { need, allowedActions } from '../../dashboard/permissions.js';
 import { audit } from '../../dashboard/util.js';
 import { TICKET_TYPES, TICKET_STATUSES, RESOLUTIONS, RESOLUTIONS_FOR, openTicket, dueAt, timelineEntry } from '../../dashboard/tickets.js';
 import { recordReturnFromTicket } from '../../dashboard/money.js';
+import { teamId } from '../../dashboard/brands.js';
 
 const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 
@@ -67,7 +68,7 @@ export function ticketRoutes(db, _config, { auth, inbox, emit, notify }) {
     if (status === 'solved') list.sort((a, b) => (b.solved_at ?? 0) - (a.solved_at ?? 0));
     const n = await names(list);
     const c = Object.fromEntries(counts.map((x) => [x._id, x.n]));
-    const team = await db.users.find({ workspace_id: ws }, { name: 1, role: 1 }).sort({ name: 1 }).lean();
+    const team = await db.users.find({ workspace_id: await teamId(db, ws) }, { name: 1, role: 1 }).sort({ name: 1 }).lean();
     res.json({
       tickets: list.map((t) => row(t, n)), status,
       counts: { open: c.open ?? 0, waiting: c.waiting ?? 0, solved: c.solved ?? 0, all: (c.open ?? 0) + (c.waiting ?? 0) + (c.solved ?? 0),
@@ -96,7 +97,7 @@ export function ticketRoutes(db, _config, { auth, inbox, emit, notify }) {
     const conv = t.conversation_id ? await db.conversations.findById(t.conversation_id, { ai_handoff_reason: 1 }).lean() : null;
     const lastCustomer = [...chat].reverse().find((m) => m.direction === 'in');
     const orders = t.customer_id ? await db.orders.find({ customer_id: t.customer_id, draft: { $ne: true } }, { number: 1, status: 1, created_at: 1, subtotal: 1, delivery_charge: 1, discount: 1 }).sort({ created_at: -1 }).limit(5).lean() : [];
-    const team = await db.users.find({ workspace_id: req.user.workspace_id }, { name: 1 }).sort({ name: 1 }).lean();
+    const team = await db.users.find({ workspace_id: req.user.team_id }, { name: 1 }).sort({ name: 1 }).lean();
     res.json({
       ticket: { ...row(t, n), timeline: (t.timeline ?? []).map((e) => ({ type: e.type, text: e.text, by: e.by, at: e.at })),
         why: conv?.ai_handoff_reason || t.reason || '', lastMessage: lastCustomer ? (lastCustomer.text || '') : '', resolutions: RESOLUTIONS_FOR[t.type] ?? RESOLUTIONS_FOR.other },
@@ -141,7 +142,7 @@ export function ticketRoutes(db, _config, { auth, inbox, emit, notify }) {
     const set = {};
     const events = [];
     if (b.ownerId !== undefined) {
-      const owner = b.ownerId ? await db.users.findOne({ _id: Number(b.ownerId), workspace_id: req.user.workspace_id }, { name: 1 }).lean() : null;
+      const owner = b.ownerId ? await db.users.findOne({ _id: Number(b.ownerId), workspace_id: req.user.team_id }, { name: 1 }).lean() : null;
       if (b.ownerId && !owner) throw new InboxError(404, 'Teammate not found');
       set.owner_user_id = owner?._id ?? null;
       events.push(timelineEntry('owner', owner ? `Assigned to ${owner.name}` : 'Unassigned', req.user.name));

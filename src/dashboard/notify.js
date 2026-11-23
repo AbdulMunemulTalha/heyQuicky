@@ -1,4 +1,5 @@
 // Notifications (UX-09, HND-06): one place decides who hears about an event and how —
+import { teamId } from './brands.js';
 // in the app (bell + live socket), on their phone (web push) — following each person's
 // "Notify me about" settings and quiet hours.
 
@@ -41,7 +42,7 @@ const DUTY_EVENTS = ['handoff', 'escalation', 'courier'];
 export async function notify(db, emit, adapters, { workspaceId, event, title, body = '', link = '', ref = '', userIds = null, exceptUserId = null, amount = 0, now = new Date(), roleOverride = null }) {
   const def = EVENTS[event];
   if (!def) throw new Error(`Unknown notification event ${event}`);
-  const where = { workspace_id: workspaceId, is_active: { $ne: false } };
+  const where = { workspace_id: await teamId(db, workspaceId), is_active: { $ne: false } };
   if (userIds) where._id = { $in: userIds };
   else where.role = { $in: roleOverride ?? def.roles };
   if (!userIds && !roleOverride && DUTY_EVENTS.includes(event)) {

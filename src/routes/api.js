@@ -524,7 +524,7 @@ export function apiRoutes(db, config, inbox, orders, importer, agent, { fetchImp
   });
 
   router.get('/team', auth, async (req, res) => {
-    const users = await db.users.find({ workspace_id: req.user.workspace_id }).lean();
+    const users = await db.users.find({ workspace_id: req.user.team_id }).lean();
     const open = await openCounts({ workspace_id: req.user.workspace_id, status: 'open' });
     // Owner first, then by name.
     users.sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'owner' ? -1 : 1));
@@ -549,7 +549,7 @@ export function apiRoutes(db, config, inbox, orders, importer, agent, { fetchImp
   });
 
   router.patch('/team/:id', auth, requireOwner, async (req, res) => {
-    const member = await db.users.findOne({ _id: id(req), workspace_id: req.user.workspace_id, role: 'moderator' }).lean();
+    const member = await db.users.findOne({ _id: id(req), workspace_id: req.user.team_id, role: 'moderator' }).lean();
     if (!member) throw new InboxError(404, 'Moderator not found');
     if (typeof req.body?.isActive === 'boolean') {
       await db.users.updateOne({ _id: member._id }, { $set: { is_active: req.body.isActive, is_online: false } });
