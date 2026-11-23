@@ -120,7 +120,9 @@ export default function ProductForm({ params }) {
         </div>
         <div className="page-actions">
           {id && edit && <Button onClick={duplicate}>{t('cat.duplicate')}</Button>}
-          {id && <Button disabled title={t('cat.previewSoon')}>{t('cat.preview')}</Button>}
+          {id && (v.pageUrl && v.visibility === 'everywhere' && !v.archived
+            ? <a className="btn btn-default" href={v.pageUrl} target="_blank" rel="noreferrer">{t('cat.preview')}</a>
+            : <Button disabled title={t('cat.previewSoon')}>{t('cat.preview')}</Button>)}
           {edit && <Button variant="primary" busy={saving} onClick={save}>{id ? t('cat.saveChanges') : t('cat.addProduct')}</Button>}
         </div>
       </header>
@@ -196,6 +198,17 @@ export default function ProductForm({ params }) {
               ))}
             </div>
           </Card>
+
+          {v.pageUrl && v.visibility === 'everywhere' && !v.archived && (
+            <Card title={t('cat.page.title')}>
+              <p className="small muted" style={{ marginTop: 0 }}>{t('cat.page.hint')}</p>
+              <input className="input" readOnly value={v.pageUrl} aria-label={t('cat.page.title')} onFocus={(e) => e.target.select()} />
+              <div className="row" style={{ gap: 8, marginTop: 8 }}>
+                <Button size="sm" onClick={() => navigator.clipboard?.writeText(v.pageUrl).then(() => toast(t('cat.page.copied'), 'green'))}>{t('cat.page.copy')}</Button>
+                <a className="btn btn-default btn-sm" href={v.pageUrl} target="_blank" rel="noreferrer">{t('cat.page.open')}</a>
+              </div>
+            </Card>
+          )}
 
           <Card title={<span className="row" style={{ gap: 8 }}><span className="pf-ai">AI</span>{t('cat.aiKnow')}</span>}>
             <textarea rows={3} className="input bn-ok" value={v.aiNotes} onChange={(e) => set('aiNotes', e.target.value)} maxLength={1000} placeholder={t('cat.aiPlaceholder')} aria-label={t('cat.aiKnow')} />

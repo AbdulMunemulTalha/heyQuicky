@@ -19,6 +19,7 @@ import { randomBytes } from 'node:crypto';
 import { fetchAttachment, IMAGE_TYPES, MAX_IMAGE_BYTES } from './media.js';
 import { MAX_AUDIO_BYTES } from './transcribe.js';
 import { decryptSecret } from '../secrets.js';
+import { pageLinker } from '../dashboard/productPage.js';
 
 // After a person replies (or the AI hands off), the AI stays out of that
 // conversation in auto mode for this long, then may answer again.
@@ -333,7 +334,8 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     if (answer.products.length) {
       const list = await db.products.find({ _id: { $in: answer.products }, workspace_id: ctx.conversation.workspace_id }).lean();
       const byId = new Map(list.map((p) => [p._id, p]));
-      const rich = productCards(answer.products.map((id) => byId.get(id)).filter(Boolean), { publicUrl: config.publicUrl || '' });
+      const pageUrl = await pageLinker(db, ctx.conversation.workspace_id, config.publicUrl || '', conversationId).catch(() => null);
+      const rich = productCards(answer.products.map((id) => byId.get(id)).filter(Boolean), { publicUrl: config.publicUrl || '', pageUrl });
       if (rich.payload.cards.length) await inbox.sendAiRich(conversationId, rich);
     }
     if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product, { publicUrl: config.publicUrl || '' });

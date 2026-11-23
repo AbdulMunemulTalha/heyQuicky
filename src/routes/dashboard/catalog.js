@@ -4,12 +4,13 @@ import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
 import { audit, escapeRegex } from '../../dashboard/util.js';
 import { cleanProduct, missing, stockState, variantLabel, LOW_STOCK_AT } from '../../dashboard/catalog.js';
+import { ensureShopSlug, onPage, productPageUrl } from '../../dashboard/productPage.js';
 import { parseCsv, productsFromRows, googleSheetCsvUrl } from '../../productImport.js';
 
 const FILTERS = ['all', 'in', 'low', 'out', 'needs', 'archived'];
 
 // Screens 08 Catalog and 13 Add / edit product (CAT-01, CAT-02).
-export function catalogRoutes(db, _config, { auth, fetchImpl = fetch }) {
+export function catalogRoutes(db, config, { auth, fetchImpl = fetch }) {
   const router = Router();
   const channelIds = async (wsId) => (await db.channels.find({ workspace_id: wsId }, { _id: 1 }).lean()).map((c) => c._id);
 
@@ -63,13 +64,15 @@ export function catalogRoutes(db, _config, { auth, fetchImpl = fetch }) {
       ]),
       db.products.distinct('category', { workspace_id: wsId, archived: { $ne: true } }),
     ]);
+    // ORD-04: the product's own page, for products shown everywhere.
+    const pageUrl = onPage(p) ? productPageUrl(config.publicUrl || `${req.protocol}://${req.get('host')}`, await ensureShopSlug(db, await db.workspaces.findById(wsId, { name: 1, shop_slug: 1 }).lean()), p._id) : '';
     res.json({
       product: {
         id: p._id, name: p.name, code: p.code, price: p.price, compareAt: p.compare_at, category: p.category, description: p.description,
         photos: p.photos ?? [], video: p.video, colour: p.colour, options: p.options ?? [], inStock: p.in_stock !== false,
         variants: (p.variant_list ?? []).map((v) => ({ sku: v.sku, options: v.options ?? {}, price: v.price ?? p.price, stock: v.stock ?? null, reserved: v.reserved ?? 0 })),
         aiNotes: p.ai_notes, visibility: p.visibility, sizeChartId: p.size_chart_id, upsellIds: p.upsell_ids ?? [], archived: p.archived,
-        state: stockState(p).state, missing: missing(p),
+        state: stockState(p).state, missing: missing(p), pageUrl,
       },
       upsells: upsells.map((u) => ({ id: u._id, name: u.name })),
       posts: posts.map((x) => ({ id: x._id, caption: x.caption, image: x.image, comments: x.comment_count, postedAt: x.posted_at })),

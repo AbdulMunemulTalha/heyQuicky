@@ -942,7 +942,6 @@ export default {
   'cat.status.hidden': "Hidden",
   'cat.duplicate': "Duplicate",
   'cat.preview': "Preview product page",
-  'cat.previewSoon': "Product pages come with the shop website",
   'cat.saveChanges': "Save changes",
   'cat.addProduct': "Add product",
   'cat.unsaved': "You have unsaved changes",
@@ -2609,4 +2608,10 @@ export default {
   'pl.askHow': "The HeyQuicky team gets your request and contacts you. Your plan changes once it's paid.",
   'pl.askSend': "Send request",
   'pl.askedToast': "Request sent — we'll contact you soon",
+  'cat.page.title': "Product page",
+  'cat.page.hint': "A page where customers order this without chatting: pick size, fill the form, confirm. The AI also adds a \"Buy now\" button to this product's card in chat.",
+  'cat.page.copy': "Copy link",
+  'cat.page.open': "Open page",
+  'cat.page.copied': "Link copied",
+  'cat.previewSoon': "Only products set to Live everywhere have a product page",
 };

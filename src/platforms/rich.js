@@ -23,7 +23,8 @@ export function parsePostback(value) {
 }
 
 // CAT-03: up to 10 product cards (Messenger's limit). Only products the AI may sell, priced live.
-export function productCards(products, { publicUrl = '' } = {}) {
+// pageUrl(product) gives the product page link (ORD-04) for a "Buy now" button, or '' for none.
+export function productCards(products, { publicUrl = '', pageUrl = null } = {}) {
   const sellable = products.filter((p) => p && !p.archived && p.visibility !== 'hidden').slice(0, 10);
   const cards = sellable.map((p) => {
     const left = (p.variant_list ?? []).filter((v) => v.stock === null || v.stock === undefined || v.stock > 0);
@@ -33,7 +34,8 @@ export function productCards(products, { publicUrl = '' } = {}) {
       productId: p._id, title: p.name, price: p.price, compareAt: p.compare_at > p.price ? p.compare_at : null, inStock, sizes: sizes.slice(0, 8),
       image: p.photos?.[0] ? absolute(p.photos[0], publicUrl) : '', colour: p.colour || '',
       code: p.code || '',
-      buttons: inStock ? [{ type: 'postback', title: 'এটা চাই', value: postback('ORDER', p._id) }, ...(p.size_chart_id ? [{ type: 'postback', title: 'সাইজ চার্ট', value: postback('SIZE', p._id) }] : [])]
+      pageUrl: (inStock && pageUrl?.(p)) || '',
+      buttons: inStock ? [{ type: 'postback', title: 'এটা চাই', value: postback('ORDER', p._id) }, ...(pageUrl?.(p) ? [{ type: 'url', title: 'এখনই কিনুন', value: pageUrl(p) }] : []), ...(p.size_chart_id ? [{ type: 'postback', title: 'সাইজ চার্ট', value: postback('SIZE', p._id) }] : [])]
         : [{ type: 'postback', title: 'স্টকে এলে জানান', value: postback('NOTIFY', p._id) }],
     };
   });

@@ -38,13 +38,21 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
     if (!v) throw new InboxError(400, `The size or colour "${i.variant}" for ${p.name} didn't match the catalog`);
     return { productId: p._id, sku: v.sku, qty: Math.max(1, Math.min(99, Number(i.qty) || 1)) };
   });
-  // The chat's customer record (or the one with this phone), updated with the new details.
-  let customer = conversation.customer_id ? await db.customers.findById(conversation.customer_id).lean() : null;
+  const { order, advance, billToken } = await saveOrder(db, ws, { who, items, zone, coupon: String(input.coupon ?? '').trim().slice(0, 30), conversation, note: input.note, source: 'ai', notify });
+  aiOrderPlaced(db, order);
+  return { order, advance, rich: orderSummary(order, { billUrl: publicUrl ? `${publicUrl}/b/${billToken}` : '' }) };
+}
+
+// Prices and saves an order for a customer from the chat (AI) or the product page (ORD-04).
+// The customer record is found from the chat or the phone and updated; risk and the shop's advance
+// rules decide whether it waits on hold. Stock is taken, the coupon counted and the team notified.
+export async function saveOrder(db, ws, { who, items, zone, coupon = '', conversation = null, note = '', source, notify = null }) {
+  let customer = conversation?.customer_id ? await db.customers.findById(conversation.customer_id).lean() : null;
   customer ??= await db.customers.findOne({ workspace_id: ws._id, phones: who.phone }).lean();
-  const priced = await priceOrder(db, ws, { items, zone, coupon: String(input.coupon ?? '').trim().slice(0, 30), customer });
+  const priced = await priceOrder(db, ws, { items, zone, coupon, customer });
   if (!customer) customer = { _id: (await db.insert(db.customers, { workspace_id: ws._id, name: who.name, phones: [who.phone] })).id };
   await db.customers.updateOne({ _id: customer._id }, { $addToSet: { phones: who.phone }, $set: { address: who.address, ...(customer.name ? {} : { name: who.name }) } });
-  if (!conversation.customer_id) await db.conversations.updateOne({ _id: conversation._id }, { $set: { customer_id: customer._id } });
+  if (conversation && !conversation.customer_id) await db.conversations.updateOne({ _id: conversation._id }, { $set: { customer_id: customer._id } });
   customer = await db.customers.findById(customer._id).lean();
 
   const risk = riskFor({ delivered: customer.stats?.delivered, returned: customer.stats?.returned, cancelled: customer.stats?.cancelled, codAmount: priced.cod, outsideDhaka: zone === 'outside_dhaka' });
@@ -54,25 +62,26 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
   const holdReason = advance ? `Waiting for ৳${advance.amount} advance (${advance.reason.replace(/_/g, ' ')})` : status === 'on_hold' ? `High return risk (${risk.score}%)` : '';
   const { order_seq: number } = await db.workspaces.findOneAndUpdate({ _id: ws._id }, { $inc: { order_seq: 1 } }, { new: true, lean: true });
   const billToken = randomBytes(9).toString('base64url');
+  const byAi = source === 'ai';
   const created = await db.insert(db.orders, {
-    workspace_id: ws._id, number, customer_id: customer._id, conversation_id: conversation._id,
+    workspace_id: ws._id, number, customer_id: customer._id, conversation_id: conversation?._id ?? null,
     customer_name: who.name, phone: who.phone, address: who.address, area: zone, zone,
     items: priced.lines.map((l) => ({ name: `${l.name}${l.variant ? ` (${l.variant})` : ''}`, qty: l.qty, price: l.price })), product_items: priced.lines,
     subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, coupon_code: priced.couponCode, advance_paid: 0, cod_amount: priced.cod, payment_method: 'cod',
-    note: String(input.note ?? '').slice(0, 300), status, hold_reason: holdReason, risk,
+    note: String(note ?? '').slice(0, 300), status, hold_reason: holdReason, risk,
     advance: advance ? { amount: advance.amount, method: ws.bkash_number ? 'bkash' : 'nagad', verified: false, requested: true, reason: advance.reason } : null,
-    source: 'ai', taken_by: 'ai', bill_token: billToken,
+    source, ...(byAi ? { taken_by: 'ai' } : {}), bill_token: billToken,
   });
   await adjustStock(db, { product_items: priced.lines }, -1, { notify });
   if (priced.couponCode) await db.coupons.updateOne({ workspace_id: ws._id, code: priced.couponCode }, { $inc: { used: 1 } });
   await db.customers.updateOne({ _id: customer._id }, { $inc: { 'stats.orders': 1 } });
-  await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: created.id, type: 'status', to: status, by: 'ai', text: `The AI took the order in chat${status === 'on_hold' ? ' (on hold: high return risk)' : ''}` });
+  const how = byAi ? 'The AI took the order in chat' : 'The customer ordered on the product page';
+  await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: created.id, type: 'status', to: status, by: byAi ? 'ai' : 'customer', text: `${how}${status === 'on_hold' ? (advance ? ' (on hold: advance needed)' : ' (on hold: high return risk)') : ''}` });
   const total = priced.subtotal + priced.delivery - priced.discount;
-  await notify?.({ workspaceId: ws._id, event: 'order', title: `New order #${number}`, body: `${who.name} · ৳${total.toLocaleString('en-IN')} · taken by AI, waiting for the customer to confirm`, link: `/orders/${number}`, ref: `order:${created.id}`, amount: total });
+  await notify?.({ workspaceId: ws._id, event: 'order', title: `New order #${number}`, body: `${who.name} · ৳${total.toLocaleString('en-IN')} · ${byAi ? 'taken by AI, waiting for the customer to confirm' : 'from the product page'}`, link: `/orders/${number}`, ref: `order:${created.id}`, amount: total });
   if (status === 'on_hold' && !advance) {
     await notify?.({ workspaceId: ws._id, event: 'escalation', title: `Order #${number} needs a look.`, body: `High return risk (${risk.score}%). ${risk.action}.`, link: `/orders/${number}`, ref: `risk:${created.id}` });
   }
   const order = await db.orders.findById(created.id).lean();
-  aiOrderPlaced(db, order);
-  return { order, advance, rich: orderSummary(order, { billUrl: publicUrl ? `${publicUrl}/b/${billToken}` : '' }) };
+  return { order, advance, billToken };
 }

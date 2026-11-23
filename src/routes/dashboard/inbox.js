@@ -6,6 +6,7 @@ import { audit, escapeRegex, clampInt } from '../../dashboard/util.js';
 import { setting } from '../../dashboard/settings.js';
 import { stageOf } from './overview.js';
 import { teamId } from '../../dashboard/brands.js';
+import { pageLinker } from '../../dashboard/productPage.js';
 
 const TABS = ['waiting', 'unread', 'open', 'done', 'spam', 'snoozed'];
 const CHANNELS = ['messenger', 'instagram', 'whatsapp', 'web'];
@@ -236,7 +237,8 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     }
     const found = await db.products.find({ _id: { $in: ids }, workspace_id: req.user.workspace_id }).lean();
     const byId = new Map(found.map((p) => [p._id, p]));
-    const rich = productCards(ids.map((id) => byId.get(id)).filter(Boolean), { publicUrl: config.publicUrl || `${req.protocol}://${req.get('host')}` });
+    const base = config.publicUrl || `${req.protocol}://${req.get('host')}`;
+    const rich = productCards(ids.map((id) => byId.get(id)).filter(Boolean), { publicUrl: base, pageUrl: await pageLinker(db, req.user.workspace_id, base, conv._id) });
     if (!rich.payload.cards.length) throw new InboxError(400, 'Those products are hidden or archived');
     const message = await inbox.sendRich(req.user, conv._id, rich);
     const minutes = setting(req.workspace, 'auto_return_min', DEFAULT_RETURN_MIN);

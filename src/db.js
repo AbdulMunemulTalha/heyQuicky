@@ -72,6 +72,8 @@ function defineModels(conn) {
     went_live_at: { type: Date, default: null },
     // Brands that belong to the same owner (brand switcher): the workspace id of the first one.
     brand_group: { type: Number, default: null, index: true },
+    // ORD-04: the shop's name in product page links, /p/<shop_slug>/<product>.
+    shop_slug: { type: String, default: null, index: { unique: true, partialFilterExpression: { shop_slug: { $type: 'string' } } } },
     order_seq: { type: Number, default: 1000 },
     ticket_seq: { type: Number, default: 100 },
     ai_version: { type: Number, default: 0 },
@@ -163,6 +165,8 @@ function defineModels(conn) {
   const conversation = new Schema({
     _id: numericId,
     workspace_id: { type: Number, required: true },
+    // ORD-04: product page links sent in this chat carry it, so the order and its bill come back here.
+    page_token: { type: String, default: null, index: true },
     channel_id: { type: Number, required: true, index: true },
     contact_id: { type: Number, required: true, unique: true },
     assigned_user_id: { type: Number, default: null },
