@@ -1,3 +1,4 @@
+import { modulesFor } from './settings.js';
 // Support tickets (TKT-01/02): complaints, refunds, damaged or late parcels, each with an owner,
 // a status, a resolution and a timeline. ACT NOW chats open one automatically.
 export const TICKET_TYPES = ['complaint', 'refund', 'exchange', 'damaged', 'late', 'other'];
@@ -46,6 +47,10 @@ export function openTicket(db, args) {
 }
 
 async function createOrAdd(db, { workspaceId, conversationId = null, customerId = null, orderId = null, title, type, actNow = false, reason = '', by = 'AI', ownerId = null, notify = null }) {
+  if (by === 'AI' || by === 'Routing rule') {
+    const ws = await db.workspaces.findById(workspaceId, { 'settings.modules': 1 }).lean();
+    if (modulesFor(ws).tickets === false) return { ticket: null, created: false };
+  }
   if (conversationId) {
     const existing = await db.tickets.findOne({ workspace_id: workspaceId, conversation_id: conversationId, status: { $ne: 'solved' } }).lean();
     if (existing) {

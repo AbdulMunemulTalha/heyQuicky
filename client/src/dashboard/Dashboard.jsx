@@ -9,6 +9,7 @@ import { SystemBanners } from './SystemBanners.jsx';
 import { startPwa } from './lib/pwa.js';
 import { Drawer, Empty, ErrorState, Skeleton, Toasts, toast } from './ui/kit.jsx';
 import './dashboard.css';
+import { ModuleOff } from './screens/Modules.jsx';
 
 // Screens load on demand so the first paint stays small. Paths are under /app.
 const screens = {
@@ -36,6 +37,7 @@ const screens = {
   settings: lazy(() => import('./screens/Settings.jsx')),
   money: lazy(() => import('./screens/Money.jsx')),
   profile: lazy(() => import('./screens/Profile.jsx')),
+  modules: lazy(() => import('./screens/Modules.jsx')),
   deliveryUpdates: lazy(() => import('./screens/DeliveryUpdates.jsx')),
   notifySettings: lazy(() => import('./screens/NotificationSettings.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
@@ -89,6 +91,7 @@ const ROUTES = [
   ['/settings/team', 'team'],
   ['/settings/audit', 'team'],
   ['/settings/notifications', 'notifySettings'],
+  ['/settings/modules', 'modules'],
 ];
 
 function pick(path) {
@@ -100,6 +103,8 @@ function pick(path) {
 }
 
 const LANG_KEY = 'quicky:lang';
+// Which module each page belongs to (UX-07).
+const SCREEN_MODULE = { tickets: 'tickets', growth: 'growth', coupons: 'coupons', payments: 'payments', catalog: 'catalog', posts: 'catalog', sizeCharts: 'catalog', product: 'catalog', deliveryUpdates: 'courier' };
 
 export function Dashboard({ onSignOut }) {
   const socket = useContext(SocketContext);
@@ -141,10 +146,11 @@ export function Dashboard({ onSignOut }) {
     events.forEach((e) => socket.on(e, refreshBadges));
     const onWorkspace = (patch) => setMe((m) => (m ? { ...m, workspace: { ...m.workspace, ...patch } } : m));
     socket.on('workspace', onWorkspace);
+    socket.on('modules', load);
     const onNotification = (n) => { if (n.userId === meId.current) toast(n.title, 'dark'); };
     socket.on('notification', onNotification);
-    return () => { events.forEach((e) => socket.off(e, refreshBadges)); socket.off('workspace', onWorkspace); socket.off('notification', onNotification); };
-  }, [socket, refreshBadges]);
+    return () => { events.forEach((e) => socket.off(e, refreshBadges)); socket.off('workspace', onWorkspace); socket.off('modules', load); socket.off('notification', onNotification); };
+  }, [socket, refreshBadges, load]);
   const meId = useRef(null);
   meId.current = me?.user?.id ?? null;
 
@@ -209,7 +215,9 @@ export function Dashboard({ onSignOut }) {
   }
 
   const { key, params, flush } = pick(path);
-  const Screen = screens[key];
+  // A page whose module is switched off (Settings → Modules) shows a short note instead.
+  const offModule = SCREEN_MODULE[key] && me.workspace.modules[SCREEN_MODULE[key]] === false ? SCREEN_MODULE[key] : null;
+  const Screen = offModule ? () => <ModuleOff module={offModule} /> : screens[key];
   const Overlay = overlay && overlays[overlay.name];
 
   // On phones, a chat, an order or a form opens full screen (frames 19c, 19e).

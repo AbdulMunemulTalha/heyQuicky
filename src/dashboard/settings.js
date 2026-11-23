@@ -5,14 +5,24 @@ export const MODULES = {
   payments: { dflt: true }, tickets: { dflt: true }, bookings: { dflt: false }, quotes: { dflt: false }, content: { dflt: false },
 };
 
+// Business types from onboarding (step 03); older names map onto these.
+export const BUSINESS_TYPES = ['clothing', 'cosmetics', 'electronics', 'mobile_accessories', 'jewellery', 'shoes', 'grocery', 'food', 'salon', 'clinic', 'coaching', 'other'];
+const OLD_TYPE = { fashion: 'clothing', beauty: 'cosmetics', home: 'other', kids: 'other' };
+// Modules whose screens are not built yet (Phase 3): shown, but can't be switched on.
+export const NOT_BUILT = ['bookings', 'quotes', 'content'];
+
 // Recommended modules per business type (UX-07).
+const SHOP = ['courier', 'catalog', 'growth', 'coupons', 'payments', 'tickets'];
 export const RECOMMENDED = {
-  clothing: ['courier', 'catalog', 'growth', 'coupons', 'payments', 'tickets'],
+  clothing: SHOP, cosmetics: SHOP, shoes: SHOP, jewellery: SHOP, other: SHOP,
+  electronics: [...SHOP, 'quotes'], mobile_accessories: SHOP,
+  grocery: ['courier', 'catalog', 'growth', 'coupons', 'payments'],
+  food: ['courier', 'catalog', 'growth', 'coupons', 'payments'],
   salon: ['bookings', 'payments', 'growth', 'tickets'],
   clinic: ['bookings', 'payments', 'tickets'],
   coaching: ['bookings', 'payments', 'growth'],
-  food: ['courier', 'catalog', 'growth', 'coupons', 'payments'],
 };
+export const recommendedFor = (type) => RECOMMENDED[OLD_TYPE[type] ?? type] ?? SHOP;
 
 export function modulesFor(workspace) {
   const chosen = workspace?.settings?.modules ?? {};

@@ -3,6 +3,7 @@ import { withTraining, recordUnanswered } from '../dashboard/training.js';
 import { INTENTS, REPLY_SCHEMA, COMMENT_SCHEMA, POST_MATCH_SCHEMA, buildSystemPrompt, buildCommentPrompt, buildPostMatchPrompt, buildCustomerContext, toModelMessages } from './prompt.js';
 import { priceRange } from '../dashboard/posts.js';
 import { aiCoupons } from '../dashboard/orderBuild.js';
+import { modulesFor } from '../dashboard/settings.js';
 import { AI_TAGS } from '../dashboard/segments.js';
 import { recordPayment, advanceMessage, TRX } from '../dashboard/payments.js';
 import { toPlatform } from '../platforms/rich.js';
@@ -112,7 +113,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       conversation.customer_id ? db.notes.find({ customer_id: conversation.customer_id }).sort({ created_at: -1 }).limit(3).lean() : [],
     ]);
     // The knowledge book, taught answers and rules ride along with the shop information.
-    return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, coupons: aiCoupons(coupons, now), messages, lastInbound,
+    return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, coupons: modulesFor(workspace).coupons === false ? [] : aiCoupons(coupons, now), messages, lastInbound,
       context: buildCustomerContext({ customer, orders, notes, now }) };
   }
 
@@ -507,7 +508,7 @@ ${extraNotes}` } : trained;
       if (!turnsForModel) throw new InboxError(400, 'Write a customer message first');
       try {
         const { data } = await callModel(user.workspace_id, {
-          system: buildSystemPrompt({ workspace, products, savedReplies, coupons: aiCoupons(coupons) }), messages: turnsForModel, schema: REPLY_SCHEMA,
+          system: buildSystemPrompt({ workspace, products, savedReplies, coupons: modulesFor(workspace).coupons === false ? [] : aiCoupons(coupons) }), messages: turnsForModel, schema: REPLY_SCHEMA,
         }, { kind: 'practice', summary: 'Test chat', customerName: 'Test chat' });
         lastError = null;
         const answer = normalize(data);
