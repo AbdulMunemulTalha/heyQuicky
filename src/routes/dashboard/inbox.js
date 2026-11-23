@@ -35,6 +35,16 @@ export function tabFilter(tab, now = new Date()) {
   }
 }
 
+export function mentionsIn(text, team) {
+  const found = [];
+  let rest = String(text);
+  for (const u of [...team].sort((a, b) => b.name.length - a.name.length)) {
+    const re = new RegExp(`@${escapeRegex(u.name)}(?![\\p{L}\\p{M}\\p{N}])`, 'iu');
+    if (re.test(rest)) { found.push(u._id); rest = rest.replace(new RegExp(re.source, 'giu'), ' '); }
+  }
+  return found;
+}
+
 export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
   const router = Router();
 
@@ -152,8 +162,9 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
 
     const customer = conv.customer_id ? await db.customers.findById(conv.customer_id).lean() : null;
     const orders = customer ? await db.orders.find({ workspace_id: conv.workspace_id, customer_id: customer._id, draft: { $ne: true } }).sort({ created_at: -1 }).limit(5).lean() : [];
-    const notes = await db.notes.find({ $or: [{ conversation_id: conv._id }, ...(customer ? [{ customer_id: customer._id }] : [])] }).sort({ created_at: -1 }).limit(10).lean();
-    const noteAuthors = new Map((await db.users.find({ _id: { $in: notes.map((n) => n.author_user_id) } }, { name: 1 }).lean()).map((u) => [u._id, u.name]));
+    const noteWhere = { $or: [{ conversation_id: conv._id }, ...(customer ? [{ customer_id: customer._id }] : [])] };
+    const [notes, noteCount] = await Promise.all([db.notes.find(noteWhere).sort({ created_at: -1 }).limit(10).lean(), db.notes.countDocuments(noteWhere)]);
+    const noteAuthors = new Map((await db.users.find({ _id: { $in: notes.flatMap((n) => [n.author_user_id, ...(n.mentions ?? [])]) } }, { name: 1 }).lean()).map((u) => [u._id, u.name]));
     const lastIn = messages.find((m) => m.direction === 'in');
     const saved = await db.savedReplies.find({ workspace_id: conv.workspace_id }).lean();
     const words = String(lastIn?.text ?? '').toLowerCase();
@@ -178,7 +189,8 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
         record: { orders: customer.stats?.orders ?? 0, delivered, returned, rate: delivered + returned ? Math.round((delivered / (delivered + returned)) * 100) : null },
       },
       orders: orders.map((o) => ({ id: o._id, number: o.number ?? o._id, item: o.product_items?.[0]?.name ?? o.items?.[0]?.name ?? '', status: stageOf(o.status), total: o.subtotal + o.delivery_charge - (o.discount ?? 0) })),
-      notes: notes.map((n) => ({ id: n._id, text: n.text, by: noteAuthors.get(n.author_user_id) ?? '', at: n.created_at })),
+      notes: notes.map((n) => ({ id: n._id, text: n.text, by: noteAuthors.get(n.author_user_id) ?? '', at: n.created_at, mentions: (n.mentions ?? []).filter((id) => noteAuthors.has(id)).map((id) => ({ id, name: noteAuthors.get(id) })) })),
+      noteCount,
       suggested,
       aiAvailable: Boolean(agent?.status().available),
       autoReturnMin: setting(workspace, 'auto_return_min', DEFAULT_RETURN_MIN),
@@ -327,18 +339,52 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     res.json(await publish(conv._id));
   });
 
+  // Team notes & @mentions (INB-09, frame "Team notes & @mentions"): the whole thread for the chat and
+  // the customer, oldest first, with who can be mentioned and whether they are on duty.
+  const teamOf = async (conv) => db.users.find({ workspace_id: await teamId(db, conv.workspace_id), is_active: true, invite_pending: { $ne: true } }, { name: 1, role: 1, on_duty: 1, is_online: 1, avatar: 1 }).sort({ name: 1 }).lean();
+  const noteRow = (n, authors, team, me) => ({
+    id: n._id, text: n.text, by: authors.get(n.author_user_id) ?? '', byId: n.author_user_id ?? null, at: n.created_at, mine: n.author_user_id === me,
+    mentions: (n.mentions ?? []).map((id) => team.find((u) => u._id === id)).filter(Boolean).map((u) => ({ id: u._id, name: u.name })),
+  });
+
+  router.get('/inbox/:id/notes', auth, async (req, res) => {
+    const conv = await load(req, idOf(req));
+    const [notes, team, [row]] = await Promise.all([
+      db.notes.find({ $or: [{ conversation_id: conv._id }, ...(conv.customer_id ? [{ customer_id: conv.customer_id }] : [])] }).sort({ created_at: 1, _id: 1 }).limit(200).lean(),
+      teamOf(conv), hydrate([conv]),
+    ]);
+    const missing = notes.map((n) => n.author_user_id).filter((id) => id && !team.some((u) => u._id === id));
+    const gone = missing.length ? await db.users.find({ _id: { $in: missing } }, { name: 1 }).lean() : [];
+    const authors = new Map([...team, ...gone].map((u) => [u._id, u.name]));
+    res.json({
+      customer: row.name, notes: notes.map((n) => noteRow(n, authors, team, req.user.id)),
+      team: team.map((u) => ({ id: u._id, name: u.name, role: u.role, onDuty: u.on_duty !== false, online: Boolean(u.is_online), avatar: u.avatar || '', me: u._id === req.user.id })),
+    });
+  });
+
   router.post('/inbox/:id/notes', auth, need(db, 'reply'), async (req, res) => {
     const conv = await load(req, idOf(req));
     const text = String(req.body?.text ?? '').trim().slice(0, 1000);
     if (!text) throw new InboxError(400, 'Write a note');
-    const team = await db.users.find({ workspace_id: await teamId(db, conv.workspace_id), is_active: true }, { name: 1 }).lean();
-    const mentions = team.filter((u) => new RegExp(`@${escapeRegex(u.name)}\\b`, 'i').test(text)).map((u) => u._id);
+    const team = await teamOf(conv);
+    const mentions = mentionsIn(text, team);
     const note = await db.insert(db.notes, { workspace_id: conv.workspace_id, conversation_id: conv._id, customer_id: conv.customer_id, author_user_id: req.user.id, text, mentions });
     const [row] = await hydrate([conv]);
     for (const userId of mentions.filter((id) => id !== req.user.id)) {
       await notify({ workspaceId: conv.workspace_id, userIds: [userId], event: 'mention', title: `${req.user.name} mentioned you`, body: `in ${row.name}: "${text.slice(0, 80)}"`, link: `/inbox/${conv._id}` });
     }
-    res.status(201).json({ id: note.id, text, by: req.user.name, at: note.created_at });
+    const saved = await db.notes.findById(note.id).lean();
+    res.status(201).json(noteRow(saved, new Map([[req.user.id, req.user.name]]), team, req.user.id));
+  });
+
+  // Take back your own note (owners may remove any).
+  router.delete('/inbox/:id/notes/:noteId', auth, async (req, res) => {
+    const conv = await load(req, idOf(req));
+    const note = await db.notes.findOne({ _id: Number(req.params.noteId), workspace_id: conv.workspace_id, $or: [{ conversation_id: conv._id }, { customer_id: conv.customer_id ?? -1 }] }).lean();
+    if (!note) throw new InboxError(404, 'Note not found');
+    if (note.author_user_id !== req.user.id && req.user.role !== 'owner') throw new InboxError(403, 'Only the person who wrote a note can delete it');
+    await db.notes.deleteOne({ _id: note._id });
+    res.status(204).end();
   });
 
   // AI copilot: ask about this customer (HND-04).

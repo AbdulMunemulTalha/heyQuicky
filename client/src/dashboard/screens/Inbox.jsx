@@ -7,6 +7,7 @@ import { navigate, setQuery } from '../lib/router.jsx';
 import { Icon } from '../ui/icons.jsx';
 import { Avatar, Button, Checkbox, Empty, ErrorState, Modal, Pill, Skeleton, Toggle, toast } from '../ui/kit.jsx';
 import './inbox.css';
+import TeamNotes, { NoteText } from './TeamNotes.jsx';
 
 const TABS = ['waiting', 'unread', 'open', 'done', 'spam'];
 const PLATFORM = { messenger: 'Messenger', instagram: 'Instagram', whatsapp: 'WhatsApp', web: 'Website' };
@@ -478,6 +479,7 @@ function SidePanel({ t, data, id, reload, act }) {
   const [answer, setAnswer] = useState('');
   const [asking, setAsking] = useState(false);
   const [note, setNote] = useState('');
+  const [notesOpen, setNotesOpen] = useState(false);
   const cu = data.customer;
   const c = data.conversation;
 
@@ -536,9 +538,10 @@ function SidePanel({ t, data, id, reload, act }) {
         ) : <p className="small muted">{t('inbox.noOrders')}</p>}
       </section>
       <section>
-        <h3>{t('inbox.teamNote')}</h3>
-        {data.notes.slice(0, 3).map((n) => <p key={n.id} className="team-note bn-ok">{n.text}{n.by && <> — {n.by}</>}</p>)}
-        <form onSubmit={addNote}><input className="input input-sm" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('inbox.addNote')} aria-label={t('inbox.addNote')} /></form>
+        <div className="row"><h3 className="grow">{t('inbox.teamNote')}</h3><button type="button" className="tn-all" onClick={() => setNotesOpen(true)} aria-haspopup="dialog">{data.noteCount ? t('tn.all', { n: t.num(data.noteCount) }) : t('tn.open')}</button></div>
+        {data.notes.slice(0, 3).map((n) => <p key={n.id} className="team-note bn-ok"><NoteText text={n.text} mentions={n.mentions} />{n.by && <> — {n.by}</>}</p>)}
+        <form onSubmit={addNote}><input className="input input-sm" value={note} onChange={(e) => { if (e.target.value === '@' && !note) { setNotesOpen(true); return; } setNote(e.target.value); }} placeholder={t('inbox.addNote')} aria-label={t('inbox.addNote')} /></form>
+        {notesOpen && <TeamNotes t={t} id={id} onClose={() => setNotesOpen(false)} onChanged={reload} />}
       </section>
       <section>
         <h3>{t('inbox.tags')}</h3>
