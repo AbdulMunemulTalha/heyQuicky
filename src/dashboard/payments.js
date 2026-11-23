@@ -97,7 +97,7 @@ export async function approvePayment(db, user, payment, { orderId = null, inbox 
   await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'payment', by: user ? 'user' : 'ai', user_id: user?.id ?? null,
     text: `${payment.method === 'nagad' ? 'Nagad' : 'bKash'} ৳${payment.amount} approved (TrxID ${payment.trx_id})${set.status ? ' — order approved' : ''}` });
   if (inbox && order.conversation_id) {
-    await inbox.sendAiReply(order.conversation_id, `আপনার ৳${payment.amount.toLocaleString('en-IN')} পেমেন্ট পেয়েছি ✅ অর্ডার #${order.number}${set.cod_amount ? ` — বাকি ৳${set.cod_amount.toLocaleString('en-IN')} ডেলিভারির সময় দিবেন।` : ' পুরো পরিশোধ হয়েছে।'}`).catch(() => null);
+    await inbox.purchaseUpdate(order.conversation_id, `আপনার ৳${payment.amount.toLocaleString('en-IN')} পেমেন্ট পেয়েছি ✅ অর্ডার #${order.number}${set.cod_amount ? ` — বাকি ৳${set.cod_amount.toLocaleString('en-IN')} ডেলিভারির সময় দিবেন।` : ' পুরো পরিশোধ হয়েছে।'}`).catch(() => null);
   }
   return { order: { ...order, ...set }, payment: claimed };
 }
@@ -110,7 +110,7 @@ export async function rejectPayment(db, user, payment, { reason = '', inbox = nu
     await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'payment', by: 'user', user_id: user?.id ?? null,
       text: `Payment TrxID ${payment.trx_id} rejected${reason ? ` — ${reason}` : ''}` });
     if (inbox && order.conversation_id) {
-      await inbox.sendAiReply(order.conversation_id, `দুঃখিত, TrxID ${payment.trx_id} দিয়ে কোনো পেমেন্ট পাইনি। নম্বর আর TrxID একবার মিলিয়ে আবার পাঠাবেন?`).catch(() => null);
+      await inbox.purchaseUpdate(order.conversation_id, `দুঃখিত, TrxID ${payment.trx_id} দিয়ে কোনো পেমেন্ট পাইনি। নম্বর আর TrxID একবার মিলিয়ে আবার পাঠাবেন?`).catch(() => null);
     }
   }
   return { ok: true };

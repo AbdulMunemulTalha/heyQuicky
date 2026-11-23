@@ -71,10 +71,10 @@ export function bookingRoutes(db, config, { auth, inbox, notify, emit = () => {}
     if (to === 'confirmed' && b.advance) set.advance = { ...b.advance, verified: true };
     await db.bookings.updateOne({ _id: b._id }, { $set: set });
     if (to === 'confirmed' && b.status === 'pending' && b.conversation_id) {
-      await inbox.sendAiReply(b.conversation_id, `✅ অগ্রিম পেয়েছি, ধন্যবাদ! ${b.service} — ${whenBn(b.starts_at)} বুকিং কনফার্ম।`).catch(() => null);
+      await inbox.eventUpdate(b.conversation_id, `✅ অগ্রিম পেয়েছি, ধন্যবাদ! ${b.service} — ${whenBn(b.starts_at)} বুকিং কনফার্ম।`).catch(() => null);
     }
     if (to === 'cancelled' && b.conversation_id && req.body?.tell !== false) {
-      await inbox.sendAiReply(b.conversation_id, `দুঃখিত, ${whenBn(b.starts_at)} আপনার ${b.service} বুকিংটি বাতিল করা হয়েছে। নতুন সময় চাইলে জানাবেন।`).catch(() => null);
+      await inbox.eventUpdate(b.conversation_id, `দুঃখিত, ${whenBn(b.starts_at)} আপনার ${b.service} বুকিংটি বাতিল করা হয়েছে। নতুন সময় চাইলে জানাবেন।`).catch(() => null);
     }
     await audit(db, req.user, `Booking #${b._id} (${b.name}) → ${to.replace('_', ' ')}`, { where: 'Bookings' });
     emit(b.workspace_id, 'booking', { id: b._id });
@@ -85,7 +85,7 @@ export function bookingRoutes(db, config, { auth, inbox, notify, emit = () => {}
     const b = await load(req);
     if (!['pending', 'confirmed'].includes(b.status)) throw new InboxError(409, 'Only upcoming bookings can be moved');
     const moved = await rescheduleBooking(db, await ws(req), b, { date: req.body?.date, time: req.body?.time });
-    if (moved.conversation_id) await inbox.sendAiReply(moved.conversation_id, `🔁 আপনার ${moved.service} বুকিং নতুন সময়ে: ${whenBn(moved.starts_at)}। সমস্যা হলে জানাবেন।`).catch(() => null);
+    if (moved.conversation_id) await inbox.eventUpdate(moved.conversation_id, `🔁 আপনার ${moved.service} বুকিং নতুন সময়ে: ${whenBn(moved.starts_at)}। সমস্যা হলে জানাবেন।`).catch(() => null);
     await audit(db, req.user, `Moved booking #${b._id} (${b.name})`, { where: 'Bookings' });
     emit(b.workspace_id, 'booking', { id: b._id });
     res.json(view(moved));

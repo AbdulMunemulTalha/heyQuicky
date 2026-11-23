@@ -176,6 +176,18 @@ export function parseWebhook(body, { appId = '' } = {}) {
   return result;
 }
 
+// Automated messages (the AI, reminders, updates) — Meta's rules for anything a person didn't write:
+// free-form only within 24 hours of the customer's last message. After that, never the HUMAN_AGENT tag
+// (it is only for replies a real person sends). Messenger alone allows a few message tags for specific
+// updates: POST_PURCHASE_UPDATE (a recent order's shipping or payment) and CONFIRMED_EVENT_UPDATE (a
+// booking the customer made). Instagram has no such tags; WhatsApp needs an approved template.
+export const AUTOMATED_TAGS = { purchase: 'POST_PURCHASE_UPDATE', event: 'CONFIRMED_EVENT_UPDATE' };
+export function automatedWindow(platform, lastInboundAt, purpose = null, now = Date.now()) {
+  if (lastInboundAt && now - new Date(lastInboundAt).getTime() <= 24 * HOUR) return { ok: true, tag: null };
+  if (platform === 'messenger' && AUTOMATED_TAGS[purpose]) return { ok: true, tag: AUTOMATED_TAGS[purpose] };
+  return { ok: false, reason: 'More than 24 hours since the customer last wrote, so only a teammate can reply now.' };
+}
+
 // Meta only allows free-form replies for 24h after the customer's last message.
 // Messenger and Instagram allow a human agent 7 days with the HUMAN_AGENT tag;
 // WhatsApp needs an approved template after 24h.

@@ -95,7 +95,7 @@ export function createDeliveryUpdater(db, inbox, config, { log = console, notify
     const card = stepCard(step, fresh, ws, {
       trackUrl: trackingUrl(fresh.courier, fresh.consignment_id), billUrl: fresh.bill_token && base ? `${base}/b/${fresh.bill_token}` : '', riderPhone: consignment?.rider_phone || '',
     });
-    const sent = await inbox.sendAiRich(fresh.conversation_id, card);
+    const sent = await inbox.purchaseRich(fresh.conversation_id, card);
     if (!sent) return 'window_closed';
     await db.insert(db.orderEvents, { workspace_id: fresh.workspace_id, order_id: fresh._id, type: 'delivery_update', to: step, by: 'ai', text: `Delivery update sent in chat (${step.replace(/_/g, ' ')})` });
     log.info?.(`delivery update ${step} sent for order ${fresh._id}`);
@@ -109,7 +109,7 @@ export function createDeliveryUpdater(db, inbox, config, { log = console, notify
     const out = await sendStep(order, 'failed');
     if (!cfg.alerts.handoff_failed || !order.conversation_id) return out;
     if (await db.orderEvents.exists({ order_id: order._id, type: 'delivery_handoff' })) return out;
-    if (out !== 'sent') await inbox.sendAiReply(order.conversation_id, fillMessage(DEFAULT_STEPS.failed.message, order, ws)).catch(() => null);
+    if (out !== 'sent') await inbox.purchaseUpdate(order.conversation_id, fillMessage(DEFAULT_STEPS.failed.message, order, ws)).catch(() => null);
     await db.conversations.updateOne({ _id: order.conversation_id }, { $set: { ai_handoff: true, ai_handoff_reason: `Delivery failed for order #${order.number ?? order._id} — agree a new time with the customer`, ai_handoff_at: new Date() } });
     await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'delivery_handoff', by: 'ai', text: 'Delivery failed — the AI asked for a new time and handed the chat to the team' });
     await startChase(db, null, await db.orders.findById(order._id).lean(), { reason: 'Delivery failed — rider couldn\'t reach them' }).catch(() => null);

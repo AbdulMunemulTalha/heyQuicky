@@ -189,7 +189,7 @@ export async function sendBookingReminders(db, inbox, { now = new Date() } = {})
     if (!wsCache.get(b.workspace_id).reminder) continue;
     // Only "tomorrow" in Dhaka time.
     if (dhakaParts(b.starts_at).date === dhakaParts(now).date) continue;
-    const msg = b.conversation_id ? await inbox.sendAiReply(b.conversation_id, reminderText(b)).catch(() => null) : null;
+    const msg = b.conversation_id ? await inbox.eventUpdate(b.conversation_id, reminderText(b)).catch(() => null) : null;
     if (msg) {
       await db.bookings.updateOne({ _id: b._id }, { $set: { reminder_sent_at: now } });
       out.sent += 1;

@@ -208,8 +208,8 @@ export function productPageRoutes(db, config, { inbox, notify }) {
       orderLimit(req.ip);
       const billUrl = `${base(req)}/b/${billToken}`;
       let inChat = false;
-      if (chat && inbox?.sendAiRich) {
-        inChat = Boolean(await inbox.sendAiRich(chat._id, orderSummary(order, { billUrl })).catch(() => null));
+      if (chat && inbox?.purchaseRich) {
+        inChat = Boolean(await inbox.purchaseRich(chat._id, orderSummary(order, { billUrl })).catch(() => null));
       }
       res.status(201).json({ number: order.number, total: order.subtotal + order.delivery_charge - order.discount, cod: order.cod_amount, status: order.status, advance: advance?.amount ?? null, billUrl, inChat });
     } catch (err) {

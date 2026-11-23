@@ -1,6 +1,6 @@
 import { row, rows, isDuplicateKey } from './db.js';
 import { ensureAssigned, assignConversation, distributeUnassigned } from './assignment.js';
-import { messagingWindow, sendText, sendRich, sendSenderAction, fetchProfileName, INVALID_TOKEN } from './platforms/meta.js';
+import { messagingWindow, automatedWindow, sendText, sendRich, sendSenderAction, fetchProfileName, INVALID_TOKEN } from './platforms/meta.js';
 import { toPlatform, parsePostback } from './platforms/rich.js';
 import { decryptSecret } from './secrets.js';
 import { looksLikeSpam } from './dashboard/spam.js';
@@ -377,13 +377,14 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       return deliver(conversation, { text, tag: window.tag, sender_user_id: user.id });
     },
 
-    // Sends a reply written by the AI agent. Returns null if Meta's messaging
-    // window has closed (the agent then hands the customer to a person).
-    async sendAiReply(conversationId, text) {
+    // Sends a message written by the AI or the system. Returns null when Meta wouldn't allow it: outside
+    // 24 hours only Messenger order updates (purpose "purchase") and booking updates ("event") may go,
+    // with their own tag — never the human-agent tag (the AI then hands the customer to a person).
+    async sendAiReply(conversationId, text, { purpose = null } = {}) {
       text = String(text ?? '').trim();
       const conversation = await getConversation(conversationId);
       if (!text || !conversation) return null;
-      const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
+      const window = automatedWindow(conversation.platform, conversation.last_inbound_at, purpose);
       if (!window.ok) return null;
       return deliver(conversation, { text, tag: window.tag, sent_by_ai: true });
     },
@@ -392,7 +393,7 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
     // Best effort: returns false when the platform has no typing indicator or Meta refuses.
     async showTyping(conversationId) {
       const conversation = await getConversation(conversationId);
-      if (!conversation || !messagingWindow(conversation.platform, conversation.last_inbound_at).ok) return false;
+      if (!conversation || !automatedWindow(conversation.platform, conversation.last_inbound_at).ok) return false;
       const channel = await db.channels.findById(conversation.channel_id).lean();
       const contact = await db.contacts.findById(conversation.contact_id, { external_id: 1 }).lean();
       if (!channel || !contact) return false;
@@ -417,14 +418,19 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       return deliver(conversation, { rich, tag: window.tag, sender_user_id: user.id });
     },
 
-    // A rich message sent by the system or the AI (e.g. the answer to a button tap). Null when the window has closed.
-    async sendAiRich(conversationId, rich) {
+    // A rich message sent by the system or the AI (e.g. the answer to a button tap). Null when Meta wouldn't allow it.
+    async sendAiRich(conversationId, rich, { purpose = null } = {}) {
       const conversation = await getConversation(conversationId);
       if (!conversation) return null;
-      const window = messagingWindow(conversation.platform, conversation.last_inbound_at);
+      const window = automatedWindow(conversation.platform, conversation.last_inbound_at, purpose);
       if (!window.ok) return null;
       return deliver(conversation, { rich, tag: window.tag, sent_by_ai: true });
     },
+
+    // Messenger may carry these past 24 hours with their own tag (see automatedWindow).
+    purchaseUpdate(conversationId, text) { return this.sendAiReply(conversationId, text, { purpose: 'purchase' }); },
+    purchaseRich(conversationId, rich) { return this.sendAiRich(conversationId, rich, { purpose: 'purchase' }); },
+    eventUpdate(conversationId, text) { return this.sendAiReply(conversationId, text, { purpose: 'event' }); },
 
     setPostbackHandler(fn) {
       onPostback = fn;
