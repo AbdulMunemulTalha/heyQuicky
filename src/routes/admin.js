@@ -40,5 +40,22 @@ export function adminRoutes(db, config, { notify = null } = {}) {
     res.json({ id: entry._id, status: 'rejected' });
   });
 
+  router.get('/admin/plan-requests', guard, async (_req, res) => {
+    const list = await db.workspaces.find({ 'settings.plan_request': { $ne: null } }, { name: 1, plan: 1, 'settings.plan_request': 1 }).lean();
+    res.json(list.filter((w) => w.settings?.plan_request).map((w) => ({ workspaceId: w._id, shop: w.name, plan: w.plan ?? 'starter', request: w.settings.plan_request })));
+  });
+
+  router.post('/admin/workspaces/:id/plan', guard, async (req, res) => {
+    const plan = String(req.body?.plan ?? '');
+    if (!['starter', 'growth', 'pro'].includes(plan)) return res.status(400).json({ error: 'plan must be starter, growth or pro' });
+    const period = req.body?.period === 'yearly' ? 'yearly' : 'monthly';
+    const renews = req.body?.renewsAt ? new Date(req.body.renewsAt) : new Date(Date.now() + (period === 'yearly' ? 365 : 30) * 86_400_000);
+    if (Number.isNaN(renews.getTime())) return res.status(400).json({ error: 'renewsAt must be a date' });
+    const r = await db.workspaces.updateOne({ _id: Number(req.params.id) }, { $set: { plan, plan_renews_at: renews, 'settings.plan_period': period }, $unset: { 'settings.plan_request': '' } });
+    if (!r.matchedCount) return res.status(404).json({ error: 'No such workspace' });
+    await notify?.({ workspaceId: Number(req.params.id), event: 'credit', title: `You're on ${plan[0].toUpperCase()}${plan.slice(1)} now`, body: `Billed ${period}. Renews ${renews.toISOString().slice(0, 10)}.`, link: '/settings/plan', ref: `plan:${req.params.id}:${plan}:${renews.getTime()}` });
+    res.json({ plan, period, renewsAt: renews });
+  });
+
   return router;
 }

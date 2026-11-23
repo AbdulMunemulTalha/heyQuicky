@@ -106,8 +106,8 @@ function Caps({ t, caps }) {
   );
 }
 
-function TopupDialog({ t, method, number, min, max, onClose, onDone }) {
-  const [amount, setAmount] = useState('');
+export function TopupDialog({ t, method, number, min, max, onClose, onDone, initialAmount = null }) {
+  const [amount, setAmount] = useState(initialAmount ? String(initialAmount) : '');
   const [trx, setTrx] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
