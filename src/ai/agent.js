@@ -11,7 +11,7 @@ import { commentAction } from '../dashboard/comments.js';
 import { openTicket } from '../dashboard/tickets.js';
 import { teamSettings, matchRule, applyRule, anyoneOnDuty } from '../dashboard/team.js';
 import { productCards, quickReplies } from '../platforms/rich.js';
-import { placeAiOrder } from '../dashboard/aiOrder.js';
+import { placeAiOrder, openAiOrder, changeAiOrder } from '../dashboard/aiOrder.js';
 import { sendSizeChart } from '../dashboard/postbacks.js';
 import { InboxError } from '../inbox.js';
 import { canSpend, meter } from './metering.js';
@@ -65,6 +65,7 @@ function normalize(data) {
     quick_replies: (Array.isArray(data?.quick_replies) ? data.quick_replies : []).map((q) => String(q).trim().slice(0, 20)).filter(Boolean).slice(0, 5),
     size_chart_product: Number(data?.size_chart_product) || 0,
     order: data?.order?.ready ? data.order : null,
+    order_change: ['edit', 'cancel'].includes(data?.order_change?.action) ? data.order_change : null,
     payment: TRX.test(String(data?.payment?.trx_id ?? '').trim().toUpperCase()) ? { trx_id: String(data.payment.trx_id).trim().toUpperCase(), method: data.payment.method === 'nagad' ? 'nagad' : 'bkash', amount: Number(data.payment.amount) || 0 } : null,
     customer_tags: (Array.isArray(data?.customer_tags) ? data.customer_tags : []).filter((x) => x in AI_TAGS),
     act_now: Boolean(data?.act_now),
@@ -107,15 +108,16 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     const messages = recent.reverse();
     const lastInbound = messages.findLast((m) => m.direction === 'in') ?? null;
     const now = new Date();
-    const [coupons, customer, orders, notes] = await Promise.all([
+    const [coupons, customer, orders, notes, pendingOrder] = await Promise.all([
       db.coupons.find({ workspace_id: conversation.workspace_id, active: { $ne: false }, $and: [{ $or: [{ ends_at: null }, { ends_at: { $gt: now } }] }, { $or: [{ starts_at: null }, { starts_at: { $lte: now } }] }] }).limit(10).lean(),
       conversation.customer_id ? db.customers.findById(conversation.customer_id).lean() : null,
       conversation.customer_id ? db.orders.find({ customer_id: conversation.customer_id, draft: { $ne: true } }).sort({ created_at: -1 }).limit(3).lean() : [],
       conversation.customer_id ? db.notes.find({ customer_id: conversation.customer_id }).sort({ created_at: -1 }).limit(3).lean() : [],
+      openAiOrder(db, conversationId),
     ]);
     // The knowledge book, taught answers and rules ride along with the shop information.
     return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, coupons: modulesFor(workspace).coupons === false ? [] : aiCoupons(coupons, now), messages, lastInbound,
-      context: buildCustomerContext({ customer, orders, notes, now }) };
+      pendingOrder, context: buildCustomerContext({ customer, orders, notes, now, pendingOrder }) };
   }
 
   // What the customer sent since the shop last replied: voice notes are transcribed once and the
@@ -289,8 +291,28 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
         title: answer.handoff_reason, reason: answer.handoff_reason, actNow: true, by: 'AI', ownerId: ctx.conversation.assigned_user_id ?? null, notify })
         .catch((err) => log.warn(`ticket for conversation ${conversationId} failed: ${err.message}`));
     }
-    // ORD-01: the AI places the order; if anything doesn't fit the catalog, a person finishes it instead.
+    // ORD-06: the customer changes or cancels the order that still waits for their confirmation. A "new"
+    // order while one is waiting in this chat is read as a change to it, so the same purchase is never ordered twice.
     let placed = null;
+    const waiting = (answer.order_change || answer.order) ? await openAiOrder(db, conversationId) : null;
+    if (waiting && !answer.order_change && answer.order) answer.order_change = { action: 'edit', ...answer.order };
+    if (answer.order_change && !waiting) {
+      answer.handoff = true;
+      answer.handoff_reason ||= 'The customer wants to change or cancel an order that is already confirmed. Please help them.';
+    } else if (answer.order_change) {
+      answer.order = null;
+      try {
+        const changed = await changeAiOrder(db, { conversation: ctx.conversation, order: waiting, change: answer.order_change, notify, publicUrl: config.publicUrl || '' });
+        if (changed.rich) placed = changed;
+        emit(ctx.conversation.workspace_id, 'order', { id: waiting._id, number: waiting.number });
+      } catch (err) {
+        await setHandoff(conversationId, `The AI couldn't change order #${waiting.number ?? waiting._id}: ${err.message}. Please help the customer.`);
+        await saveDraft(conversationId, answer, messageId);
+        await inbox.refresh(conversationId);
+        return 'order_failed';
+      }
+    }
+    // ORD-01: the AI places the order; if anything doesn't fit the catalog, a person finishes it instead.
     if (answer.order) {
       try {
         placed = await placeAiOrder(db, { conversation: ctx.conversation, input: answer.order, notify, publicUrl: config.publicUrl || '' });

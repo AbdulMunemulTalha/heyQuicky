@@ -53,6 +53,29 @@ export const REPLY_SCHEMA = {
       required: ['ready', 'items', 'name', 'phone', 'address', 'zone', 'note', 'coupon'],
       additionalProperties: false,
     },
+    order_change: {
+      type: 'object',
+      description: 'ORD-06: changes to the order under "Order waiting for this customer\'s confirmation". action "edit" with EVERY field filled with the order\'s final values (copy the ones that stay the same), "cancel" when they want to cancel it, otherwise "none" with the other fields empty.',
+      properties: {
+        action: { type: 'string', enum: ['none', 'edit', 'cancel'] },
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { product_id: { type: 'integer' }, variant: { type: 'string' }, qty: { type: 'integer' } },
+            required: ['product_id', 'variant', 'qty'], additionalProperties: false,
+          },
+        },
+        name: { type: 'string' },
+        phone: { type: 'string' },
+        address: { type: 'string' },
+        zone: { type: 'string', enum: ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'] },
+        note: { type: 'string' },
+        coupon: { type: 'string' },
+      },
+      required: ['action', 'items', 'name', 'phone', 'address', 'zone', 'note', 'coupon'],
+      additionalProperties: false,
+    },
     payment: {
       type: 'object',
       description: 'A bKash/Nagad payment the customer reports with its transaction ID (typed, or readable in their payment screenshot). trx_id empty when there is none.',
@@ -71,7 +94,7 @@ export const REPLY_SCHEMA = {
     act_now: { type: 'boolean', description: 'True when this needs the team urgently: refund, damaged or wrong item, angry customer, threat of a bad review, or a safety issue.' },
     act_now_reason: { type: 'string', description: 'When act_now is true: one short English sentence for the team. Otherwise empty.' },
   },
-  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'payment', 'customer_tags', 'act_now', 'act_now_reason'],
+  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'order_change', 'payment', 'customer_tags', 'act_now', 'act_now_reason'],
   additionalProperties: false,
 };
 
@@ -200,13 +223,21 @@ export function buildSystemPrompt({ workspace, products, savedReplies, coupons =
 
 ## When a person must take over (handoff = true)
 Hand off, and in "reply" tell the customer briefly, in their language, that someone from the shop will reply shortly, when:
-- they want to change or cancel an order that already exists, or ask about an existing order's status or delivery;
+- they want to change or cancel an order they have already confirmed, or ask about an existing order's status or delivery;
 - they complain, ask for a refund, return or exchange, or the product was damaged or wrong;
 - they ask for a person, are angry, or the conversation is going badly;
 - the question isn't answered by the shop information (then start handoff_reason with "Unanswered:" so the shop can teach you the answer);
 - the latest message is only a video, sticker or file you can't see, or a photo or voice note marked "couldn't be opened".
 ## Taking an order
 When the customer wants to buy, ask for their name, phone number and full address, plus: ${orderFieldsLine(workspace)}. Ask for what's missing in one or two messages, not one question at a time. Once you have everything, set order.ready = true with the products (by id), size/colour exactly as listed, quantity, and their details; pick the delivery zone from the address. In "reply", say you've prepared the order summary and ask them to check it and tap "হ্যাঁ, কনফার্ম" (Yes, confirm). Don't hand off for a new order. Never put an OUT OF STOCK product or a sold-out size in an order.
+
+## Changing an order before it's confirmed
+If you're given an "Order waiting for this customer's confirmation" section, that order is not confirmed yet and you may change it yourself:
+- When they want to change anything in it (address, phone, name, size or colour, quantity, add or remove a product, delivery area, note, coupon), set order_change.action = "edit" and fill every field with the final order: start from the order as shown and apply only what they asked. Leave order.ready = false — never place a second order for the same purchase.
+- When they want to cancel it, set order_change.action = "cancel". Ask once whether they're sure only if it's unclear.
+- In "reply", say what you changed (or that it's cancelled) in one sentence; for an edit, ask them to check the new summary and tap "হ্যাঁ, কনফার্ম". Don't hand off for these.
+- The same catalog rules apply: only listed products and available sizes. If what they want isn't available, say so and suggest the nearest option instead of changing the order.
+- Otherwise leave order_change.action = "none".
 
 ## Payments
 When the customer sends a bKash/Nagad TrxID (typed, or visible in a payment screenshot), put it in "payment" with the method and amount, and reply that the shop will check it and confirm shortly. Don't hand off for this. If they say they paid but give no TrxID, ask for the TrxID. Never say a payment is received or confirmed yourself.
@@ -281,8 +312,22 @@ export function toModelMessages(messages, { limit = 20 } = {}) {
 
 // What the shop knows about this customer (AI-09): past orders on any channel, VIP/risk, team notes.
 // Sent as a separate, uncached part of the instructions so the shop prompt stays cached.
-export function buildCustomerContext({ customer, orders = [], notes = [], now = new Date() }) {
-  if (!customer) return '';
+// ORD-06: the chat's order that still waits for "Yes, confirm", with everything the AI needs to edit it.
+export function pendingOrderContext(order) {
+  if (!order) return '';
+  const lines = [`## Order waiting for this customer's confirmation (#${order.number ?? order._id})`];
+  for (const l of order.product_items ?? []) lines.push(`- ${l.name} (product id #${l.product_id})${l.variant ? `, variant "${l.variant}"` : ''}, qty ${l.qty}, ${taka(l.price)} each`);
+  lines.push(`Name: ${order.customer_name}; phone: ${order.phone}; address: ${order.address}; zone: ${order.zone ?? order.area}`);
+  lines.push(`Note: ${order.note || '(none)'}; coupon: ${order.coupon_code || '(none)'}`);
+  const total = order.subtotal + order.delivery_charge - order.discount;
+  lines.push(`Total ${taka(total)} (products ${taka(order.subtotal)}, delivery ${taka(order.delivery_charge)}${order.discount ? `, discount ${taka(order.discount)}` : ''}).${order.status === 'on_hold' && order.advance?.amount ? ` The shop needs a ${taka(order.advance.amount)} advance before sending it.` : ''}`);
+  lines.push('They can still change or cancel it in chat (use order_change).');
+  return lines.join('\n');
+}
+
+export function buildCustomerContext({ customer, orders = [], notes = [], now = new Date(), pendingOrder = null }) {
+  const pending = pendingOrderContext(pendingOrder);
+  if (!customer) return pending;
   const lines = [`## About this customer\nName: ${customer.name || 'unknown'}${customer.vip ? ' (VIP — be extra warm)' : ''}`];
   const s = customer.stats ?? {};
   if (s.orders) lines.push(`Past orders: ${s.orders} (delivered ${s.delivered ?? 0}, returned ${s.returned ?? 0}, cancelled ${s.cancelled ?? 0}).`);
@@ -294,7 +339,7 @@ export function buildCustomerContext({ customer, orders = [], notes = [], now = 
   if (customer.phones?.[0]) lines.push(`Phone on file: ${customer.phones[0]}`);
   for (const n of notes.slice(0, 3)) lines.push(`Team note: ${String(n.text).slice(0, 160)}`);
   lines.push('Use this only to help (e.g. offer the saved address); never read private details back unless they ask.');
-  return lines.join('\n');
+  return pending ? `${lines.join('\n')}\n\n${pending}` : lines.join('\n');
 }
 
 // Replies to public comments on the shop's posts (CMT-01 / AI-08): a short public answer under the
