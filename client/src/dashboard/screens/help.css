@@ -1,0 +1,30 @@
+/* Phase 2 · Help (UX-03 / ONB-11) */
+#dash .hp-body { display: flex; flex-direction: column; gap: 16px; }
+#dash .hp-hero { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-height: 150px; padding: 14px; border-radius: 12px;
+  background: linear-gradient(135deg, #2f4bff, #5a73ff); color: #fff; position: relative; }
+#dash .hp-hero:focus-visible { outline: 2px solid var(--accent, #2f6fed); outline-offset: 2px; }
+#dash .hp-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%); width: 52px; height: 52px; border-radius: 26px; background: #fff; display: grid; place-items: center; font-size: 22px; }
+#dash .hp-herotext { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+#dash .hp-herotext strong { font-size: 13px; }
+#dash .hp-herotext small { background: rgba(0,0,0,.35); padding: 2px 7px; border-radius: 6px; font-size: 11px; white-space: nowrap; }
+#dash .hp-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+#dash .hp-list li button { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: flex; justify-content: space-between; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--border); font-size: 13px; }
+#dash .hp-list li button:hover span, #dash .hp-list li button:focus-visible span { color: var(--accent, #2f6fed); }
+#dash .hp-ask { border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+#dash .hp-askhead { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+#dash .hp-bot { width: 24px; height: 24px; border-radius: 6px; background: var(--accent, #2f6fed); color: #fff; display: grid; place-items: center; font-size: 12px; }
+#dash .hp-ai { font-size: 10.5px; font-weight: 700; color: var(--green-text, #12733f); background: var(--green-soft, #e7f6ec); padding: 1px 6px; border-radius: 6px; }
+#dash .hp-chat { display: flex; flex-direction: column; gap: 8px; }
+#dash .hp-q { align-self: flex-end; max-width: 85%; padding: 8px 11px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); font-size: 12.5px; }
+#dash .hp-a { align-self: flex-start; max-width: 92%; padding: 9px 12px; border-radius: 12px; background: var(--accent-tint, #eef2ff); font-size: 12.5px; line-height: 1.45; }
+#dash .hp-link { all: unset; cursor: pointer; color: var(--accent, #2f6fed); font-weight: 600; text-decoration: underline; }
+#dash .hp-askform { display: flex; gap: 8px; }
+#dash .hp-askform .input { flex: 1; min-width: 0; }
+#dash .hp-support { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#dash .hp-support > * { justify-content: center; text-align: center; text-decoration: none; }
+#dash .hp-callme { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--panel-2); }
+#dash .hp-callrow { display: flex; justify-content: flex-end; gap: 6px; }
+#dash .hp-article { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+#dash .hp-article h3 { margin: 0; font: 600 16px/1.35 var(--display); }
+#dash .hp-article p { margin: 0; font-size: 13.5px; line-height: 1.6; }
+#dash .hp-back { all: unset; cursor: pointer; font-size: 12.5px; color: var(--accent, #2f6fed); }

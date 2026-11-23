@@ -50,6 +50,7 @@ const overlays = {
   teach: lazy(() => import('./screens/Teach.jsx')),
   newTicket: lazy(() => import('./screens/Tickets.jsx').then((m) => ({ default: m.NewTicket }))),
   brands: lazy(() => import('./screens/Brands.jsx')),
+  help: lazy(() => import('./screens/Help.jsx')),
 };
 
 const G_KEYS = { H: '/', I: '/inbox', O: '/orders', C: '/customers', F: '/growth', S: '/saved-replies', A: '/agent', P: '/catalog', R: '/analytics', T: '/settings' };

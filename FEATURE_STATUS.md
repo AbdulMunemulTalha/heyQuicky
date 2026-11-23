@@ -17,7 +17,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | ONB-08 | Partial — top-bar AI live / Practice switch works, trial clock starts at first go-live; trial credit amount waits on pricing (`TRIAL_CREDIT`) | /app (top bar) |
 | ONB-09 | Not started (Phase 3) — the seed it will use exists (`src/dashboard/demoSeed.js`, sandbox mode) | /app/demo |
 | ONB-10 | Done (onboarding) | onboarding |
-| ONB-11 | Not started (Help panel, Phase 2) | overlay |
+| ONB-11 | Partial — "Stuck? We'll call you" in Help: the shop leaves a number and a note and the HeyQuicky team gets an email (SUPPORT_EMAIL), once an hour at most. Free migration and done-for-you setup are a service, not built in the app | overlay |
 | ONB-12 | Not started (screen 08) | /app/catalog |
 | INB-01 | Done — Messenger, Instagram, WhatsApp (and website chat channel type) in one list; reply from the dashboard | /app/inbox |
 | INB-02 | Done — Waiting / Unread / Open / Done (+ Spam) tabs with live counts, per channel and Mine/Everyone | /app/inbox |
@@ -159,7 +159,7 @@ Phase 1 progress: foundations, shell, log-in, 01 Overview, 02 Inbox (+ 15, 22, 2
 | BIL-06 | Done — with charging on, the AI stops before calling the model when credit is ৳0 or this month's spend reaches the cap, and hands the chat to the team; the owner is alerted when credit drops below their line and when it runs out | /app/settings |
 | UX-01 | Partial — full Bangla for the shell, log-in and Overview with Bangla digits and ৳ grouping; a test fails if any English string lacks a Bangla one; other screens add theirs as they're built | /app |
 | UX-02 | Partial — light / dark / match my device on Profile, using the dark theme colours; screens follow the theme through shared colour variables but haven't each been checked in dark. The P2 dark-theme frame is not matched screen by screen | /app/profile |
-| UX-03 | Not started (Phase 2) | overlay |
+| UX-03 | Partial — Help panel (frame "Help videos & help bot", the ? button): 20 short help articles in English and Bangla, "Popular on this page" for the page you're on, and "Ask Quicky Help" — answered by the AI from the articles (not charged to the shop) or, without AI, by searching them — with "Open it for me →" to the right page; WhatsApp support when SUPPORT_WHATSAPP is set, Call us when SUPPORT_PHONE is set. Missing: the 1-minute videos (no videos recorded yet — the top card opens the page's guide instead) and the What's new / Requests tabs (UX-04 / UX-05, Phase 3) | overlay |
 | UX-04 | Not started (Phase 3) | overlay |
 | UX-05 | Not started (Phase 3) | overlay |
 | UX-06 | Done — keyboard: ⌘K / Ctrl+K / "/" search, ↑ ↓ Enter in results, Tab switches filters, Esc closes; "Go to" pages and actions (new order, add product, test chat) with G-then-letter shortcuts (G H overview, G I inbox, G O orders, G C customers, G F follow-ups, G S saved replies, G A AI agent, G P catalog, G R analytics, G T settings) | overlay |

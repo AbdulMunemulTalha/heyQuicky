@@ -565,6 +565,20 @@ ${extraNotes}` } : trained;
     },
 
     // Copilot: answers a teammate's question about one customer from their chat and orders (HND-04).
+    // UX-03 help bot: answers a shop's question about HeyQuicky from the help articles. Not charged to the shop.
+    async helpAnswer(question, articles, lang = 'en') {
+      if (!provider) return null;
+      const list = articles.map((x) => `[${x.link}] ${x.title}: ${x.body}`).join('\n');
+      const { data } = await provider.generateJson({
+        system: `You are Quicky Help, the in-app help for HeyQuicky, an AI sales inbox for online shops in Bangladesh. Answer the shop owner's question in 1-3 short sentences using only the help articles given, naming the menu path (e.g. Settings → Payments). Reply in ${lang === 'bn' ? 'Bangla' : 'English'}. Put the most relevant article's path (the part in [brackets]) in link; if the articles don't cover it, say so and leave link empty.`,
+        messages: [{ role: 'user', content: `Help articles:\n${list}\n\nQuestion: ${question}` }],
+        schema: { type: 'object', properties: { answer: { type: 'string' }, link: { type: 'string' } }, required: ['answer', 'link'], additionalProperties: false },
+        maxTokens: 400,
+      });
+      const link = /^\/[a-z0-9/?=&_-]*$/i.test(String(data.link ?? '')) ? data.link : '';
+      return { answer: String(data.answer ?? '').trim(), link };
+    },
+
     async ask(user, conversationId, question) {
       if (!provider) throw new InboxError(503, 'AI replies are not set up on this server');
       const conversation = await db.conversations.findById(conversationId).lean();
