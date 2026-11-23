@@ -28,11 +28,12 @@ test('modules: switch sections on and off, business type and "use recommended"; 
     assert.equal(page.status, 200);
     assert.equal(page.body.modules.length, 12);
     assert.equal(page.body.modules.find((m) => m.key === 'inbox').always, true);
-    assert.equal(page.body.modules.find((m) => m.key === 'bookings').notBuilt, true);
+    assert.equal(page.body.modules.find((m) => m.key === 'content').notBuilt, true);
+    assert.ok(!page.body.modules.find((m) => m.key === 'bookings').notBuilt, 'bookings is built now');
 
     assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.mod, body: { modules: { coupons: false } } })).status, 403);
     assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { inbox: false } } })).status, 400);
-    assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { bookings: true } } })).status, 409);
+    assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { content: true } } })).status, 409);
     const off = await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { coupons: false, tickets: false } } });
     assert.equal(off.body.modules.find((m) => m.key === 'coupons').on, false);
     assert.equal(off.body.matchesRecommended, false);
@@ -47,7 +48,7 @@ test('modules: switch sections on and off, business type and "use recommended"; 
     const salon = await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { businessType: 'salon', useRecommended: true } });
     assert.equal(salon.body.businessType, 'salon');
     const on = Object.fromEntries(salon.body.modules.map((m) => [m.key, m.on]));
-    assert.deepEqual([on.courier, on.catalog, on.coupons, on.payments, on.tickets, on.bookings], [false, false, false, true, true, false], 'bookings is recommended but not built yet');
+    assert.deepEqual([on.courier, on.catalog, on.coupons, on.payments, on.tickets, on.bookings], [false, false, false, true, true, true], 'salons get bookings');
     assert.equal(salon.body.matchesRecommended, true);
     assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { businessType: 'spaceship' } })).status, 400);
   } finally { await s.close(); }

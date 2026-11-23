@@ -253,6 +253,46 @@ export function defineDashboardModels(conn) {
     order_id: { type: Number, default: null },
   });
 
+  // BKG-01..03: an appointment (fitting, consultation, class). Times in UTC; shown in Dhaka time.
+  const booking = S({
+    customer_id: { type: Number, default: null, index: true },
+    conversation_id: { type: Number, default: null },
+    name: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    service_id: { type: String, required: true },
+    service: { type: String, default: '' },
+    starts_at: { type: Date, required: true, index: true },
+    ends_at: { type: Date, required: true },
+    status: { type: String, enum: ['pending', 'confirmed', 'arrived', 'no_show', 'cancelled'], default: 'confirmed' },
+    price: { type: Number, default: 0 },
+    advance: { type: Mixed, default: null }, // { amount, trx_id, method, verified }
+    note: { type: String, default: '' },
+    source: { type: String, default: 'team' }, // ai | team
+    platform: { type: String, default: '' },
+    by_user_id: { type: Number, default: null },
+    confirmation_sent_at: { type: Date, default: null },
+    reminder_sent_at: { type: Date, default: null },
+    reminder_failed: { type: String, default: '' },
+  });
+
+  // BKG-04: a price quote for custom work. The AI collects the request in chat; the shop sets the price.
+  const quote = S({
+    number: { type: Number, required: true },
+    customer_id: { type: Number, default: null, index: true },
+    conversation_id: { type: Number, default: null },
+    name: { type: String, default: '' },
+    title: { type: String, required: true },
+    details: { type: String, default: '' },
+    photos: { type: [String], default: [] },
+    price: { type: Number, default: null },
+    advance: { type: Number, default: 0 },
+    valid_until: { type: Date, default: null },
+    status: { type: String, enum: ['waiting', 'sent', 'accepted', 'declined', 'expired'], default: 'waiting' },
+    sent_at: { type: Date, default: null },
+    answered_at: { type: Date, default: null },
+    source: { type: String, default: 'ai' },
+  });
+
   const broadcast = S({
     audience: { type: Mixed, default: {} },
     format: { type: String, default: 'text' },
@@ -426,6 +466,8 @@ export function defineDashboardModels(conn) {
     followups: conn.model('Followup', followup, 'followups'),
     broadcasts: conn.model('Broadcast', broadcast, 'broadcasts'),
     offers: conn.model('Offer', offer, 'offers'),
+    bookings: conn.model('Booking', booking, 'bookings'),
+    quotes: conn.model('Quote', quote, 'quotes'),
     knowledge: conn.model('Knowledge', knowledge, 'knowledge'),
     aiRules: conn.model('AiRule', aiRule, 'ai_rules'),
     taughtAnswers: conn.model('TaughtAnswer', taughtAnswer, 'taught_answers'),

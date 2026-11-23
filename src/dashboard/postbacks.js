@@ -48,6 +48,28 @@ export function createPostbackHandler(db, inbox, { notify = null, emit = () => {
       return true;
     }
 
+    // BKG-04: the customer answers a quote card.
+    if (action === 'QACCEPT' || action === 'QDECLINE') {
+      const q = await db.quotes.findOne({ _id: Number(id), workspace_id: ws }).lean();
+      if (!q || (q.conversation_id !== conv._id && q.customer_id !== conv.customer_id)) return false;
+      if (q.status !== 'sent') { await inbox.sendAiReply(conversationId, q.status === 'accepted' ? 'এই কোটেশনটি আগেই গ্রহণ করেছেন 😊' : 'এই কোটেশনটি আর চালু নেই। নতুন দাম চাইলে জানাবেন।'); return true; }
+      if (q.valid_until && q.valid_until < new Date()) {
+        await db.quotes.updateOne({ _id: q._id }, { $set: { status: 'expired' } });
+        await inbox.sendAiReply(conversationId, 'দুঃখিত, এই কোটেশনের মেয়াদ শেষ। নতুন দাম জানাতে বলছি।');
+        await notify?.({ workspaceId: ws, event: 'handoff', title: `Quote Q-${q.number} expired`, body: `${q.name || 'The customer'} tried to accept it. Send a new price.`, link: '/bookings?tab=quotes', ref: `quote-exp:${q._id}` });
+        return true;
+      }
+      const accepted = action === 'QACCEPT';
+      await db.quotes.updateOne({ _id: q._id }, { $set: { status: accepted ? 'accepted' : 'declined', answered_at: new Date() } });
+      const wsDoc = await db.workspaces.findById(ws, { bkash_number: 1, nagad_number: 1 }).lean();
+      const pay = wsDoc?.bkash_number || wsDoc?.nagad_number;
+      await inbox.sendAiReply(conversationId, accepted
+        ? `ধন্যবাদ! 🎉 Q-${q.number} গ্রহণ করেছেন।${q.advance ? ` কাজ শুরু করতে ৳${q.advance.toLocaleString('en-IN')} অগ্রিম${pay ? ` ${wsDoc.bkash_number ? 'বিকাশ' : 'নগদ'} ${pay} নম্বরে` : ''} পাঠিয়ে TrxID দিন।` : ' আমাদের টিম শিগগিরই যোগাযোগ করবে।'}`
+        : 'ঠিক আছে, জানানোর জন্য ধন্যবাদ। অন্য কিছু লাগলে বলবেন 😊');
+      await notify?.({ workspaceId: ws, event: accepted ? 'order' : 'handoff', title: `${q.name || 'Customer'} ${accepted ? 'accepted' : 'declined'} quote Q-${q.number}`, body: `${q.title} · ৳${(q.price ?? 0).toLocaleString('en-IN')}`, link: '/bookings?tab=quotes', ref: `quote-ans:${q._id}` });
+      return true;
+    }
+
     if (action === 'SIZE') return sendSizeChart(db, inbox, conversationId, ws, Number(id), { publicUrl });
 
     if (action === 'NOTIFY') {

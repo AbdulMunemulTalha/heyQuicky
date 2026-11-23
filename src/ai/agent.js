@@ -13,6 +13,7 @@ import { teamSettings, matchRule, applyRule, anyoneOnDuty } from '../dashboard/t
 import { productCards, quickReplies } from '../platforms/rich.js';
 import { placeAiOrder, openAiOrder, changeAiOrder } from '../dashboard/aiOrder.js';
 import { offersFor } from '../dashboard/offers.js';
+import { availability, availabilityContext, createBooking, confirmationText, dhakaParts, ACTIVE as BOOKING_ACTIVE } from '../dashboard/bookings.js';
 import { sendSizeChart } from '../dashboard/postbacks.js';
 import { InboxError } from '../inbox.js';
 import { canSpend, meter } from './metering.js';
@@ -67,6 +68,8 @@ function normalize(data) {
     size_chart_product: Number(data?.size_chart_product) || 0,
     order: data?.order?.ready ? data.order : null,
     order_change: ['edit', 'cancel'].includes(data?.order_change?.action) ? data.order_change : null,
+    booking: data?.booking?.ready ? data.booking : null,
+    quote_request: data?.quote_request?.ready && String(data.quote_request.title ?? '').trim() ? data.quote_request : null,
     payment: TRX.test(String(data?.payment?.trx_id ?? '').trim().toUpperCase()) ? { trx_id: String(data.payment.trx_id).trim().toUpperCase(), method: data.payment.method === 'nagad' ? 'nagad' : 'bkash', amount: Number(data.payment.amount) || 0 } : null,
     customer_tags: (Array.isArray(data?.customer_tags) ? data.customer_tags : []).filter((x) => x in AI_TAGS),
     act_now: Boolean(data?.act_now),
@@ -119,7 +122,7 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     ]);
     // The knowledge book, taught answers and rules ride along with the shop information.
     return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, coupons: modulesFor(workspace).coupons === false ? [] : aiCoupons(coupons, now), messages, lastInbound,
-      pendingOrder, context: buildCustomerContext({ customer, orders, notes, now, pendingOrder, offers }) };
+      pendingOrder, context: [buildCustomerContext({ customer, orders, notes, now, pendingOrder, offers }), await bookingContext(workspace, conversation.customer_id, now)].filter(Boolean).join('\n\n') };
   }
 
   // What the customer sent since the shop last replied: voice notes are transcribed once and the
@@ -169,6 +172,15 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       m.images = images;
       if (changed) await db.messages.updateOne({ _id: m._id }, { $set: { attachments } });
     }
+  }
+
+  // BKG-01: free slots (when the shop takes bookings) and this customer's upcoming bookings.
+  async function bookingContext(workspace, customerId, now) {
+    if (!workspace || modulesFor(workspace).bookings !== true) return '';
+    const parts = [availabilityContext(await availability(db, workspace, { days: 7, now }))];
+    const mine = customerId ? await db.bookings.find({ customer_id: customerId, status: { $in: BOOKING_ACTIVE }, starts_at: { $gt: now } }).sort({ starts_at: 1 }).limit(3).lean() : [];
+    if (mine.length) parts.push(['## This customer\'s upcoming bookings', ...mine.map((b) => `- ${b.service} on ${dhakaParts(b.starts_at).date} at ${dhakaParts(b.starts_at).time}${b.status === 'pending' ? ` — waiting for the ৳${b.advance?.amount} advance TrxID` : ' — confirmed'}`)].join('\n'));
+    return parts.filter(Boolean).join('\n\n');
   }
 
   // AI-07: the messages customers replied to, including ones older than the recent history.
@@ -334,6 +346,15 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
         return 'order_failed';
       }
     }
+    // BKG-02: a TrxID for a booking that waits for its advance is saved on the booking for the team to check.
+    if (answer.payment && ctx.conversation.customer_id) {
+      const waitingBooking = await db.bookings.findOne({ customer_id: ctx.conversation.customer_id, status: 'pending', 'advance.trx_id': { $in: ['', null] }, starts_at: { $gt: new Date() } }).sort({ starts_at: 1 }).lean();
+      if (waitingBooking) {
+        await db.bookings.updateOne({ _id: waitingBooking._id }, { $set: { 'advance.trx_id': answer.payment.trx_id, 'advance.method': answer.payment.method } });
+        await notify?.({ workspaceId: ctx.conversation.workspace_id, event: 'payment', title: `TrxID for ${waitingBooking.name}'s booking`, body: `${answer.payment.trx_id} · ${waitingBooking.service}, ${dhakaParts(waitingBooking.starts_at).date} ${dhakaParts(waitingBooking.starts_at).time}. Check it and confirm the booking.`, link: '/bookings', ref: `booking-trx:${waitingBooking._id}` });
+        answer.payment = null;
+      }
+    }
     // PAY-01: a TrxID from the customer waits in Payments for the team to approve (linked to their open order).
     if (answer.payment) {
       const open = await db.orders.findOne({ workspace_id: ctx.conversation.workspace_id, draft: { $ne: true }, status: { $in: ['pending', 'on_hold', 'approved', 'processing', 'ready_to_ship'] },
@@ -348,6 +369,27 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       }
       await recordPayment(db, { workspaceId: ctx.conversation.workspace_id, orderId: open?._id ?? null, method: answer.payment.method, amount: answer.payment.amount || open?.advance?.amount || 0,
         trxId: answer.payment.trx_id, screenshot, source: 'chat', notify }).catch((err) => log.warn(`payment from chat not recorded: ${err.message}`));
+    }
+    let booked = null;
+    if (answer.booking) {
+      try {
+        booked = await createBooking(db, ctx.workspace, { serviceId: answer.booking.service_id, date: answer.booking.date, time: answer.booking.time, name: answer.booking.name, phone: answer.booking.phone,
+          note: answer.booking.note, source: 'ai', conversation: ctx.conversation, customerId: ctx.conversation.customer_id });
+        await db.bookings.updateOne({ _id: booked._id }, { $set: { platform: ctx.conversation.platform ?? '' } });
+        await notify?.({ workspaceId: ctx.conversation.workspace_id, event: 'order', title: `New booking: ${booked.name}`, body: `${booked.service} · ${dhakaParts(booked.starts_at).date} ${dhakaParts(booked.starts_at).time}${booked.status === 'pending' ? ' · waiting for the advance' : ''}`, link: '/bookings', ref: `booking:${booked._id}` });
+        emit(ctx.conversation.workspace_id, 'booking', { id: booked._id });
+      } catch (err) {
+        answer.handoff = true;
+        answer.handoff_reason = `The AI couldn't make the booking: ${err.message}. Please book it with the customer.`;
+      }
+    }
+    if (answer.quote_request) {
+      const last = await db.quotes.find({ workspace_id: ctx.conversation.workspace_id }).sort({ number: -1 }).limit(1).lean();
+      const photos = ctx.messages.filter((m) => m.direction === 'in').flatMap((m) => (m.attachments ?? []).filter((a) => a.type === 'image' && a.url).map((a) => a.url)).slice(-6);
+      const contact = ctx.conversation.contact_id ? await db.contacts.findById(ctx.conversation.contact_id, { name: 1 }).lean() : null;
+      const q = await db.insert(db.quotes, { workspace_id: ctx.conversation.workspace_id, number: (last[0]?.number ?? 0) + 1, customer_id: ctx.conversation.customer_id ?? null, conversation_id: conversationId,
+        name: contact?.name ?? '', title: String(answer.quote_request.title).trim().slice(0, 120), details: String(answer.quote_request.details ?? '').trim().slice(0, 1500), photos, source: 'ai' });
+      await notify?.({ workspaceId: ctx.conversation.workspace_id, event: 'handoff', title: `Quote request: ${String(answer.quote_request.title).slice(0, 60)}`, body: `${contact?.name || 'A customer'} is waiting for your price.`, link: '/bookings?tab=quotes', ref: `quote:${q.id}` });
     }
     if (answer.handoff) await setHandoff(conversationId, answer.handoff_reason || 'The AI asked for a person to take over', { intent: answer.intent });
     // A question the shop information didn't cover goes to "Questions it couldn't answer" (TRN-04).
@@ -373,6 +415,10 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     }
     if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product, { publicUrl: config.publicUrl || '' });
     if (placed) await inbox.sendAiRich(conversationId, placed.rich);
+    if (booked) {
+      const ok = await inbox.sendAiReply(conversationId, confirmationText(booked, ctx.workspace)).catch(() => null);
+      if (ok) await db.bookings.updateOne({ _id: booked._id }, { $set: { confirmation_sent_at: new Date() } });
+    }
     // PAY-03: an advance is needed before this order goes ahead.
     if (placed?.advance) await inbox.sendAiReply(conversationId, advanceMessage(ctx.workspace, placed.advance.amount));
     await inbox.refresh(conversationId);

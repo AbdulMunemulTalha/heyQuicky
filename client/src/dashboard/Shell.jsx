@@ -16,6 +16,7 @@ const NAV = [
     sub: [{ to: '/orders', label: 'nav.allOrders' }, { to: '/orders/money', label: 'nav.cashReturns' }, { to: '/orders/chase', label: 'nav.toChase' }] },
   { key: 'payments', to: '/payments', icon: 'card', label: 'nav.payments', badge: 'payments', tone: 'yellow', module: 'payments' },
   { key: 'tickets', to: '/tickets', icon: 'ticket', label: 'nav.tickets', badge: 'tickets', tone: 'red', module: 'tickets' },
+  { key: 'bookings', to: '/bookings', icon: 'calendar', label: 'nav.bookings', anyModule: ['bookings', 'quotes'] },
   { key: 'customers', to: '/customers', icon: 'customers', label: 'nav.customers',
     sub: [{ to: '/customers', label: 'nav.allCustomers' }, { to: '/customers/segments', label: 'nav.segments' }] },
   { section: 'nav.grow' },
@@ -49,7 +50,7 @@ export function activeKey(path) {
   const first = path.split('/')[1] ?? '';
   const map = { '': 'overview', inbox: 'inbox', comments: 'inbox', orders: 'orders', tickets: 'tickets', customers: 'customers',
     growth: 'growth', coupons: 'coupons', content: 'growth', 'saved-replies': 'saved', agent: 'agent', catalog: 'catalog',
-    analytics: 'analytics', payments: 'payments', bookings: 'customers', settings: 'settings', profile: 'profile' };
+    analytics: 'analytics', payments: 'payments', bookings: 'bookings', settings: 'settings', profile: 'profile' };
   return map[first] ?? '';
 }
 
@@ -107,7 +108,7 @@ export function Sidebar({ open, onClose }) {
         </nav>
       ) : (
         <nav className="nav" aria-label={t('nav.menu')}>
-          {NAV.filter((n) => !n.module || ws.modules[n.module]).flatMap((n, i) => (n.section
+          {NAV.filter((n) => (!n.module || ws.modules[n.module]) && (!n.anyModule || n.anyModule.some((k) => ws.modules[k]))).flatMap((n, i) => (n.section
             ? [<div key={n.section + i} className="nav-section">{t(n.section)}</div>]
             : [
               <Link key={n.key} to={n.to} className={`nav-item${active === n.key ? ' on' : ''}`} title={t(n.label)} aria-current={active === n.key ? 'page' : undefined}>

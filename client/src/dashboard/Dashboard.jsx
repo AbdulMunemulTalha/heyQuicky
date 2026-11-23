@@ -39,6 +39,7 @@ const screens = {
   profile: lazy(() => import('./screens/Profile.jsx')),
   modules: lazy(() => import('./screens/Modules.jsx')),
   integrations: lazy(() => import('./screens/Integrations.jsx')),
+  bookings: lazy(() => import('./screens/Bookings.jsx')),
   plan: lazy(() => import('./screens/Plan.jsx')),
   deliveryUpdates: lazy(() => import('./screens/DeliveryUpdates.jsx')),
   notifySettings: lazy(() => import('./screens/NotificationSettings.jsx')),
@@ -97,6 +98,7 @@ const ROUTES = [
   ['/settings/notifications', 'notifySettings'],
   ['/settings/modules', 'modules'],
   ['/settings/integrations', 'integrations'],
+  ['/bookings', 'bookings'],
   ['/settings/plan', 'plan'],
 ];
 

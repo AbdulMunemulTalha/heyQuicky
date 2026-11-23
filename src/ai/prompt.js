@@ -77,6 +77,32 @@ export const REPLY_SCHEMA = {
       required: ['action', 'items', 'name', 'phone', 'address', 'zone', 'note', 'coupon'],
       additionalProperties: false,
     },
+    booking: {
+      type: 'object',
+      description: 'BKG-01: ready=true only when the customer picked a service, a day and a free time from "Bookings" and gave their name and phone. Otherwise ready=false and the rest empty.',
+      properties: {
+        ready: { type: 'boolean' },
+        service_id: { type: 'string' },
+        date: { type: 'string', description: 'YYYY-MM-DD (Dhaka)' },
+        time: { type: 'string', description: 'HH:MM, 24-hour, one of the free start times listed' },
+        name: { type: 'string' },
+        phone: { type: 'string' },
+        note: { type: 'string' },
+      },
+      required: ['ready', 'service_id', 'date', 'time', 'name', 'phone', 'note'],
+      additionalProperties: false,
+    },
+    quote_request: {
+      type: 'object',
+      description: 'BKG-04: ready=true once you have collected what the shop needs to price custom work (what they want, sizes/measurements, quantity, colours, deadline, any photo). Otherwise ready=false and the rest empty.',
+      properties: {
+        ready: { type: 'boolean' },
+        title: { type: 'string', description: 'Short English title, e.g. "Custom bridal lehenga embroidery" or "Office uniform kurti ×25".' },
+        details: { type: 'string', description: 'Everything the customer said that matters for the price, in a few short lines.' },
+      },
+      required: ['ready', 'title', 'details'],
+      additionalProperties: false,
+    },
     payment: {
       type: 'object',
       description: 'A bKash/Nagad payment the customer reports with its transaction ID (typed, or readable in their payment screenshot). trx_id empty when there is none.',
@@ -95,7 +121,7 @@ export const REPLY_SCHEMA = {
     act_now: { type: 'boolean', description: 'True when this needs the team urgently: refund, damaged or wrong item, angry customer, threat of a bad review, or a safety issue.' },
     act_now_reason: { type: 'string', description: 'When act_now is true: one short English sentence for the team. Otherwise empty.' },
   },
-  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'order_change', 'payment', 'customer_tags', 'act_now', 'act_now_reason'],
+  required: ['reply', 'handoff', 'handoff_reason', 'intent', 'products', 'quick_replies', 'size_chart_product', 'order', 'order_change', 'booking', 'quote_request', 'payment', 'customer_tags', 'act_now', 'act_now_reason'],
   additionalProperties: false,
 };
 
@@ -240,6 +266,11 @@ If you're given an "Order waiting for this customer's confirmation" section, tha
 - In "reply", say what you changed (or that it's cancelled) in one sentence; for an edit, ask them to check the new summary and tap "হ্যাঁ, কনফার্ম". Don't hand off for these.
 - The same catalog rules apply: only listed products and available sizes. If what they want isn't available, say so and suggest the nearest option instead of changing the order.
 - Otherwise leave order_change.action = "none".
+
+## Bookings and custom quotes
+- If you're given a "Bookings" section, the shop takes appointments. Help the customer pick a service, a day and one of the free times listed (never another time), ask for their name and phone, then fill "booking". If the service needs an advance, say how much and that the booking is confirmed once they send the bKash TrxID. Don't hand off for this.
+- To change or cancel an existing booking, hand off (the team handles it).
+- If the customer wants something made or changed to order (custom size, embroidery, bulk or uniform orders, alterations) and the catalog has no fixed price for it, collect the details in one or two messages, then fill "quote_request". Tell them the shop will send the price shortly. Never guess a price for custom work.
 
 ## Payments
 When the customer sends a bKash/Nagad TrxID (typed, or visible in a payment screenshot), put it in "payment" with the method and amount, and reply that the shop will check it and confirm shortly. Don't hand off for this. If they say they paid but give no TrxID, ask for the TrxID. Never say a payment is received or confirmed yourself.

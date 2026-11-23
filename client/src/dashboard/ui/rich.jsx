@@ -13,7 +13,7 @@ const soft = (hex) => {
 };
 
 export function isRich(kind) {
-  return ['carousel', 'quick_replies', 'order_summary', 'delivery_card', 'review_request', 'size_chart'].includes(kind);
+  return ['carousel', 'quick_replies', 'order_summary', 'delivery_card', 'review_request', 'size_chart', 'quote'].includes(kind);
 }
 
 export function RichMessage({ kind, payload, text }) {
@@ -24,6 +24,13 @@ export function RichMessage({ kind, payload, text }) {
     case 'quick_replies': case 'review_request': return <Quick text={payload.text} options={payload.options ?? []} />;
     case 'order_summary': return <Summary t={t} o={payload} />;
     case 'delivery_card': return <Delivery d={payload} />;
+    case 'quote': return (
+      <div className="rm-card rm-quote">
+        <strong>🧾 Q-{payload.number} · {payload.title}</strong>
+        <span>৳{Number(payload.price).toLocaleString('en-IN')}{payload.advance ? ` · অগ্রিম ৳${Number(payload.advance).toLocaleString('en-IN')}` : ''}</span>
+        <div className="rm-buttons">{payload.buttons.map((b) => <span key={b.value} className="rm-btn">{b.title}</span>)}</div>
+      </div>
+    );
     case 'size_chart': return <SizeChart t={t} c={payload} />;
     default: return <span className="bn-ok">{text}</span>;
   }

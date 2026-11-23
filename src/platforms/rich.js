@@ -138,6 +138,8 @@ export function toPlatform(platform, { kind, payload, text }) {
       // A photo can carry the size choices too; without one, the table goes as text.
       return payload.image ? { attachment: { type: 'image', payload: { url: payload.image, is_reusable: true } }, ...quick } : { text: clip(text, 2000), ...quick };
     }
+    case 'quote':
+      return { attachment: { type: 'template', payload: { template_type: 'button', text: clip(text, 640), buttons: payload.buttons.slice(0, 3).map(btn) } } };
     case 'order_summary':
     case 'delivery_card': {
       const title = kind === 'order_summary' ? `অর্ডার #${payload.number} · ${taka(payload.total)}` : payload.title;
@@ -153,7 +155,7 @@ export function toPlatform(platform, { kind, payload, text }) {
 function whatsapp(kind, payload, text) {
   // WhatsApp interactive messages: reply buttons (≤ 3, 20 chars) or a list. URLs stay in the body text.
   const buttons = (list) => list.filter((b) => b.type === 'postback').slice(0, 3).map((b) => ({ type: 'reply', reply: { id: b.value.slice(0, 256), title: clip(b.title, 20) } }));
-  if (kind === 'order_summary' && payload.buttons.some((b) => b.type === 'postback')) {
+  if ((kind === 'order_summary' || kind === 'quote') && payload.buttons.some((b) => b.type === 'postback')) {
     return { type: 'interactive', interactive: { type: 'button', body: { text: clip(text, 1024) }, action: { buttons: buttons(payload.buttons) } } };
   }
   if (kind === 'size_chart' && payload.image) return { type: 'image', image: { link: payload.image, caption: clip(text, 1024) } };
