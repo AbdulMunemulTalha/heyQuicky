@@ -40,6 +40,7 @@ const screens = {
   modules: lazy(() => import('./screens/Modules.jsx')),
   integrations: lazy(() => import('./screens/Integrations.jsx')),
   bookings: lazy(() => import('./screens/Bookings.jsx')),
+  leads: lazy(() => import('./screens/Leads.jsx')),
   plan: lazy(() => import('./screens/Plan.jsx')),
   deliveryUpdates: lazy(() => import('./screens/DeliveryUpdates.jsx')),
   notifySettings: lazy(() => import('./screens/NotificationSettings.jsx')),
@@ -75,6 +76,8 @@ const ROUTES = [
   ['/customers/segments', 'segments'],
   ['/customers/:id', 'customers'],
   ['/growth', 'growth'],
+  ['/growth/leads', 'leads'],
+  ['/growth/not-ordered', 'leads'],
   ['/coupons', 'coupons'],
   ['/payments', 'payments'],
   ['/saved-replies', 'saved'],
@@ -113,7 +116,7 @@ function pick(path) {
 
 const LANG_KEY = 'quicky:lang';
 // Which module each page belongs to (UX-07).
-const SCREEN_MODULE = { tickets: 'tickets', growth: 'growth', coupons: 'coupons', payments: 'payments', catalog: 'catalog', posts: 'catalog', sizeCharts: 'catalog', product: 'catalog', deliveryUpdates: 'courier' };
+const SCREEN_MODULE = { tickets: 'tickets', growth: 'growth', leads: 'growth', coupons: 'coupons', payments: 'payments', catalog: 'catalog', posts: 'catalog', sizeCharts: 'catalog', product: 'catalog', deliveryUpdates: 'courier' };
 
 export function Dashboard({ onSignOut }) {
   const socket = useContext(SocketContext);

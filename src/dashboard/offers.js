@@ -19,7 +19,7 @@ export function offerText(o) {
   return `${what}${o.min_order ? ` on orders over ${taka(o.min_order)}` : ''}`;
 }
 
-const SOURCE = { followup: 'follow-up reminder', broadcast: 'broadcast', review: 'thank-you after a review' };
+const SOURCE = { followup: 'follow-up reminder', broadcast: 'broadcast', review: 'thank-you after a review', winback: 'win-back message' };
 
 // Gives (or extends) an offer. One live offer per customer, source and code.
 export async function grantOffer(db, { workspaceId, customerId, conversationId = null, source, sourceId = null, code = '', kind, value = 0, minOrder = 0, endsAt }) {

@@ -1,4 +1,5 @@
 import { grantOffer, dhakaMidnight } from './offers.js';
+import { whyStopped, closeQuietLeads, autoWinBack } from './leads.js';
 // Smart follow-ups (FUP-01) and lead capture (FUP-03).
 //
 // A chat is watched when the shop answered (AI or team) and the customer went quiet. The AI reads
@@ -77,7 +78,7 @@ export async function runFollowups(db, inbox, { now = new Date(), send = true } 
       if (temp !== 'skip' && conv.customer_id) {
         const customer = await db.customers.findById(conv.customer_id, { name: 1, phones: 1 }).lean();
         await db.prospects.updateOne({ workspace_id: ws._id, customer_id: conv.customer_id, stage: { $in: ['new', 'contacted', 'call_scheduled'] } }, {
-          $set: { conversation_id: conv._id, name: customer?.name ?? '', phone: customer?.phones?.[0] ?? '', temp, last_seen_at: lastOut.created_at, ...(product ? { product: product.name, amount: product.price } : {}) },
+          $set: { conversation_id: conv._id, name: customer?.name ?? '', phone: customer?.phones?.[0] ?? '', temp, last_seen_at: lastOut.created_at, why_stopped: whyStopped(inTexts), channel: conv.platform ?? '', ...(product ? { product: product.name, amount: product.price } : {}) },
           $setOnInsert: { workspace_id: ws._id, stage: 'new', created_at: now, _id: await db.nextId('prospects') },
           $inc: { times_asked: existing ? 0 : 1 },
         }, { upsert: true });
@@ -120,7 +121,9 @@ export async function runFollowups(db, inbox, { now = new Date(), send = true } 
 }
 
 export function startFollowups(db, inbox, { everyMs = 5 * 60_000 } = {}) {
-  const timer = setInterval(() => runFollowups(db, inbox).catch((err) => console.warn('follow-ups failed:', err.message)), everyMs);
+  const timer = setInterval(() => runFollowups(db, inbox)
+    .then(() => closeQuietLeads(db)).then(() => autoWinBack(db, inbox))
+    .catch((err) => console.warn('follow-ups failed:', err.message)), everyMs);
   timer.unref();
   return () => clearInterval(timer);
 }

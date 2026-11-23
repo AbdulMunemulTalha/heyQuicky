@@ -161,7 +161,7 @@ function dhakaParts(d) {
   const x = new Date(new Date(d).getTime() + 6 * 3_600_000);
   return { date: `${x.getUTCFullYear()}-${pad(x.getUTCMonth() + 1)}-${pad(x.getUTCDate())}`, time: `${pad(x.getUTCHours())}:${pad(x.getUTCMinutes())}` };
 }
-function CallbackDialog({ t, lead, onClose, onDone }) {
+export function CallbackDialog({ t, lead, onClose, onDone }) {
   const [d, setD] = useState(null);
   const [f, setF] = useState(null);
   const [busy, setBusy] = useState(false);

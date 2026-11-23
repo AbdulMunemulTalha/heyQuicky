@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { grantOffer, codesInText, couponOffer } from '../../dashboard/offers.js';
+import { STAGES, LOST_REASONS, pipeline, winBack, winBackSettings, winBackMessage, whyStopped } from '../../dashboard/leads.js';
 import { InboxError } from '../../inbox.js';
 import { can, need } from '../../dashboard/permissions.js';
 import { audit, clampInt, dhakaDayStart } from '../../dashboard/util.js';
@@ -90,6 +91,84 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
         lastSeenAt: p.last_seen_at, conversationId: p.conversation_id, outcome: p.outcome, owner: owners.get(p.owner_user_id) ?? '',
       })),
     });
+  });
+
+  // FUP-05 · Lead pipeline: the board, its numbers and the best closer, for this month / week / all, one teammate or everyone.
+  const leadCard = (p, users, showPhones) => ({
+    id: p._id, name: p.name || 'Customer', phone: p.phone ? (showPhones ? p.phone : `${p.phone.slice(0, 3)}••••${p.phone.slice(-3)}`) : '', product: p.product, amount: p.amount, stage: p.stage, temp: p.temp,
+    timesAsked: p.times_asked, outcome: p.outcome, lostReason: p.lost_reason, whyStopped: p.why_stopped, callbackAt: p.callback_at, orderId: p.order_id, wonBy: p.won_by,
+    owner: p.owner_user_id ? users.get(p.owner_user_id) ?? '' : '', ownerId: p.owner_user_id, conversationId: p.conversation_id, channel: p.channel, lastSeenAt: p.last_seen_at,
+    followupSent: p.outcome === 'followup', winbackAt: p.winback_at,
+  });
+  router.get('/growth/pipeline', auth, async (req, res) => {
+    const ws = await db.workspaces.findById(req.user.workspace_id).lean();
+    const period = ['week', 'month', 'all'].includes(req.query.period) ? req.query.period : 'month';
+    const agentId = req.query.agent ? Number(req.query.agent) : null;
+    const p = await pipeline(db, ws._id, { period, agentId });
+    const showPhones = can(req.user, 'see_phones', ws);
+    const team = await db.users.find({ workspace_id: req.user.team_id, is_active: { $ne: false }, invite_pending: { $ne: true } }, { name: 1 }).sort({ name: 1 }).lean();
+    const orders = new Map((await db.orders.find({ _id: { $in: Object.values(p.columns).flatMap((c) => c.items.map((x) => x.order_id)).filter(Boolean) } }, { number: 1 }).lean()).map((o) => [o._id, o.number]));
+    const notOrdered = await db.prospects.countDocuments({ workspace_id: ws._id, stage: { $ne: 'won' } });
+    res.json({
+      period, agentId, kpis: p.kpis, closers: p.closers, team: team.map((u) => ({ id: u._id, name: u.name })), notOrdered,
+      columns: Object.fromEntries(Object.entries(p.columns).map(([k, c]) => [k, { count: c.count, value: c.value, items: c.items.map((x) => ({ ...leadCard(x, p.users, showPhones), orderNumber: orders.get(x.order_id) ?? null })) }])),
+    });
+  });
+
+  // Move a lead (e.g. to Won, or to Lost with a reason).
+  router.post('/growth/leads/:id/stage', auth, need(db, 'reply'), async (req, res) => {
+    const stage = String(req.body?.stage ?? '');
+    if (!STAGES.includes(stage)) throw new InboxError(400, 'Unknown stage');
+    const set = { stage, owner_user_id: req.user.id };
+    if (stage === 'lost') {
+      const reason = String(req.body?.reason ?? '');
+      if (!LOST_REASONS.includes(reason)) throw new InboxError(400, 'Pick why it was lost');
+      Object.assign(set, { lost_reason: reason, lost_at: new Date() });
+    }
+    if (stage === 'won') Object.assign(set, { won_at: new Date(), won_by: 'team', outcome: 'ordered' });
+    const r = await db.prospects.updateOne({ _id: Number(req.params.id), workspace_id: req.user.workspace_id }, { $set: set });
+    if (!r.matchedCount) throw new InboxError(404, 'Lead not found');
+    emit(req.user.workspace_id, 'lead', { id: Number(req.params.id) });
+    res.json({ ok: true, stage });
+  });
+
+  // FUP-08 · Asked but didn't order: who, how often, why they stopped; and "Win them back".
+  router.get('/growth/not-ordered', auth, async (req, res) => {
+    const ws = await db.workspaces.findById(req.user.workspace_id).lean();
+    const list = await db.prospects.find({ workspace_id: ws._id, stage: { $ne: 'won' } }).sort({ times_asked: -1, last_seen_at: -1 }).limit(200).lean();
+    // Leads captured before "why they stopped" was read get it worked out from their chat now (and saved).
+    for (const p of list.filter((x) => !x.why_stopped && x.conversation_id).slice(0, 40)) {
+      const said = (await db.messages.find({ conversation_id: p.conversation_id, direction: 'in' }, { text: 1 }).sort({ _id: -1 }).limit(8).lean()).reverse().map((m) => m.text || '');
+      if (!said.length) continue;
+      p.why_stopped = whyStopped(said);
+      await db.prospects.updateOne({ _id: p._id }, { $set: { why_stopped: p.why_stopped } });
+    }
+    const offered = new Set((await db.offers.find({ workspace_id: ws._id, source: 'winback', used_at: null, ends_at: { $gt: new Date() } }, { customer_id: 1 }).lean()).map((o) => o.customer_id));
+    const windowOpen = new Set((await db.conversations.find({ _id: { $in: list.map((p) => p.conversation_id).filter(Boolean) }, last_inbound_at: { $gte: new Date(Date.now() - WINDOW_MS) } }, { _id: 1 }).lean()).map((c) => c._id));
+    res.json({
+      settings: winBackSettings(ws),
+      items: list.map((p) => ({ id: p._id, name: p.name || 'Customer', channel: p.channel, product: p.product, timesAsked: p.times_asked, whyStopped: p.why_stopped || '', lastSeenAt: p.last_seen_at, stage: p.stage, conversationId: p.conversation_id, hasOffer: offered.has(p.customer_id), canMessageNow: windowOpen.has(p.conversation_id) })),
+    });
+  });
+
+  router.post('/growth/winback/preview', auth, async (req, res) => {
+    const b = req.body ?? {};
+    res.json({ text: winBackMessage({ product: String(b.product ?? ''), kind: ['free_delivery', 'percent', 'amount'].includes(b.kind) ? b.kind : 'free_delivery', value: Number(b.value) || 0, hours: Number(b.hours) || 24 }) });
+  });
+
+  router.post('/growth/winback', auth, need(db, 'reply'), async (req, res) => {
+    const b = req.body ?? {};
+    const out = await winBack(db, inbox, req.user.workspace_id, { ids: b.ids, kind: b.kind, value: Number(b.value) || 0, hours: Number(b.hours) || 24, by: req.user.name });
+    await audit(db, req.user, `Win-back offer to ${out.sent + out.later} people`, { where: 'Leads' });
+    res.json(out);
+  });
+
+  router.put('/growth/winback/settings', auth, need(db, 'reply'), async (req, res) => {
+    const b = req.body ?? {};
+    const next = { auto: Boolean(b.auto), kind: ['free_delivery', 'percent', 'amount'].includes(b.kind) ? b.kind : 'free_delivery', value: Math.max(0, Math.round(Number(b.value) || 0)), hours: [6, 12, 24, 48, 72].includes(Number(b.hours)) ? Number(b.hours) : 24 };
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: { 'settings.winback': next } });
+    await audit(db, req.user, `${next.auto ? 'Turned on' : 'Turned off'} automatic win-back`, { where: 'Leads' });
+    res.json(winBackSettings({ settings: { winback: next } }));
   });
 
   // FUP-04 · Schedule a call: the time the customer asked for, read from their chat, and the team to pick an owner from.

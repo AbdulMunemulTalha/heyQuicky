@@ -6,6 +6,7 @@ import { riskFor } from './risk.js';
 import { adjustStock, aiOrderPlaced, changeStatus } from './orderOps.js';
 import { orderSummary } from '../platforms/rich.js';
 import { personalOffer } from './offers.js';
+import { markLeadWon } from './leads.js';
 
 const ZONES = ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'];
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9ঀ-৿]+/g, ' ').trim();
@@ -170,5 +171,6 @@ export async function saveOrder(db, ws, { who, items, zone, coupon = '', convers
     await notify?.({ workspaceId: ws._id, event: 'escalation', title: `Order #${number} needs a look.`, body: `High return risk (${risk.score}%). ${risk.action}.`, link: `/orders/${number}`, ref: `risk:${created.id}` });
   }
   const order = await db.orders.findById(created.id).lean();
+  await markLeadWon(db, order).catch(() => {});
   return { order, advance, billToken };
 }

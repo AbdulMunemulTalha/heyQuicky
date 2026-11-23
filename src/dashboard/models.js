@@ -225,6 +225,12 @@ export function defineDashboardModels(conn) {
     outcome: { type: String, default: '' },
     order_id: { type: Number, default: null },
     last_seen_at: { type: Date, default: () => new Date() },
+    // FUP-05 / FUP-08
+    won_at: { type: Date, default: null },
+    won_by: { type: String, default: '' }, // ai | page | team
+    lost_at: { type: Date, default: null },
+    winback_at: { type: Date, default: null },
+    winback_by: { type: String, default: '' },
   });
 
   // Reminders the AI sends to people who went quiet (3 h and 20 h, at most 2, inside Meta's 24 h window).
@@ -244,7 +250,7 @@ export function defineDashboardModels(conn) {
   const offer = S({
     customer_id: { type: Number, required: true, index: true },
     conversation_id: { type: Number, default: null },
-    source: { type: String, enum: ['followup', 'broadcast', 'review'], required: true },
+    source: { type: String, enum: ['followup', 'broadcast', 'review', 'winback'], required: true },
     source_id: { type: Number, default: null },
     code: { type: String, default: '' },
     kind: { type: String, enum: ['percent', 'amount', 'free_delivery'], required: true },
