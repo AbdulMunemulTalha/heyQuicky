@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { offersFor, offerText } from '../../dashboard/offers.js';
 import { InboxError } from '../../inbox.js';
 import { productCards } from '../../platforms/rich.js';
 import { can, need } from '../../dashboard/permissions.js';
@@ -186,6 +187,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
         tags: customer.tags, vip: customer.vip, aiOff: customer.ai_off, aiOffReason: customer.ai_off_reason,
         stats: customer.stats, courierCheck: customer.courier_check, risk: customer.risk,
         summary: conv.summary || autoSummary(customer, orders),
+        offers: await (async () => { const o = await offersFor(db, customer._id); return [...o.active, ...o.ended].map((x) => ({ id: x._id, text: offerText(x), code: x.code, source: x.source, endsAt: x.ends_at, used: Boolean(x.used_at), live: !x.used_at && x.ends_at > new Date() })); })(),
         record: { orders: customer.stats?.orders ?? 0, delivered, returned, rate: delivered + returned ? Math.round((delivered / (delivered + returned)) * 100) : null },
       },
       orders: orders.map((o) => ({ id: o._id, number: o.number ?? o._id, item: o.product_items?.[0]?.name ?? o.items?.[0]?.name ?? '', status: stageOf(o.status), total: o.subtotal + o.delivery_charge - (o.discount ?? 0) })),

@@ -5,6 +5,7 @@ import { priceOrder, cleanCustomer } from './orderBuild.js';
 import { riskFor } from './risk.js';
 import { adjustStock, aiOrderPlaced, changeStatus } from './orderOps.js';
 import { orderSummary } from '../platforms/rich.js';
+import { personalOffer } from './offers.js';
 
 const ZONES = ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'];
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9ঀ-৿]+/g, ' ').trim();
@@ -35,6 +36,13 @@ async function itemsFrom(db, ws, list) {
   });
 }
 
+// The offers this order used are marked used, so the customer can't use them twice (FUP-07).
+async function markOffers(db, { workspaceId, customerId, orderId, offerId, code }) {
+  const now = new Date();
+  if (offerId) await db.offers.updateOne({ _id: offerId, used_at: null }, { $set: { used_at: now, order_id: orderId } });
+  if (code) await db.offers.updateOne({ workspace_id: workspaceId, customer_id: customerId, code, used_at: null }, { $set: { used_at: now, order_id: orderId } });
+}
+
 // ORD-06: the order in this chat that still waits for the customer's "Yes, confirm" — the one they may
 // change or cancel in chat. Orders the customer confirmed, the team approved, or paid an advance on are not.
 export async function openAiOrder(db, conversationId) {
@@ -55,6 +63,8 @@ export async function changeAiOrder(db, { conversation, order, change, notify = 
   if (change.action === 'cancel') {
     const done = await changeStatus(db, null, order, 'cancelled', { reason: 'customer_cancelled', by: 'customer', text: 'Customer cancelled in chat before confirming' });
     if (order.coupon_code) await db.coupons.updateOne({ workspace_id: ws._id, code: order.coupon_code, used: { $gt: 0 } }, { $inc: { used: -1 } });
+    // An offer used on it can be used again until it ends.
+    await db.offers.updateMany({ order_id: order._id }, { $set: { used_at: null, order_id: null } });
     // Never confirmed, so it doesn't count against the customer's record (risk score, delivery rate).
     if (order.customer_id) await db.customers.updateOne({ _id: order.customer_id }, { $inc: { 'stats.cancelled': -1, 'stats.orders': -1 } });
     await notify?.({ workspaceId: ws._id, event: 'order', title: `${order.customer_name} cancelled order ${ref}`, body: 'Cancelled in chat before confirming. The stock is back.', link: `/orders/${order.number ?? order._id}`, ref: `cancel:${order._id}` });
@@ -90,7 +100,7 @@ export async function changeAiOrder(db, { conversation, order, change, notify = 
   await db.orders.updateOne({ _id: order._id }, { $set: {
     customer_name: who.name, phone: who.phone, address: who.address, area: zone, zone,
     items: priced.lines.map((l) => ({ name: `${l.name}${l.variant ? ` (${l.variant})` : ''}`, qty: l.qty, price: l.price })), product_items: priced.lines,
-    subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, coupon_code: priced.couponCode, cod_amount: priced.cod,
+    subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, coupon_code: priced.couponCode, offer: priced.offer, cod_amount: priced.cod,
     note, status, hold_reason: holdReason, risk,
     advance: advance ? { amount: advance.amount, method: order.advance?.method ?? (ws.bkash_number ? 'bkash' : 'nagad'), verified: false, requested: true, reason: advance.reason } : null,
     updated_at: new Date(),
@@ -125,7 +135,7 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
 export async function saveOrder(db, ws, { who, items, zone, coupon = '', conversation = null, note = '', source, notify = null }) {
   let customer = conversation?.customer_id ? await db.customers.findById(conversation.customer_id).lean() : null;
   customer ??= await db.customers.findOne({ workspace_id: ws._id, phones: who.phone }).lean();
-  const priced = await priceOrder(db, ws, { items, zone, coupon, customer });
+  const priced = await priceOrder(db, ws, { items, zone, coupon, customer, offer: coupon ? null : await personalOffer(db, customer?._id) });
   if (!customer) customer = { _id: (await db.insert(db.customers, { workspace_id: ws._id, name: who.name, phones: [who.phone] })).id };
   await db.customers.updateOne({ _id: customer._id }, { $addToSet: { phones: who.phone }, $set: { address: who.address, ...(customer.name ? {} : { name: who.name }) } });
   if (conversation && !conversation.customer_id) await db.conversations.updateOne({ _id: conversation._id }, { $set: { customer_id: customer._id } });
@@ -143,13 +153,14 @@ export async function saveOrder(db, ws, { who, items, zone, coupon = '', convers
     workspace_id: ws._id, number, customer_id: customer._id, conversation_id: conversation?._id ?? null,
     customer_name: who.name, phone: who.phone, address: who.address, area: zone, zone,
     items: priced.lines.map((l) => ({ name: `${l.name}${l.variant ? ` (${l.variant})` : ''}`, qty: l.qty, price: l.price })), product_items: priced.lines,
-    subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, coupon_code: priced.couponCode, advance_paid: 0, cod_amount: priced.cod, payment_method: 'cod',
+    subtotal: priced.subtotal, delivery_charge: priced.delivery, discount: priced.discount, coupon_code: priced.couponCode, offer: priced.offer, advance_paid: 0, cod_amount: priced.cod, payment_method: 'cod',
     note: String(note ?? '').slice(0, 300), status, hold_reason: holdReason, risk,
     advance: advance ? { amount: advance.amount, method: ws.bkash_number ? 'bkash' : 'nagad', verified: false, requested: true, reason: advance.reason } : null,
     source, ...(byAi ? { taken_by: 'ai' } : {}), bill_token: billToken,
   });
   await adjustStock(db, { product_items: priced.lines }, -1, { notify });
   if (priced.couponCode) await db.coupons.updateOne({ workspace_id: ws._id, code: priced.couponCode }, { $inc: { used: 1 } });
+  await markOffers(db, { workspaceId: ws._id, customerId: customer._id, orderId: created.id, offerId: priced.offer?.id, code: priced.couponCode });
   await db.customers.updateOne({ _id: customer._id }, { $inc: { 'stats.orders': 1 } });
   const how = byAi ? 'The AI took the order in chat' : 'The customer ordered on the product page';
   await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: created.id, type: 'status', to: status, by: byAi ? 'ai' : 'customer', text: `${how}${status === 'on_hold' ? (advance ? ' (on hold: advance needed)' : ' (on hold: high return risk)') : ''}` });

@@ -237,6 +237,22 @@ export function defineDashboardModels(conn) {
     sent_at: { type: Date, default: null },
   });
 
+  // FUP-07: an offer one customer received (follow-up discount, a broadcast or review coupon) and until when.
+  // code is empty for personal discounts, which are applied to their next order automatically.
+  const offer = S({
+    customer_id: { type: Number, required: true, index: true },
+    conversation_id: { type: Number, default: null },
+    source: { type: String, enum: ['followup', 'broadcast', 'review'], required: true },
+    source_id: { type: Number, default: null },
+    code: { type: String, default: '' },
+    kind: { type: String, enum: ['percent', 'amount', 'free_delivery'], required: true },
+    value: { type: Number, default: 0 },
+    min_order: { type: Number, default: 0 },
+    ends_at: { type: Date, required: true },
+    used_at: { type: Date, default: null },
+    order_id: { type: Number, default: null },
+  });
+
   const broadcast = S({
     audience: { type: Mixed, default: {} },
     format: { type: String, default: 'text' },
@@ -409,6 +425,7 @@ export function defineDashboardModels(conn) {
     prospects: conn.model('Prospect', prospect, 'prospects'),
     followups: conn.model('Followup', followup, 'followups'),
     broadcasts: conn.model('Broadcast', broadcast, 'broadcasts'),
+    offers: conn.model('Offer', offer, 'offers'),
     knowledge: conn.model('Knowledge', knowledge, 'knowledge'),
     aiRules: conn.model('AiRule', aiRule, 'ai_rules'),
     taughtAnswers: conn.model('TaughtAnswer', taughtAnswer, 'taught_answers'),

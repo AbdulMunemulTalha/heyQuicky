@@ -1,5 +1,6 @@
 import { changeStatus, NEXT } from './orderOps.js';
 import { sizeChartMessage } from '../platforms/rich.js';
+import { grantOffer, couponOffer } from './offers.js';
 
 // What happens when a customer taps a button on a card (screen 24). Returns true when handled here,
 // so the AI doesn't answer the same tap again. "Order this" (ORDER) is left to the AI / team as a normal message.
@@ -37,6 +38,9 @@ export function createPostbackHandler(db, inbox, { notify = null, emit = () => {
         const wsDoc = await db.workspaces.findById(ws, { 'settings.delivery_review': 1 }).lean();
         const code = stars >= 4 ? String(wsDoc?.settings?.delivery_review?.coupon ?? '').trim().toUpperCase() : '';
         const coupon = code ? await db.coupons.findOne({ workspace_id: ws, code, active: { $ne: false } }).lean() : null;
+        if (coupon && order.customer_id) {
+          await grantOffer(db, { workspaceId: ws, customerId: order.customer_id, conversationId, source: 'review', sourceId: order._id, ...couponOffer(coupon), endsAt: coupon.ends_at ?? new Date(Date.now() + 30 * 86_400_000) });
+        }
         await inbox.sendAiReply(conversationId, coupon
           ? `অনেক ধন্যবাদ! 💛 পরের অর্ডারে ${coupon.code} কোডটা ব্যবহার করুন — ${coupon.type === 'percent' ? `${coupon.value}% ছাড়` : coupon.type === 'amount' ? `৳${coupon.value} ছাড়` : 'ফ্রি ডেলিভারি'}।`
           : 'অনেক ধন্যবাদ! আবার কেনাকাটা করলে জানাবেন 💛');

@@ -12,6 +12,7 @@ import { openTicket } from '../dashboard/tickets.js';
 import { teamSettings, matchRule, applyRule, anyoneOnDuty } from '../dashboard/team.js';
 import { productCards, quickReplies } from '../platforms/rich.js';
 import { placeAiOrder, openAiOrder, changeAiOrder } from '../dashboard/aiOrder.js';
+import { offersFor } from '../dashboard/offers.js';
 import { sendSizeChart } from '../dashboard/postbacks.js';
 import { InboxError } from '../inbox.js';
 import { canSpend, meter } from './metering.js';
@@ -108,16 +109,17 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     const messages = recent.reverse();
     const lastInbound = messages.findLast((m) => m.direction === 'in') ?? null;
     const now = new Date();
-    const [coupons, customer, orders, notes, pendingOrder] = await Promise.all([
+    const [coupons, customer, orders, notes, pendingOrder, offers] = await Promise.all([
       db.coupons.find({ workspace_id: conversation.workspace_id, active: { $ne: false }, $and: [{ $or: [{ ends_at: null }, { ends_at: { $gt: now } }] }, { $or: [{ starts_at: null }, { starts_at: { $lte: now } }] }] }).limit(10).lean(),
       conversation.customer_id ? db.customers.findById(conversation.customer_id).lean() : null,
       conversation.customer_id ? db.orders.find({ customer_id: conversation.customer_id, draft: { $ne: true } }).sort({ created_at: -1 }).limit(3).lean() : [],
       conversation.customer_id ? db.notes.find({ customer_id: conversation.customer_id }).sort({ created_at: -1 }).limit(3).lean() : [],
       openAiOrder(db, conversationId),
+      offersFor(db, conversation.customer_id, now),
     ]);
     // The knowledge book, taught answers and rules ride along with the shop information.
     return { conversation, workspace: workspace && await withTraining(db, workspace), channel, products, savedReplies, coupons: modulesFor(workspace).coupons === false ? [] : aiCoupons(coupons, now), messages, lastInbound,
-      pendingOrder, context: buildCustomerContext({ customer, orders, notes, now, pendingOrder }) };
+      pendingOrder, context: buildCustomerContext({ customer, orders, notes, now, pendingOrder, offers }) };
   }
 
   // What the customer sent since the shop last replied: voice notes are transcribed once and the

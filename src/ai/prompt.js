@@ -1,4 +1,5 @@
 import { hoursLine } from '../dashboard/team.js';
+import { offersContext } from '../dashboard/offers.js';
 // What the chat agent is told, and the shape of its answer.
 
 export const INTENTS = ['greeting', 'price', 'stock', 'product_info', 'delivery', 'payment', 'order', 'order_status',
@@ -217,7 +218,8 @@ export function buildSystemPrompt({ workspace, products, savedReplies, coupons =
 
 ## Facts
 - Use only the shop information below. Never invent or guess prices, discounts, stock, sizes, colours, delivery times, offers or policies.
-- Never offer a discount or free item yourself. Only mention a coupon from "Coupons" below, and only its exact terms. If the customer gives a coupon code, put it in order.coupon; the shop checks it.
+- Never offer a discount or free item yourself. Only mention a coupon from "Coupons" below or an offer listed under "Offers for this customer", and only its exact terms. If the customer gives a coupon code, put it in order.coupon; the shop checks it.
+- Offers sent to one customer (a reminder discount, a broadcast or thank-you code) belong to that customer only. Honour them only while they are valid; if one has ended, or the customer asks for an offer someone else got, say politely that it isn't available for them, without arguing. If they have a valid personal offer, you may remind them of it and when it ends.
 - If a product is OUT OF STOCK, say so politely and suggest a similar in-stock product from the list if there is one.
 - If the customer asks about something the information doesn't cover, don't guess: hand off.
 
@@ -325,8 +327,8 @@ export function pendingOrderContext(order) {
   return lines.join('\n');
 }
 
-export function buildCustomerContext({ customer, orders = [], notes = [], now = new Date(), pendingOrder = null }) {
-  const pending = pendingOrderContext(pendingOrder);
+export function buildCustomerContext({ customer, orders = [], notes = [], now = new Date(), pendingOrder = null, offers = null }) {
+  const pending = [pendingOrderContext(pendingOrder), offers ? offersContext(offers, now) : ''].filter(Boolean).join('\n\n');
   if (!customer) return pending;
   const lines = [`## About this customer\nName: ${customer.name || 'unknown'}${customer.vip ? ' (VIP — be extra warm)' : ''}`];
   const s = customer.stats ?? {};

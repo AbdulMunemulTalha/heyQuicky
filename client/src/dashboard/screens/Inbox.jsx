@@ -525,6 +525,19 @@ function SidePanel({ t, data, id, reload, act }) {
           {cu.courierCheck && <p className="small muted">{t('inbox.allCouriers', { d: cu.courierCheck.delivered, n: cu.courierCheck.total })}</p>}
         </section>
       )}
+      {cu?.offers?.length > 0 && (
+        <section>
+          <h3>{t('of.title')}</h3>
+          <ul className="offer-list">
+            {cu.offers.map((o) => (
+              <li key={o.id} className={o.live ? '' : 'muted'}>
+                <span><strong>{o.text}</strong>{o.code && <> · <code>{o.code}</code></>}</span>
+                <small>{t(`of.src.${o.source}`)} · {o.used ? t('of.used') : o.live ? t('of.until', { when: t.date(o.endsAt) }) : t('of.ended')}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section>
         <div className="row"><h3 className="grow">{t('inbox.orders')}</h3>{can('edit_orders') && <button type="button" className="btn btn-link small" onClick={() => navigate(`/orders/new?conversation=${id}`)}>+ {t('inbox.create')}</button>}</div>
         {data.orders.length ? (

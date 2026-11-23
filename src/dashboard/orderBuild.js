@@ -1,6 +1,7 @@
 import { InboxError } from '../inbox.js';
 import { bdPhone, phoneProblem } from './util.js';
 import { inSegment } from './segments.js';
+import { campaignProblem, offerDiscount } from './offers.js';
 
 // Delivery zones with their charge and time (ONB-06, ORD-08). Suburbs fall between the two onboarding zones.
 export function zonesFor(ws) {
@@ -38,7 +39,7 @@ export async function checkCoupon(db, workspaceId, code, subtotal, { customer = 
   if (c.ends_at && c.ends_at < now) throw new InboxError(400, `${c.code} has expired`);
   if (c.max_uses !== null && c.used >= c.max_uses) throw new InboxError(400, `${c.code} has been used up`);
   if (subtotal < (c.min_order ?? 0)) throw new InboxError(400, `${c.code} needs an order of at least ৳${c.min_order}`);
-  const who = audienceProblem(c, customer);
+  const who = audienceProblem(c, customer) ?? await campaignProblem(db, workspaceId, c, customer, now);
   if (who) throw new InboxError(400, who);
   if (c.audience === 'segment') {
     const seg = c.segment_id ? await db.segments.findOne({ _id: c.segment_id, workspace_id: workspaceId }).lean() : null;
@@ -50,7 +51,8 @@ export async function checkCoupon(db, workspaceId, code, subtotal, { customer = 
 
 // Prices an order from the live catalog — never from what the browser sends (AI-10, SR-06).
 // items: [{ productId, sku, qty }]
-export async function priceOrder(db, ws, { items = [], zone = 'inside_dhaka', coupon = '', advance = 0, paidInFull = false, existing = null, customer = null }) {
+// offer: a personal offer (FUP-07, no code) used when no coupon is given; an order that already has one keeps it.
+export async function priceOrder(db, ws, { items = [], zone = 'inside_dhaka', coupon = '', advance = 0, paidInFull = false, existing = null, customer = null, offer = null }) {
   if (!Array.isArray(items) || !items.length) throw new InboxError(400, 'Add at least one product');
   const zones = zonesFor(ws);
   const z = zones.find((x) => x.key === zone);
@@ -88,9 +90,17 @@ export async function priceOrder(db, ws, { items = [], zone = 'inside_dhaka', co
     if (c.freeDelivery) delivery = 0;
     couponCode = c.coupon.code;
   }
+  let offerUsed = null;
+  const personal = couponCode ? null : (existing?.offer ?? offer);
+  const off = personal ? offerDiscount(personal, subtotal) : null;
+  if (off) {
+    discount = off.discount;
+    if (off.freeDelivery) delivery = 0;
+    offerUsed = { id: personal.id ?? personal._id, source: personal.source, kind: personal.kind, value: personal.value, min_order: personal.min_order ?? 0 };
+  }
   const total = subtotal + delivery - discount;
   const adv = paidInFull ? total : Math.max(0, Math.min(Number(advance) || 0, total));
-  return { lines, subtotal, delivery, discount, couponCode, total, advance: adv, cod: total - adv, zone: z };
+  return { lines, subtotal, delivery, discount, couponCode, offer: offerUsed, total, advance: adv, cod: total - adv, zone: z };
 }
 
 // The order already counted this coupon, so "used up" doesn't apply to it again.

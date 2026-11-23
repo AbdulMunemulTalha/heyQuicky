@@ -1,3 +1,4 @@
+import { grantOffer, dhakaMidnight } from './offers.js';
 // Smart follow-ups (FUP-01) and lead capture (FUP-03).
 //
 // A chat is watched when the shop answered (AI or team) and the customer went quiet. The AI reads
@@ -9,6 +10,7 @@ const HOT = /(delivery|ডেলিভারি|deliver|address|ঠিকান�
 const WARM = /(price|dam|দাম|koto|কত|rate|কেমন|available|ache|আছে)/i;
 const STOP = /(\bno\b|\bna\b|lagbe na|লাগবে না|nibo na|নিবো না|thanks|thank you|ধন্যবাদ|\bok\b|okay|পরে জানাব|pore janabo)\W*$/i;
 const HOUR = 3_600_000;
+export const FOLLOWUP_OFFER_PCT = 10;
 export const WINDOW_MS = 24 * HOUR;
 
 export function temperature(customerTexts) {
@@ -99,11 +101,16 @@ export async function runFollowups(db, inbox, { now = new Date(), send = true } 
       if (now - new Date(conv.last_inbound_at) >= WINDOW_MS - 10 * 60_000) continue;
       if (!send) continue;
       const isLast = step === due.length;
-      const text = reminderText(isLast && due.length > 1 ? 2 : 1, { withOffer: isLast && withOffer, product: product?.name });
+      // Only the second (last) reminder of a hot chat carries the offer; a single warm reminder never does.
+      const offered = isLast && due.length > 1 && withOffer;
+      const text = reminderText(isLast && due.length > 1 ? 2 : 1, { withOffer: offered, product: product?.name });
       const message = await inbox.sendAiReply(conv._id, text);
       if (message) {
         await db.messages.updateOne({ _id: message.id }, { $set: { kind: 'followup' } });
-        await db.followups.updateOne({ _id: existing._id }, { $set: { status: 'sent', step, sent_at: now, with_offer: isLast && withOffer, due_at: due[step] ?? due[step - 1] } });
+        await db.followups.updateOne({ _id: existing._id }, { $set: { status: 'sent', step, sent_at: now, with_offer: offered, due_at: due[step] ?? due[step - 1] } });
+        if (offered && conv.customer_id) {
+          await grantOffer(db, { workspaceId: ws._id, customerId: conv.customer_id, conversationId: conv._id, source: 'followup', sourceId: existing._id, kind: 'percent', value: FOLLOWUP_OFFER_PCT, endsAt: dhakaMidnight(now) });
+        }
         await db.insert(db.aiReplies, { workspace_id: ws._id, conversation_id: conv._id, message_id: message.id, kind: 'followup', summary: 'Follow-up reminder', cost: 0 });
         out.sent += 1;
       }

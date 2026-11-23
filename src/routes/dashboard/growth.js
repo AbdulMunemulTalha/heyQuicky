@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { grantOffer, codesInText, couponOffer } from '../../dashboard/offers.js';
 import { InboxError } from '../../inbox.js';
 import { can, need } from '../../dashboard/permissions.js';
 import { audit, clampInt, dhakaDayStart } from '../../dashboard/util.js';
@@ -226,6 +227,18 @@ export function growthRoutes(db, _config, { auth, inbox, emit }) {
       }
     }
     await dbx.broadcasts.updateOne({ _id: id }, { $set: { status: 'sent', sent_at: new Date(), recipients: ids, stats: { recipients: ids.length, sent } } });
+    // FUP-07: a coupon code in the message becomes an offer for exactly these customers.
+    const now = new Date();
+    const live = await dbx.coupons.find({ workspace_id: b.workspace_id, active: { $ne: false }, $or: [{ ends_at: null }, { ends_at: { $gt: now } }] }).lean();
+    const codes = codesInText(b.content?.text, live);
+    if (codes.length) {
+      const convs = await dbx.conversations.find({ _id: { $in: ids }, customer_id: { $ne: null } }, { customer_id: 1 }).lean();
+      for (const c of codes) {
+        for (const conv of convs) {
+          await grantOffer(dbx, { workspaceId: b.workspace_id, customerId: conv.customer_id, conversationId: conv._id, source: 'broadcast', sourceId: id, ...couponOffer(c), endsAt: c.ends_at ?? new Date(now.getTime() + 7 * 86_400_000) });
+        }
+      }
+    }
     emit(b.workspace_id, 'broadcast', { id, sent });
     return { recipients: ids.length, sent };
   }
