@@ -324,6 +324,13 @@ function Messages({ t, messages, conversation }) {
         : (
           <li key={m.id} className={`msg ${m.direction}${m.byAi ? ' ai' : ''}`}>
             {m.kind === 'postback' && <div className="tapped">{t('rm.tapped')}</div>}
+            {m.quoted && (
+              <div className="quote bn-ok" aria-label={t('qr.label')}>
+                <small>{t(m.quoted.mine ? 'qr.toShop' : 'qr.toOwn')}</small>
+                <span>{m.quoted.kind === 'photo' ? t('qr.photo') : m.quoted.kind === 'voice' && m.quoted.text === 'voice' ? t('qr.voice') : m.quoted.kind === 'order' ? t('qr.order') : m.quoted.text}</span>
+              </div>
+            )}
+            {m.storyReply && <div className="quote"><small>{t('qr.story')}</small></div>}
             <div className={`bubble bn-ok${isRich(m.kind) && m.payload && !m.payload.item ? ' rm-wrap' : ''}`}>
               {m.attachments?.length > 0 && <span className="msg-attach">[{m.attachments[0].type ?? 'file'}]</span>}
               {m.attachments?.find((x) => x.transcript) && <span className="msg-attach voice">{t('ib.voiceSaid', { text: m.attachments.find((x) => x.transcript).transcript })}</span>}

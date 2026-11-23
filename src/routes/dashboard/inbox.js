@@ -36,6 +36,16 @@ export function tabFilter(tab, now = new Date()) {
   }
 }
 
+// AI-07: a short view of the message a customer replied to.
+function quoteView(q) {
+  if (!q) return null;
+  const cards = q.payload?.cards ?? [];
+  const audio = (q.attachments ?? []).find((a) => a.type === 'audio');
+  const image = (q.attachments ?? []).some((a) => a.type === 'image');
+  const text = cards.length ? cards.map((c) => c.title).join(', ') : q.kind === 'order_summary' ? 'order_summary' : audio ? (audio.transcript || 'voice') : (q.text || (image ? 'photo' : ''));
+  return { id: q._id, mine: q.direction === 'out', kind: cards.length ? 'cards' : audio ? 'voice' : image && !q.text ? 'photo' : q.kind === 'order_summary' ? 'order' : 'text', text: String(text).slice(0, 160) };
+}
+
 export function mentionsIn(text, team) {
   const found = [];
   let rest = String(text);
@@ -157,6 +167,8 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     const [row] = await hydrate([conv]);
     const messages = await db.messages.find({ conversation_id: conv._id }).sort({ _id: -1 }).limit(200).lean();
     const userIds = [...new Set(messages.map((m) => m.sender_user_id).filter(Boolean))];
+    const quotedIds = [...new Set(messages.map((m) => m.quoted_id).filter(Boolean))];
+    const quotedDocs = new Map((quotedIds.length ? await db.messages.find({ _id: { $in: quotedIds } }, { direction: 1, text: 1, kind: 1, payload: 1, attachments: 1 }).lean() : []).map((q) => [q._id, q]));
     const senders = new Map((await db.users.find({ _id: { $in: userIds } }, { name: 1 }).lean()).map((u) => [u._id, u.name]));
     const workspace = req.workspace;
     const showPhones = can(req.user, 'see_phones', workspace);
@@ -181,6 +193,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
       messages: messages.reverse().map((m) => ({
         id: m._id, direction: m.direction, text: m.text, attachments: m.attachments, at: m.created_at, status: m.status, error: m.error,
         byAi: Boolean(m.sent_by_ai), by: m.sender_user_id ? senders.get(m.sender_user_id) ?? '' : null, kind: m.kind || 'text', payload: m.payload,
+        quoted: quoteView(quotedDocs.get(m.quoted_id)), storyReply: Boolean(m.payload?.story_reply),
       })),
       customer: customer && {
         id: customer._id, name: customer.name, phones: showPhones ? customer.phones : customer.phones.map((p) => `${p.slice(0, 3)}••••${p.slice(-3)}`),

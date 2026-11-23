@@ -84,7 +84,8 @@ test('tapping Yes, confirm approves the order; a low rating calls the team; the 
     await app.inbox.ingestMessage(inbound({ contactExternalId: 'buyer', text: 'হ্যাঁ, কনফার্ম', postback: `HQ:CONFIRM:${order.id}` }));
     const until = async (fn) => { for (let i = 0; i < 60; i++) { const v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 50)); } return null; };
     assert.ok(await until(async () => (await s.db.orders.findById(order.id).lean()).status === 'approved'), 'order approved');
-    assert.ok(await s.db.orderEvents.exists({ order_id: order.id, by: 'customer', to: 'approved' }));
+    // The status is saved a moment before its history entry, so wait for that too.
+    assert.ok(await until(() => s.db.orderEvents.exists({ order_id: order.id, by: 'customer', to: 'approved' })), 'logged as confirmed by the customer');
     assert.ok(await until(() => s.db.messages.findOne({ conversation_id: c.id, direction: 'out', text: /কনফার্ম হয়েছে/ }).lean()), 'thanks the customer');
     const tap = await s.db.messages.findOne({ conversation_id: c.id, kind: 'postback' }).lean();
     assert.equal(tap.payload.postback, `HQ:CONFIRM:${order.id}`);

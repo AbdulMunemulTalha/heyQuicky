@@ -248,6 +248,7 @@ When the customer sends a bKash/Nagad TrxID (typed, or visible in a payment scre
 - When the customer asks what you have, asks for a product, or sends a photo of one, put the matching product ids in "products" (photo cards with price) and keep "reply" to one short line.
 - Photos the customer sends are shown to you. If a photo clearly shows a product from the list, send that product's card. If it's only similar, send the closest one or two and say they're similar; if nothing in the list matches, say so and don't guess. A photo of a payment, a parcel or a damaged item is not a product request — follow the rules for those.
 - Voice notes appear as [voice note: "…"] with what the customer said; answer them like a typed message.
+- When a message starts with [replying to …], the customer swiped to reply to that earlier message: "this one", "eta", "এটা", "same", a size or a question refers to it. For a product card, that is the product they mean (use its id). For an order summary, it's that order.
 - When you ask them to choose a size or colour, list the available choices in "quick_replies".
 - When they ask which size fits and the product "has size chart", put its id in "size_chart_product" and ask their height and chest/waist.
 - When a product has "suggest with", you may offer one of those once, after they've chosen.
@@ -291,12 +292,32 @@ function describeAttachments(attachments, images = []) {
 // Turns stored messages (oldest first) into the model's conversation:
 // the customer is "user", the shop (moderators and AI) is "assistant".
 // Returns null when there is nothing for the model to answer.
-export function toModelMessages(messages, { limit = 20 } = {}) {
+// AI-07: what an earlier message was, in a few words, so a reply that quotes it makes sense.
+export function describeQuoted(q) {
+  if (!q) return '';
+  const who = q.direction === 'in' ? 'their own earlier message' : 'the shop\'s message';
+  const clip = (s, n = 140) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; };
+  const cards = q.payload?.cards ?? (q.payload?.productId ? [q.payload] : []);
+  if (cards.length === 1) return `the shop's product card "${cards[0].title}" (product id #${cards[0].productId}, ${taka(cards[0].price)})`;
+  if (cards.length > 1) return `the shop's product cards (${cards.map((c) => `${c.title} #${c.productId}`).join(', ')}) — if it's unclear which one, ask`;
+  if (q.kind === 'order_summary') return `the shop's order summary${q.payload?.number ? ` for order #${q.payload.number}` : ''}`;
+  if (q.kind === 'size_chart') return `the shop's size chart${q.payload?.productName ? ` for ${q.payload.productName}` : ''}`;
+  const audio = (q.attachments ?? []).find((a) => a.type === 'audio');
+  if (audio) return audio.transcript ? `${q.direction === 'in' ? 'their earlier voice note' : 'the shop\'s voice note'}: "${clip(audio.transcript)}"` : `${q.direction === 'in' ? 'their earlier voice note' : 'a voice note'}`;
+  const image = (q.attachments ?? []).find((a) => a.type === 'image');
+  if (image) return `${q.direction === 'in' ? 'a photo they sent earlier' : 'a photo the shop sent'}${q.text ? ` with "${clip(q.text, 80)}"` : ''}`;
+  if (q.text) return `${who}: "${clip(q.text)}"`;
+  return who;
+}
+
+export function toModelMessages(messages, { limit = 20, quoted = new Map() } = {}) {
   const recent = messages.slice(-limit);
   const turns = [];
   for (const m of recent) {
     const images = m.direction === 'in' ? m.images ?? [] : [];
-    const text = [m.text?.trim(), m.direction === 'in' ? describeAttachments(m.attachments, images) : ''].filter(Boolean).join(' ');
+    const q = m.direction === 'in' && m.quoted_id ? describeQuoted(quoted.get(m.quoted_id)) : '';
+    const story = m.direction === 'in' && m.payload?.story_reply ? '[replying to the shop\'s story]' : '';
+    const text = [q ? `[replying to ${q}]` : '', story, m.text?.trim(), m.direction === 'in' ? describeAttachments(m.attachments, images) : ''].filter(Boolean).join(' ');
     if (!text) continue;
     const role = m.direction === 'in' ? 'user' : 'assistant';
     // Several messages in a row from the same side read as one turn.

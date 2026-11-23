@@ -171,9 +171,18 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     }
   }
 
+  // AI-07: the messages customers replied to, including ones older than the recent history.
+  async function quotedOf(messages) {
+    const have = new Map(messages.map((m) => [m._id, m]));
+    const ids = [...new Set(messages.map((m) => m.quoted_id).filter(Boolean))];
+    const missing = ids.filter((id) => !have.has(id));
+    if (missing.length) for (const m of await db.messages.find({ _id: { $in: missing } }).lean()) have.set(m._id, m);
+    return new Map(ids.filter((id) => have.has(id)).map((id) => [id, have.get(id)]));
+  }
+
   async function generate(ctx, kind = 'reply') {
     await seeMedia(ctx).catch((err) => log.warn(`could not open the customer's files: ${err.message}`));
-    const turns = toModelMessages(ctx.messages);
+    const turns = toModelMessages(ctx.messages, { quoted: await quotedOf(ctx.messages) });
     if (!turns) return null;
     const system = buildSystemPrompt(ctx);
     try {

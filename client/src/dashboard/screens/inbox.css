@@ -127,3 +127,8 @@
 #dash .offer-list li.muted { background: var(--panel-2, #f3f4f6); }
 #dash .offer-list code { font-size: 11.5px; }
 #dash .offer-list small { color: var(--muted); }
+
+/* AI-07 · the message a customer replied to */
+#dash .quote { display: flex; flex-direction: column; gap: 1px; max-width: 100%; margin-bottom: 3px; padding: 5px 9px; border-left: 3px solid var(--accent, #2f6fed); border-radius: 6px; background: var(--panel-2, #f3f4f6); font-size: 12px; }
+#dash .quote small { color: var(--muted); font-size: 11px; }
+#dash .quote span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

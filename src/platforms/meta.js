@@ -44,6 +44,9 @@ function parseMessaging(platform, entry, { appId }) {
       text: msg.text ?? '',
       attachments: (msg.attachments ?? []).map((a) => ({ type: a.type, url: a.payload?.url ?? null })),
       ...(msg.quick_reply?.payload ? { postback: msg.quick_reply.payload } : {}),
+      // AI-07: a swipe-reply to an earlier message (Messenger, Instagram), or a reply to the shop's story.
+      ...(msg.reply_to?.mid ? { replyTo: String(msg.reply_to.mid) } : {}),
+      ...(msg.reply_to?.story ? { replyToStory: true } : {}),
       timestamp: toIso(event.timestamp),
     });
   }
@@ -73,6 +76,7 @@ function whatsappMessage(m, { phoneNumberId, contactId, direction, name = null }
     direction,
     messageId: m.id,
     text: whatsappText(m),
+    ...(m.context?.id ? { replyTo: String(m.context.id) } : {}),
     ...(m.type === 'interactive' ? { postback: m.interactive?.button_reply?.id ?? m.interactive?.list_reply?.id ?? '' } : m.type === 'button' ? { postback: m.button?.payload ?? '' } : {}),
     attachments: WHATSAPP_MEDIA.includes(m.type) ? [{ type: m.type, mediaId: m[m.type]?.id ?? null }]
       : m.type === 'media_placeholder' ? [{ type: 'media', mediaId: null }] : [],

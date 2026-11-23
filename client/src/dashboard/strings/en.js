@@ -2662,4 +2662,11 @@ export default {
   'of.until': "until {when}",
   'of.used': "used on an order",
   'of.ended': "ended",
+  'qr.label': "Replying to an earlier message",
+  'qr.toShop': "Replying to your message",
+  'qr.toOwn': "Replying to their message",
+  'qr.photo': "📷 Photo",
+  'qr.voice': "🎤 Voice note",
+  'qr.order': "🧾 Order summary",
+  'qr.story': "Replied to your story",
 };

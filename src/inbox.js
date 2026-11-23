@@ -273,10 +273,14 @@ export function createInbox(db, config, { emit = () => {}, fetchImpl } = {}) {
       }
       // Spam stays in the Spam folder; the first message of a new chat is checked automatically.
       const spamReason = inbound && !conversation.spam && newConversation ? looksLikeSpam(evt.text) : null;
+      // AI-07: which earlier message (in this chat) the customer is replying to.
+      const quoted = evt.replyTo ? await db.messages.findOne({ conversation_id: conversation.id, external_id: evt.replyTo }, { _id: 1 }).lean() : null;
       const message = await insertMessage({
         conversation_id: conversation.id, direction: evt.direction, text: evt.text, attachments: evt.attachments,
         external_id: evt.messageId, status: inbound ? 'received' : 'sent', created_at: evt.timestamp,
         ...(evt.postback ? { kind: 'postback', payload: { postback: evt.postback } } : {}),
+        ...(quoted ? { quoted_id: quoted._id } : {}),
+        ...(evt.replyToStory ? { payload: { ...(evt.postback ? { postback: evt.postback } : {}), story_reply: true } } : {}),
       });
       // Another delivery of the same message got here first.
       if (!message) return { ignored: 'duplicate' };
