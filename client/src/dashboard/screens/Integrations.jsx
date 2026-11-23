@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { navigate, setQuery } from '../lib/router.jsx';
-import { Button, ErrorState, Pill, Skeleton, Toggle, toast } from '../ui/kit.jsx';
+import { Button, ErrorState, Pill, Skeleton, Toggle, toast, Modal } from '../ui/kit.jsx';
 import WooDialog from './WooDialog.jsx';
 import './catalog.css';
 import './integrations.css';
@@ -14,7 +14,7 @@ const GROUPS = [
   ['stores', [['woo', 'Wo', '#7f54b3'], ['shopify', 'Sh', '#5e8e3e'], ['sheets', 'GS', '#188038']]],
   ['tools', [['extension', 'Ch', '#333'], ['webhooks', '{ }', '#6d28d9']]],
 ];
-const BUILT = ['capi', 'widget', 'woo', 'shoplink'];
+const BUILT = ['capi', 'widget', 'woo', 'shoplink', 'webhooks'];
 const EVENT_ORDER = ['purchase', 'lead', 'add_to_cart', 'delivered'];
 
 // Phase 2 · Integrations (ANL-09, INT-02), frame "Integrations".
@@ -30,6 +30,7 @@ export default function Integrations({ query }) {
   const state = (k) => {
     if (k === 'capi') return d.capi.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
     if (k === 'widget') return d.widget.on ? ['green', t('in.live')] : ['gray', t('in.notSetUp')];
+    if (k === 'webhooks') return d.webhooks?.endpoints.length || d.webhooks?.keys.length ? ['green', t('in.connected')] : ['gray', t('in.notSetUp')];
     if (k === 'shoplink') return d.shopLink?.products ? ['green', t('in.live')] : ['gray', t('in.notSetUp')];
     if (k === 'woo') return d.woo?.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
     return ['blue', t('in.comingLater')];
@@ -60,6 +61,7 @@ export default function Integrations({ query }) {
       </div>
       {open === 'capi' && <CapiPanel t={t} d={d} onChange={setD} onClose={() => setQuery({ open: null })} />}
       {open === 'widget' && <WidgetPanel t={t} d={d} onChange={setD} onClose={() => setQuery({ open: null })} />}
+      {open === 'webhooks' && <WebhooksPanel t={t} d={d} onChange={(w) => setD((x) => ({ ...x, webhooks: w }))} reload={load} onClose={() => setQuery({ open: null })} />}
       {open === 'shoplink' && <ShopLinkPanel t={t} d={d} onClose={() => setQuery({ open: null })} />}
       {open === 'woo' && <WooDialog t={t} onClose={() => { setQuery({ open: null }); load(); }} onDone={load} />}
     </div>
@@ -190,6 +192,117 @@ function ShopLinkPanel({ t, d, onClose }) {
       </div>
       <p className="small muted" style={{ marginTop: 12 }}>{l.products ? t('sl.count', { n: t.num(l.products) }) : t('sl.none')}</p>
       <p className="small muted">{t('sl.where')}</p>
+    </Panel>
+  );
+}
+
+// INT-04 · Webhooks & API: send order, message, lead and booking events to the shop's systems, and API keys for theirs.
+function WebhooksPanel({ t, d, onChange, reload, onClose }) {
+  const w = d.webhooks;
+  const [f, setF] = useState({ url: '', events: ['order.created', 'order.status_changed'] });
+  const [keyName, setKeyName] = useState('');
+  const [shown, setShown] = useState(null); // { kind: 'secret' | 'key', value }
+  const [busy, setBusy] = useState('');
+  const [log, setLog] = useState(null);
+  const can = d.canEdit;
+  async function act(name, fn) {
+    setBusy(name);
+    try { await fn(); } catch (err) { toast(err.message, 'red'); } finally { setBusy(''); }
+  }
+  const addHook = () => act('add', async () => {
+    const r = await dash('/integrations/webhooks', { method: 'POST', body: f });
+    setShown({ kind: 'secret', value: r.secret });
+    setF({ url: '', events: ['order.created', 'order.status_changed'] });
+    await reload();
+  });
+  const test = (id) => act(`test-${id}`, async () => {
+    const r = await dash(`/integrations/webhooks/${id}/test`, { method: 'POST' });
+    toast(r.ok ? t('wh.testOk', { code: r.code }) : t('wh.testFail', { error: r.error || r.code }), r.ok ? 'green' : 'red');
+    await reload();
+  });
+  const toggle = (e) => act(`tog-${e.id}`, async () => onChange(await dash(`/integrations/webhooks/${e.id}`, { method: 'PATCH', body: { active: !e.active } })));
+  const remove = (e) => act(`del-${e.id}`, async () => { onChange(await dash(`/integrations/webhooks/${e.id}`, { method: 'DELETE' })); toast(t('wh.removed'), 'green'); });
+  const showLog = (e) => act(`log-${e.id}`, async () => setLog({ ep: e, items: await dash(`/integrations/webhooks/${e.id}/deliveries`) }));
+  const addKey = () => act('key', async () => { const r = await dash('/integrations/api-keys', { method: 'POST', body: { name: keyName } }); setShown({ kind: 'key', value: r.key }); setKeyName(''); await reload(); });
+  const revoke = (k) => act(`rev-${k.id}`, async () => { onChange(await dash(`/integrations/api-keys/${k.id}`, { method: 'DELETE' })); toast(t('wh.revoked'), 'green'); });
+  return (
+    <Panel t={t} title={t('in.c.webhooks')} sub={t('in.d.webhooks')} chip="{ }" colour="#6d28d9" onClose={onClose}>
+      {shown && (
+        <div className="in-ok wh-once" role="alert">
+          <strong>{t(shown.kind === 'secret' ? 'wh.secretOnce' : 'wh.keyOnce')}</strong>
+          <code className="wh-code">{shown.value}</code>
+          <div className="row" style={{ gap: 8 }}><Button size="sm" onClick={() => { navigator.clipboard?.writeText(shown.value); toast(t('in.w.copied'), 'green'); }}>{t('wh.copy')}</Button><Button size="sm" onClick={() => setShown(null)}>{t('wh.saved')}</Button></div>
+        </div>
+      )}
+      <section className="in-sec">
+        <h3>{t('wh.hooks')}</h3>
+        <p className="small muted">{t('wh.hooksHow')}</p>
+        {w.endpoints.map((e) => (
+          <div key={e.id} className="wh-ep">
+            <div className="row"><code className="grow wh-url">{e.url}</code><Pill tone={!e.active ? 'gray' : e.last?.status === 'failed' ? 'red' : e.last?.status === 'ok' ? 'green' : 'blue'}>{!e.active ? t('wh.paused') : e.last ? t(`wh.st.${e.last.status}`) : t('wh.noneYet')}</Pill></div>
+            <small className="muted">{e.events.map((x) => t(`wh.ev.${x}`)).join(' · ')}</small>
+            {e.last?.error && <small className="wh-err">{e.last.error}</small>}
+            {can && (
+              <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                <Button size="sm" busy={busy === `test-${e.id}`} onClick={() => test(e.id)}>{t('wh.test')}</Button>
+                <Button size="sm" busy={busy === `log-${e.id}`} onClick={() => showLog(e)}>{t('wh.log')}</Button>
+                <Button size="sm" busy={busy === `tog-${e.id}`} onClick={() => toggle(e)}>{t(e.active ? 'wh.pause' : 'wh.resume')}</Button>
+                <Button size="sm" className="in-danger" busy={busy === `del-${e.id}`} onClick={() => remove(e)}>{t('common.delete')}</Button>
+              </div>
+            )}
+          </div>
+        ))}
+        {can && (
+          <div className="in-form">
+            <div className="field"><label htmlFor="wh-url">{t('wh.url')}</label><input id="wh-url" value={f.url} onChange={(e) => setF((x) => ({ ...x, url: e.target.value }))} placeholder="https://example.com/heyquicky" inputMode="url" /></div>
+            <fieldset className="wh-events"><legend className="small">{t('wh.events')}</legend>
+              {w.events.map((ev) => (
+                <label key={ev} className="wh-ev"><input type="checkbox" checked={f.events.includes(ev)} onChange={() => setF((x) => ({ ...x, events: x.events.includes(ev) ? x.events.filter((y) => y !== ev) : [...x.events, ev] }))} />{t(`wh.ev.${ev}`)}</label>
+              ))}
+            </fieldset>
+            <Button variant="primary" busy={busy === 'add'} disabled={!f.url.trim() || !f.events.length} onClick={addHook}>{t('wh.add')}</Button>
+          </div>
+        )}
+      </section>
+      <section className="in-sec">
+        <h3>{t('wh.api')}</h3>
+        <p className="small muted">{t('wh.apiHow')}</p>
+        <code className="wh-code">{w.apiBase}</code>
+        <ul className="wh-keys">
+          {w.keys.map((k) => (
+            <li key={k.id} className="row"><span className="grow"><strong>{k.name}</strong><small className="muted"> · {k.prefix}… · {k.lastUsedAt ? t('wh.used', { when: t.ago(k.lastUsedAt) }) : t('wh.neverUsed')}</small></span>
+              {can && <Button size="sm" className="in-danger" busy={busy === `rev-${k.id}`} onClick={() => revoke(k)}>{t('wh.revoke')}</Button>}</li>
+          ))}
+        </ul>
+        {can && (
+          <div className="row" style={{ gap: 8 }}>
+            <input value={keyName} onChange={(e) => setKeyName(e.target.value)} placeholder={t('wh.keyName')} aria-label={t('wh.keyName')} className="grow" maxLength={60} />
+            <Button busy={busy === 'key'} disabled={!keyName.trim()} onClick={addKey}>{t('wh.newKey')}</Button>
+          </div>
+        )}
+        <details className="wh-docs"><summary className="small">{t('wh.docs')}</summary>
+          <pre className="wh-pre">{`GET  ${w.apiBase}/products
+GET  ${w.apiBase}/orders?status=pending&limit=50
+GET  ${w.apiBase}/orders/1043
+POST ${w.apiBase}/orders
+Authorization: Bearer hq_live_…
+
+{ "customer": { "name": "Sadia", "phone": "01712345678" },
+  "address": "House 7, Road 3, Dhanmondi, Dhaka",
+  "zone": "inside_dhaka",
+  "items": [{ "sku": "NT-M", "qty": 1 }],
+  "external_ref": "your-order-id" }`}</pre>
+          <p className="small muted">{t('wh.sigHow')}</p>
+        </details>
+      </section>
+      {log && (
+        <Modal title={t('wh.logTitle')} subtitle={log.ep.url} onClose={() => setLog(null)} width={560}>
+          {log.items.length ? (
+            <table className="wh-log"><thead><tr><th>{t('wh.when')}</th><th>{t('wh.event')}</th><th>{t('wh.result')}</th></tr></thead>
+              <tbody>{log.items.map((x) => <tr key={x.id}><td>{t.ago(x.at)}</td><td>{t(`wh.ev.${x.event}`)}</td><td>{x.status === 'ok' ? `✓ ${x.code}` : x.status === 'pending' ? t('wh.retrying', { n: x.attempts }) : `✗ ${x.error || x.code}`}</td></tr>)}</tbody></table>
+          ) : <p className="small muted">{t('wh.noneYet')}</p>}
+        </Modal>
+      )}
     </Panel>
   );
 }

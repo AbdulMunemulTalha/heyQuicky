@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { InboxError } from '../inbox.js';
 import { bdPhone, phoneProblem } from './util.js';
+import { fireEvent } from './webhooks.js';
 
 // BKG-01..04 · Bookings (services) and quotes, frames "Bookings calendar" and "Quotes".
 // Times are stored in UTC and worked out in Dhaka time (UTC+6, no daylight saving).
@@ -137,7 +138,10 @@ export async function createBooking(db, ws, { serviceId, date, time, name, phone
     advance: service.advance ? { amount: service.advance, trx_id: trx, method: 'bkash', verified: Boolean(trx) && source === 'team' } : null,
     note: String(note ?? '').slice(0, 500), source, by_user_id: userId,
   });
-  return db.bookings.findById(created.id).lean();
+  const booking = await db.bookings.findById(created.id).lean();
+  // INT-04: tell the shop's webhooks.
+  fireEvent(db, ws._id, 'booking.created', { id: booking._id, service: booking.service, starts_at: booking.starts_at, ends_at: booking.ends_at, status: booking.status, name: booking.name, phone: booking.phone, price: booking.price, advance: booking.advance?.amount ?? 0, source: booking.source }).catch(() => {});
+  return booking;
 }
 
 async function freeSlotsAt(db, ws, settings, date, minutes, now, excludeId = null) {

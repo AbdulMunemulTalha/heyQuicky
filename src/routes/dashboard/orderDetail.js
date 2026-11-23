@@ -11,6 +11,7 @@ import { NEXT, stage, orderTotal, changeStatus, bookCourier, adjustStock, courie
 import { zonesFor, priceOrder, cleanCustomer } from '../../dashboard/orderBuild.js';
 import { teamId } from '../../dashboard/brands.js';
 import { markLeadWon } from '../../dashboard/leads.js';
+import { fireEvent, orderData } from '../../dashboard/webhooks.js';
 
 const SOURCES = { phone: 'team', messenger: 'team', instagram: 'team', whatsapp: 'team', walk_in: 'team', website: 'website' };
 
@@ -126,7 +127,11 @@ export function orderDetailRoutes(db, config, { auth, emit, inbox, adapters, fet
       send_confirmation: req.body?.sendConfirmation !== false,
     });
     if (!draft) await adjustStock(db, { product_items: priced.lines }, -1, { notify });
-    if (!draft) await markLeadWon(db, await db.orders.findById(order.id).lean()).catch(() => {});
+    if (!draft) {
+      const saved = await db.orders.findById(order.id).lean();
+      await markLeadWon(db, saved).catch(() => {});
+      fireEvent(db, ws._id, 'order.created', orderData(saved, { publicUrl: config.publicUrl })).catch(() => {});
+    }
     if (priced.couponCode) await db.coupons.updateOne({ workspace_id: ws._id, code: priced.couponCode }, { $inc: { used: 1 } });
     await db.customers.updateOne({ _id: customer._id }, { $inc: { 'stats.orders': draft ? 0 : 1 } });
     await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: order.id, type: 'status', to: draft ? 'pending' : 'approved', by: 'user', user_id: req.user.id,

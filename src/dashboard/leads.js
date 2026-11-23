@@ -1,5 +1,6 @@
 import { InboxError } from '../inbox.js';
 import { grantOffer } from './offers.js';
+import { fireEvent } from './webhooks.js';
 
 // FUP-05 · Lead pipeline (won / lost with reasons, per teammate) and FUP-08 · "Win them back" for people
 // who keep asking but don't buy (frames "Lead pipeline" and "Asked but didn't order").
@@ -26,9 +27,16 @@ export function whyStopped(texts) {
 export async function markLeadWon(db, order) {
   if (!order?.customer_id) return;
   const ownerId = typeof order.taken_by === 'number' ? order.taken_by : order.created_by_user_id ?? null;
-  await db.prospects.updateMany({ workspace_id: order.workspace_id, customer_id: order.customer_id, stage: { $in: ['new', 'contacted', 'call_scheduled', 'lost'] } }, {
-    $set: { stage: 'won', order_id: order._id, outcome: 'ordered', won_at: new Date(), won_by: order.source === 'ai' ? 'ai' : order.source === 'product_page' ? 'page' : 'team', amount: (order.subtotal ?? 0) - (order.discount ?? 0), ...(ownerId ? { owner_user_id: ownerId } : {}) },
+  const where = { workspace_id: order.workspace_id, customer_id: order.customer_id, stage: { $in: ['new', 'contacted', 'call_scheduled', 'lost'] } };
+  const open = await db.prospects.find(where, { name: 1, product: 1 }).lean();
+  if (!open.length) return;
+  const wonBy = order.source === 'ai' ? 'ai' : order.source === 'product_page' ? 'page' : 'team';
+  const amount = (order.subtotal ?? 0) - (order.discount ?? 0);
+  await db.prospects.updateMany(where, {
+    $set: { stage: 'won', order_id: order._id, outcome: 'ordered', won_at: new Date(), won_by: wonBy, amount, ...(ownerId ? { owner_user_id: ownerId } : {}) },
   });
+  // INT-04: tell the shop's webhooks.
+  for (const p of open) fireEvent(db, order.workspace_id, 'lead.won', { name: p.name, product: p.product, amount, order_number: order.number ?? null, won_by: wonBy }).catch(() => {});
 }
 
 // Leads that went quiet for two weeks are lost ("No reply"), unless someone is due to call them.

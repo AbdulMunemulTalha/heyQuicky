@@ -7,6 +7,7 @@ import { adjustStock, aiOrderPlaced, changeStatus } from './orderOps.js';
 import { orderSummary } from '../platforms/rich.js';
 import { personalOffer } from './offers.js';
 import { markLeadWon } from './leads.js';
+import { fireEvent, orderData } from './webhooks.js';
 
 const ZONES = ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'];
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9ঀ-৿]+/g, ' ').trim();
@@ -163,14 +164,15 @@ export async function saveOrder(db, ws, { who, items, zone, coupon = '', convers
   if (priced.couponCode) await db.coupons.updateOne({ workspace_id: ws._id, code: priced.couponCode }, { $inc: { used: 1 } });
   await markOffers(db, { workspaceId: ws._id, customerId: customer._id, orderId: created.id, offerId: priced.offer?.id, code: priced.couponCode });
   await db.customers.updateOne({ _id: customer._id }, { $inc: { 'stats.orders': 1 } });
-  const how = byAi ? 'The AI took the order in chat' : 'The customer ordered on the product page';
+  const how = { ai: 'The AI took the order in chat', product_page: 'The customer ordered on the product page', api: 'Created through the API' }[source] ?? 'Order created';
   await db.insert(db.orderEvents, { workspace_id: ws._id, order_id: created.id, type: 'status', to: status, by: byAi ? 'ai' : 'customer', text: `${how}${status === 'on_hold' ? (advance ? ' (on hold: advance needed)' : ' (on hold: high return risk)') : ''}` });
   const total = priced.subtotal + priced.delivery - priced.discount;
-  await notify?.({ workspaceId: ws._id, event: 'order', title: `New order #${number}`, body: `${who.name} · ৳${total.toLocaleString('en-IN')} · ${byAi ? 'taken by AI, waiting for the customer to confirm' : 'from the product page'}`, link: `/orders/${number}`, ref: `order:${created.id}`, amount: total });
+  await notify?.({ workspaceId: ws._id, event: 'order', title: `New order #${number}`, body: `${who.name} · ৳${total.toLocaleString('en-IN')} · ${{ ai: 'taken by AI, waiting for the customer to confirm', product_page: 'from the product page', api: 'from your API' }[source] ?? 'new order'}`, link: `/orders/${number}`, ref: `order:${created.id}`, amount: total });
   if (status === 'on_hold' && !advance) {
     await notify?.({ workspaceId: ws._id, event: 'escalation', title: `Order #${number} needs a look.`, body: `High return risk (${risk.score}%). ${risk.action}.`, link: `/orders/${number}`, ref: `risk:${created.id}` });
   }
   const order = await db.orders.findById(created.id).lean();
   await markLeadWon(db, order).catch(() => {});
+  fireEvent(db, ws._id, 'order.created', orderData(order)).catch(() => {});
   return { order, advance, billToken };
 }

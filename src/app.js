@@ -17,6 +17,7 @@ import { createCapi } from './dashboard/capi.js';
 import { createDeliveryUpdater } from './dashboard/deliveryUpdates.js';
 import { recordReturn } from './dashboard/money.js';
 import { apiRoutes } from './routes/api.js';
+import { publicApiRoutes } from './routes/publicApi.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { connectRoutes } from './routes/connect.js';
 import { legalRoutes } from './routes/legal.js';
@@ -33,6 +34,7 @@ import { sizePageRoutes } from './routes/sizePage.js';
 import { productPageRoutes } from './routes/productPage.js';
 import { storefrontRoutes } from './routes/storefront.js';
 import { createPostbackHandler } from './dashboard/postbacks.js';
+import { createWebhooks, fireEvent, orderData, messageEvent } from './dashboard/webhooks.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 // The React dashboard, built by `npm run build`.
@@ -81,12 +83,18 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   const provider = aiProvider === undefined ? createAiProvider(config.ai) : aiProvider;
   const agent = createAgent(db, inbox, provider, { replyDelayMs: config.ai.replyDelayMs, notify, config, emit, fetchImpl,
     transcriber: createTranscriber({ apiKey: config.ai.openaiKey, model: config.ai.transcribeModel }) });
-  inbox.setInboundHandler(agent.onInbound);
+  // INT-04: every customer message also goes to the shop's webhooks.
+  inbox.setInboundHandler(async (conversationId, messageId) => {
+    messageEvent(db, conversationId, messageId).catch(() => {});
+    return agent.onInbound(conversationId, messageId);
+  });
   const deliveryUpdates = createDeliveryUpdater(db, inbox, config, { notify });
   const capi = createCapi(db, config, { fetchImpl });
+  const webhooks = createWebhooks(db, config, { fetchImpl });
   onStatusChange(db, async (order, from, to) => {
     if (to === 'returned') await recordReturn(db, order).catch((err) => console.warn(`return record for order ${order._id}: ${err.message}`));
     capi.onStatus(order, from, to).catch((err) => console.warn(`Conversions API for order ${order._id}: ${err.message}`));
+    fireEvent(db, order.workspace_id, 'order.status_changed', { ...orderData(order, { publicUrl: config.publicUrl }), previous_status: from }).catch(() => {});
     return deliveryUpdates.onStatus(order, from, to);
   });
   onAiOrder(db, capi.onAiOrder);
@@ -123,7 +131,9 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.use(productPageRoutes(db, config, { inbox, notify }));
   app.use(storefrontRoutes(db, config));
   app.use(widgetRoutes(db, config, inbox));
-  app.use('/api/dash', dashboardRoutes(db, config, { adapters, inbox, orders, agent, importer, emit, notify, io, fetchImpl, mounts: dashboardMounts }));
+  app.use('/api/dash', dashboardRoutes(db, config, { adapters, inbox, orders, agent, importer, emit, notify, io, fetchImpl, webhooks, mounts: dashboardMounts }));
+  // INT-04: the shop's own API (API keys), before the dashboard's /api routes.
+  app.use('/api/v1', publicApiRoutes(db, config, { notify }));
   app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent, { fetchImpl }));
   // The dashboard is a single page; its assets live under /app/assets.
   app.use('/app', express.static(clientDir, { index: false }));
@@ -141,5 +151,5 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.get('/bn', (_req, res) => res.sendFile('bn.html', { root: PUBLIC_DIR }));
   app.use(express.static(PUBLIC_DIR));
 
-  return { app, server, io, inbox, orders, importer, agent, adapters, notify, deliveryUpdates };
+  return { app, server, io, inbox, orders, importer, agent, adapters, notify, deliveryUpdates, webhooks };
 }

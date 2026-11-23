@@ -301,6 +301,30 @@ export function defineDashboardModels(conn) {
     source: { type: String, default: 'ai' },
   });
 
+  // INT-04: one webhook delivery (queued, tried again on failure).
+  const webhookDelivery = S({
+    endpoint_id: { type: String, required: true, index: true },
+    event: { type: String, required: true },
+    event_id: { type: String, default: '' },
+    payload: { type: Mixed, default: null },
+    status: { type: String, enum: ['pending', 'ok', 'failed'], default: 'pending' },
+    attempts: { type: Number, default: 0 },
+    next_at: { type: Date, default: null, index: true },
+    last_code: { type: Number, default: null },
+    last_error: { type: String, default: '' },
+    delivered_at: { type: Date, default: null },
+  });
+
+  // INT-04: API keys for the shop's own systems. Only a hash is kept; the key is shown once.
+  const apiKey = S({
+    name: { type: String, required: true },
+    prefix: { type: String, required: true },
+    hash: { type: String, required: true, unique: true },
+    created_by: { type: Number, default: null },
+    last_used_at: { type: Date, default: null },
+    revoked_at: { type: Date, default: null },
+  });
+
   const broadcast = S({
     audience: { type: Mixed, default: {} },
     format: { type: String, default: 'text' },
@@ -474,6 +498,8 @@ export function defineDashboardModels(conn) {
     followups: conn.model('Followup', followup, 'followups'),
     broadcasts: conn.model('Broadcast', broadcast, 'broadcasts'),
     offers: conn.model('Offer', offer, 'offers'),
+    webhookDeliveries: conn.model('WebhookDelivery', webhookDelivery, 'webhook_deliveries'),
+    apiKeys: conn.model('ApiKey', apiKey, 'api_keys'),
     bookings: conn.model('Booking', booking, 'bookings'),
     quotes: conn.model('Quote', quote, 'quotes'),
     knowledge: conn.model('Knowledge', knowledge, 'knowledge'),

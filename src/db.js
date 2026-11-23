@@ -281,6 +281,8 @@ function defineModels(conn) {
     courier: { type: String, default: '' },
     consignment_id: { type: String, default: '' },
     bill_token: { type: String, default: null, index: true },
+    // INT-04: the shop's own reference for an order created through the API (makes retries safe).
+    external_ref: { type: String, default: null, index: true },
     // FUP-07: the personal offer (follow-up discount) this order used: { id, source, kind, value, min_order }.
     offer: { type: Schema.Types.Mixed, default: null },
     cancel_requested_at: { type: Date, default: null },

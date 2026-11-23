@@ -1,6 +1,7 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { InboxError } from '../inbox.js';
+import { privateAddress } from './safeUrl.js';
 
 // ONB-12 · Catalog import from WooCommerce. The shop gives its store address and a read-only REST API key
 // (WooCommerce → Settings → Advanced → REST API). Products, prices, sizes/colours and stock come in;
@@ -9,15 +10,6 @@ import { InboxError } from '../inbox.js';
 const MAX_PAGES = 5; // 100 per page → 500 products at most
 const TIMEOUT = 20_000;
 
-function privateAddress(ip) {
-  if (isIP(ip) === 6) {
-    const v = ip.toLowerCase();
-    if (v.startsWith('::ffff:')) return privateAddress(v.slice(7));
-    return v === '::1' || v === '::' || v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80');
-  }
-  const [a, b] = ip.split('.').map(Number);
-  return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
-}
 
 // "myshop.com", "https://myshop.com/shop/" → "https://myshop.com/shop". Throws a friendly error otherwise.
 export async function wooStoreUrl(input, { resolve = lookup } = {}) {
