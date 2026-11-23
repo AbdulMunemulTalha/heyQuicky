@@ -2647,4 +2647,12 @@ export default {
   'woo.result': "{a} added · {u} updated · {s} skipped",
   'woo.resultMore': "{a} added · {u} updated · {s} skipped — only the first 500 products are read",
   'cat.woo': "Import from WooCommerce",
+  'sl.copy': "Copy shop link",
+  'sl.copyShort': "Copy link",
+  'sl.copied': "Shop link copied",
+  'sl.open': "Open shop",
+  'sl.how': "A page with all your products, your current offer and categories. Customers tap a product, pick a size and order — no website needed.",
+  'sl.count': "{n} products are on it (those set to Live everywhere).",
+  'sl.none': "No products are set to Live everywhere yet, so the page is empty.",
+  'sl.where': "Put it in your Facebook and Instagram bio, pin it in posts, or send it in chat. The offer banner shows your newest coupon that the AI may mention.",
 };

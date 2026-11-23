@@ -41,6 +41,7 @@ export default function Catalog() {
         <>
           <Button onClick={() => setImporting(true)}>{t('cat.import')}</Button>
           <Button onClick={() => setWoo(true)}>{t('cat.woo')}</Button>
+          {d?.shopUrl && <Button onClick={() => navigator.clipboard?.writeText(d.shopUrl).then(() => toast(t('sl.copied'), 'green'))} title={d.shopUrl}>{t('sl.copy')}</Button>}
           <Button variant="primary" onClick={() => navigate('/catalog/new')}>+ {t('cat.add')}</Button>
         </>
       )} />

@@ -38,8 +38,9 @@ export function catalogRoutes(db, config, { auth, fetchImpl = fetch }) {
       && (filter === 'all' || filter === 'archived' || (filter === 'needs' ? r.miss.length > 0 : r.s.state === filter))
       && (!re || re.test(r.p.name) || re.test(r.p.code) || re.test(r.p.category)));
 
+    const shopUrl = `${config.publicUrl || `${req.protocol}://${req.get('host')}`}/s/${await ensureShopSlug(db, await db.workspaces.findById(wsId, { name: 1, shop_slug: 1 }).lean())}`;
     res.json({
-      counts, lowAt: LOW_STOCK_AT,
+      counts, lowAt: LOW_STOCK_AT, shopUrl,
       readiness: { count: needs.length, photo: needs.filter((r) => r.miss.includes('photo')).length, sizeChart: needs.filter((r) => r.miss.includes('size_chart')).length },
       categories: [...new Set(live.map((p) => p.category).filter(Boolean))].sort(),
       products: shown.slice(0, 300).map(({ p, s, miss }) => ({

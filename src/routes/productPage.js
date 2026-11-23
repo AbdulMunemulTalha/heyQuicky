@@ -7,10 +7,10 @@ import { orderSummary } from '../platforms/rich.js';
 
 // ORD-04 · Product page (frame "Product page (customer)") and checkout form (frame "Product page
 // checkout form", ORD-10 phone check). Public, Bangla, light: server-rendered with one small script.
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const json = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 const BN = '০১২৩৪৫৬৭৮৯';
-const bnDigits = (s) => String(s).replace(/\d/g, (d) => BN[d]);
+export const bnDigits = (s) => String(s).replace(/\d/g, (d) => BN[d]);
 const bnDays = (s) => bnDigits(String(s || '').replace(/\s*days?\b/i, ' দিন'));
 const SCRIPT = readFileSync(new URL('./productPage.client.js', import.meta.url), 'utf8');
 
@@ -91,7 +91,7 @@ input[aria-invalid=true]{border-color:#d92d20;background:#fff8f7}.err{color:#d92
 .hp{position:absolute;left:-9999px}footer{text-align:center;color:#9a9ea6;font-size:12px;padding:20px 0}
 [hidden]{display:none!important}`;
 
-function page(title, body, { image = '' } = {}) {
+export function page(title, body, { image = '' } = {}) {
   return `<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title)}</title><meta property="og:title" content="${esc(title)}">${image ? `<meta property="og:image" content="${esc(image)}">` : ''}
 <style>${STYLE}</style></head><body><main>${body}</main></body></html>`;
@@ -144,7 +144,7 @@ export function productPageRoutes(db, config, { inbox, notify }) {
     const inside = zones.find((z) => z.key === 'inside_dhaka');
     const taka = (n) => `৳${Number(n).toLocaleString('en-IN')}`;
     const gallery = photos.length ? photos.map((src, i) => `<img src="${esc(src)}" alt="${esc(p.name)}${photos.length > 1 ? ` — ছবি ${bnDigits(i + 1)}` : ''}"${i ? ' loading="lazy"' : ''}>`).join('') : `<div style="background:${esc(data.colour)}" role="img" aria-label="${esc(p.name)}"></div>`;
-    const top = `<header class="top"><button type="button" class="back" id="back" aria-label="ফিরে যান" hidden>‹</button><span class="av" aria-hidden="true">${esc(initials)}</span><strong>${esc(ws.name)}</strong></header>`;
+    const top = `<header class="top"><button type="button" class="back" id="back" aria-label="ফিরে যান" hidden>‹</button><a href="/s/${esc(req.params.shop)}${chat ? `?c=${encodeURIComponent(String(req.query.c))}` : ''}" style="display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none" aria-label="${esc(ws.name)} — সব পণ্য"><span class="av" aria-hidden="true">${esc(initials)}</span><strong>${esc(ws.name)}</strong></a></header>`;
     res.type('html').send(page(`${p.name} — ${ws.name}`, `${top}
 <section id="view-product">
   <div class="gal"><div class="slides" id="slides">${gallery}</div>${off > 0 ? `<span class="badge">-${bnDigits(off)}% ছাড়</span>` : ''}${photos.length > 1 ? `<div class="dots" id="dots" aria-hidden="true">${photos.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div>` : ''}</div>

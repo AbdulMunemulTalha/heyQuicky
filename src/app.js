@@ -31,6 +31,7 @@ import { billRoutes } from './routes/bill.js';
 import { widgetRoutes } from './routes/widget.js';
 import { sizePageRoutes } from './routes/sizePage.js';
 import { productPageRoutes } from './routes/productPage.js';
+import { storefrontRoutes } from './routes/storefront.js';
 import { createPostbackHandler } from './dashboard/postbacks.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
@@ -120,6 +121,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.use(billRoutes(db, config, { notify }));
   app.use(sizePageRoutes(db));
   app.use(productPageRoutes(db, config, { inbox, notify }));
+  app.use(storefrontRoutes(db, config));
   app.use(widgetRoutes(db, config, inbox));
   app.use('/api/dash', dashboardRoutes(db, config, { adapters, inbox, orders, agent, importer, emit, notify, io, fetchImpl, mounts: dashboardMounts }));
   app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent, { fetchImpl }));

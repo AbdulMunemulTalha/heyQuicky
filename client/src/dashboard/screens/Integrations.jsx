@@ -14,7 +14,7 @@ const GROUPS = [
   ['stores', [['woo', 'Wo', '#7f54b3'], ['shopify', 'Sh', '#5e8e3e'], ['sheets', 'GS', '#188038']]],
   ['tools', [['extension', 'Ch', '#333'], ['webhooks', '{ }', '#6d28d9']]],
 ];
-const BUILT = ['capi', 'widget', 'woo'];
+const BUILT = ['capi', 'widget', 'woo', 'shoplink'];
 const EVENT_ORDER = ['purchase', 'lead', 'add_to_cart', 'delivered'];
 
 // Phase 2 · Integrations (ANL-09, INT-02), frame "Integrations".
@@ -30,6 +30,7 @@ export default function Integrations({ query }) {
   const state = (k) => {
     if (k === 'capi') return d.capi.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
     if (k === 'widget') return d.widget.on ? ['green', t('in.live')] : ['gray', t('in.notSetUp')];
+    if (k === 'shoplink') return d.shopLink?.products ? ['green', t('in.live')] : ['gray', t('in.notSetUp')];
     if (k === 'woo') return d.woo?.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
     return ['blue', t('in.comingLater')];
   };
@@ -59,6 +60,7 @@ export default function Integrations({ query }) {
       </div>
       {open === 'capi' && <CapiPanel t={t} d={d} onChange={setD} onClose={() => setQuery({ open: null })} />}
       {open === 'widget' && <WidgetPanel t={t} d={d} onChange={setD} onClose={() => setQuery({ open: null })} />}
+      {open === 'shoplink' && <ShopLinkPanel t={t} d={d} onClose={() => setQuery({ open: null })} />}
       {open === 'woo' && <WooDialog t={t} onClose={() => { setQuery({ open: null }); load(); }} onDone={load} />}
     </div>
   );
@@ -171,6 +173,23 @@ function WidgetPanel({ t, d, onChange, onClose }) {
           <p className="small muted">{t('in.w.inbox')}</p>
         </>
       )}
+    </Panel>
+  );
+}
+
+// INT-03 · Shop link: one page with every product shown everywhere, leading into the product page checkout.
+function ShopLinkPanel({ t, d, onClose }) {
+  const l = d.shopLink;
+  return (
+    <Panel t={t} title={t('in.c.shoplink')} sub={t('in.d.shoplink')} chip="SL" colour="#111" onClose={onClose}>
+      <p className="small">{t('sl.how')}</p>
+      <input className="input" readOnly value={l.url} aria-label={t('in.c.shoplink')} onFocus={(e) => e.target.select()} />
+      <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        <Button size="sm" onClick={() => navigator.clipboard?.writeText(l.url).then(() => toast(t('sl.copied'), 'green'))}>{t('sl.copyShort')}</Button>
+        <a className="btn btn-default btn-sm" href={l.url} target="_blank" rel="noreferrer">{t('sl.open')}</a>
+      </div>
+      <p className="small muted" style={{ marginTop: 12 }}>{l.products ? t('sl.count', { n: t.num(l.products) }) : t('sl.none')}</p>
+      <p className="small muted">{t('sl.where')}</p>
     </Panel>
   );
 }

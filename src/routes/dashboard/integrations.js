@@ -5,6 +5,7 @@ import { audit } from '../../dashboard/util.js';
 import { encryptSecret } from '../../secrets.js';
 import { CAPI_EVENTS, capiSettings } from '../../dashboard/capi.js';
 import { widgetSettings } from '../widget.js';
+import { ensureShopSlug } from '../../dashboard/productPage.js';
 
 // Phase 2 · Integrations (ANL-09 Meta Conversions API, INT-02 website chat widget), frame "Integrations".
 export function integrationRoutes(db, config, { auth, emit }) {
@@ -13,7 +14,8 @@ export function integrationRoutes(db, config, { auth, emit }) {
   const base = (req) => (config.publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
 
   async function view(req) {
-    const ws = await db.workspaces.findById(req.user.workspace_id, { settings: 1, name: 1 }).lean();
+    const ws = await db.workspaces.findById(req.user.workspace_id, { settings: 1, name: 1, shop_slug: 1 }).lean();
+    const shopSlug = await ensureShopSlug(db, ws);
     const since = new Date(Date.now() - 7 * 86_400_000);
     const [counts, last, failed, widget] = await Promise.all([
       db.capiEvents.aggregate([{ $match: { workspace_id: ws._id, created_at: { $gte: since }, status: { $ne: 'failed' } } }, { $group: { _id: '$key', n: { $sum: 1 } } }]),
@@ -30,6 +32,7 @@ export function integrationRoutes(db, config, { auth, emit }) {
       widget: { on: Boolean(widget) && !ws.settings?.widget?.off, setUp: Boolean(widget), ...w, chats7d: chats,
         snippet: widget ? `<script src="${base(req)}/w/${widget.external_id}.js" async></script>` : '', previewUrl: widget ? `${base(req)}/w/${widget.external_id}` : '' },
       woo: { connected: Boolean(ws.settings?.woo?.url), url: ws.settings?.woo?.url ?? '' },
+      shopLink: { url: `${base(req)}/s/${shopSlug}`, products: await db.products.countDocuments({ workspace_id: ws._id, archived: { $ne: true }, visibility: 'everywhere' }) },
       canEdit: ['owner', 'admin'].includes(req.user.role),
     };
   }
