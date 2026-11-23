@@ -12,7 +12,8 @@ import { createImporter } from './importer.js';
 import { createAiProvider } from './ai/provider.js';
 import { createAgent } from './ai/agent.js';
 import { createTranscriber } from './ai/transcribe.js';
-import { onStatusChange, onCourierStatus } from './dashboard/orderOps.js';
+import { onStatusChange, onCourierStatus, onAiOrder } from './dashboard/orderOps.js';
+import { createCapi } from './dashboard/capi.js';
 import { createDeliveryUpdater } from './dashboard/deliveryUpdates.js';
 import { recordReturn } from './dashboard/money.js';
 import { apiRoutes } from './routes/api.js';
@@ -27,6 +28,7 @@ import { fileRoute } from './routes/dashboard/savedReplies.js';
 import { adminRoutes } from './routes/admin.js';
 import { createNotifier } from './dashboard/notify.js';
 import { billRoutes } from './routes/bill.js';
+import { widgetRoutes } from './routes/widget.js';
 import { sizePageRoutes } from './routes/sizePage.js';
 import { createPostbackHandler } from './dashboard/postbacks.js';
 
@@ -79,10 +81,13 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
     transcriber: createTranscriber({ apiKey: config.ai.openaiKey, model: config.ai.transcribeModel }) });
   inbox.setInboundHandler(agent.onInbound);
   const deliveryUpdates = createDeliveryUpdater(db, inbox, config, { notify });
+  const capi = createCapi(db, config, { fetchImpl });
   onStatusChange(db, async (order, from, to) => {
     if (to === 'returned') await recordReturn(db, order).catch((err) => console.warn(`return record for order ${order._id}: ${err.message}`));
+    capi.onStatus(order, from, to).catch((err) => console.warn(`Conversions API for order ${order._id}: ${err.message}`));
     return deliveryUpdates.onStatus(order, from, to);
   });
+  onAiOrder(db, capi.onAiOrder);
   onCourierStatus(db, deliveryUpdates.onCourier);
   inbox.setPostbackHandler(createPostbackHandler(db, inbox, { notify, emit, publicUrl: config.publicUrl }));
 
@@ -113,6 +118,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   // Customer bill pages (screen 20): public, behind each order's unguessable link.
   app.use(billRoutes(db, config, { notify }));
   app.use(sizePageRoutes(db));
+  app.use(widgetRoutes(db, config, inbox));
   app.use('/api/dash', dashboardRoutes(db, config, { adapters, inbox, orders, agent, importer, emit, notify, io, fetchImpl, mounts: dashboardMounts }));
   app.use('/api', apiRoutes(db, config, inbox, orders, importer, agent, { fetchImpl }));
   // The dashboard is a single page; its assets live under /app/assets.

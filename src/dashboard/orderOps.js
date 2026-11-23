@@ -48,6 +48,12 @@ const statusListeners = new WeakMap();
 export function onStatusChange(db, fn) { statusListeners.set(db, fn); }
 // The courier reported a new status of its own (picked up, out for delivery, failed…) — Delivery updates listen.
 const courierListeners = new WeakMap();
+const aiOrderListeners = new WeakMap();
+export function onAiOrder(db, fn) { aiOrderListeners.set(db, fn); }
+export function aiOrderPlaced(db, order) {
+  const listener = aiOrderListeners.get(db);
+  if (listener) Promise.resolve(listener(order)).catch((err) => console.warn(`after AI order ${order._id}: ${err.message}`));
+}
 export function onCourierStatus(db, fn) { courierListeners.set(db, fn); }
 export function courierStatusChanged(db, order, status) {
   const listener = courierListeners.get(db);

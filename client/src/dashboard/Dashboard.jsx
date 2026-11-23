@@ -38,6 +38,7 @@ const screens = {
   money: lazy(() => import('./screens/Money.jsx')),
   profile: lazy(() => import('./screens/Profile.jsx')),
   modules: lazy(() => import('./screens/Modules.jsx')),
+  integrations: lazy(() => import('./screens/Integrations.jsx')),
   deliveryUpdates: lazy(() => import('./screens/DeliveryUpdates.jsx')),
   notifySettings: lazy(() => import('./screens/NotificationSettings.jsx')),
   placeholder: lazy(() => import('./screens/Placeholder.jsx')),
@@ -94,6 +95,7 @@ const ROUTES = [
   ['/settings/audit', 'team'],
   ['/settings/notifications', 'notifySettings'],
   ['/settings/modules', 'modules'],
+  ['/settings/integrations', 'integrations'],
 ];
 
 function pick(path) {

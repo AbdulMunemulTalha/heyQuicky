@@ -69,6 +69,15 @@ export function defineDashboardModels(conn) {
     payout_id: { type: Number, default: null },
   });
 
+  // ANL-09: each Conversions API event sent to Meta (once per order and kind).
+  const capiEvent = S({
+    key: { type: String, required: true },
+    order_id: { type: Number, default: null },
+    status: { type: String, default: 'sent' }, // sent | test | failed
+    error: { type: String, default: '' },
+  });
+  capiEvent.index({ workspace_id: 1, key: 1, order_id: 1 });
+
   // OMS-05: money a courier paid out for delivered parcels ("Mark received" on Money & follow-up).
   const payout = S({
     courier: { type: String, required: true },
@@ -387,6 +396,7 @@ export function defineDashboardModels(conn) {
     orderEvents: conn.model('OrderEvent', orderEvent, 'order_events'),
     consignments: conn.model('Consignment', consignment, 'consignments'),
     payouts: conn.model('Payout', payout, 'payouts'),
+    capiEvents: conn.model('CapiEvent', capiEvent, 'capi_events'),
     returns: conn.model('Return', returnItem, 'returns'),
     courierAccounts: conn.model('CourierAccount', courierAccount, 'courier_accounts'),
     payments: conn.model('Payment', payment, 'payments'),

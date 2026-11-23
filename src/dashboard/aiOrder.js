@@ -3,7 +3,7 @@ import { InboxError } from '../inbox.js';
 import { advanceFor } from './payments.js';
 import { priceOrder, cleanCustomer } from './orderBuild.js';
 import { riskFor } from './risk.js';
-import { adjustStock } from './orderOps.js';
+import { adjustStock, aiOrderPlaced } from './orderOps.js';
 import { orderSummary } from '../platforms/rich.js';
 
 const ZONES = ['inside_dhaka', 'dhaka_suburbs', 'outside_dhaka'];
@@ -73,5 +73,6 @@ export async function placeAiOrder(db, { conversation, input, notify = null, pub
     await notify?.({ workspaceId: ws._id, event: 'escalation', title: `Order #${number} needs a look.`, body: `High return risk (${risk.score}%). ${risk.action}.`, link: `/orders/${number}`, ref: `risk:${created.id}` });
   }
   const order = await db.orders.findById(created.id).lean();
+  aiOrderPlaced(db, order);
   return { order, advance, rich: orderSummary(order, { billUrl: publicUrl ? `${publicUrl}/b/${billToken}` : '' }) };
 }
