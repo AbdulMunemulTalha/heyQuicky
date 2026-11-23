@@ -150,6 +150,8 @@ export function defineDashboardModels(conn) {
     sources: { type: [Mixed], default: [] },
     version: { type: Number, default: null },
     rating: { type: String, default: null },
+    took_ms: { type: Number, default: null },
+    rated_by: { type: Number, default: null },
   });
   aiReply.index({ workspace_id: 1, created_at: -1 });
 

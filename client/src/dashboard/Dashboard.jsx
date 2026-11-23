@@ -51,6 +51,7 @@ const overlays = {
   products: lazy(() => import('./screens/SendProducts.jsx')),
   notifications: lazy(() => import('./screens/Notifications.jsx')),
   teach: lazy(() => import('./screens/Teach.jsx')),
+  why: lazy(() => import('./screens/Why.jsx')),
   newTicket: lazy(() => import('./screens/Tickets.jsx').then((m) => ({ default: m.NewTicket }))),
   brands: lazy(() => import('./screens/Brands.jsx')),
   help: lazy(() => import('./screens/Help.jsx')),

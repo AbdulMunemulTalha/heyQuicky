@@ -52,5 +52,5 @@ export async function meter(db, config, { workspaceId, model, usage, kind = 'rep
       await notify({ workspaceId, event: 'credit', title: 'AI credit finished — AI replies are paused', body: 'Your team can still reply. Top up and the AI starts again.', link: '/settings', ref: `nocredit:${Date.now()}` });
     }
   }
-  return { cost, saved, usd: priced.usd };
+  return { id: entry.id, cost, saved, usd: priced.usd };
 }

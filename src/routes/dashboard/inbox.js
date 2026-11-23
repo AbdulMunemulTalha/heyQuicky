@@ -193,7 +193,7 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
       messages: messages.reverse().map((m) => ({
         id: m._id, direction: m.direction, text: m.text, attachments: m.attachments, at: m.created_at, status: m.status, error: m.error,
         byAi: Boolean(m.sent_by_ai), by: m.sender_user_id ? senders.get(m.sender_user_id) ?? '' : null, kind: m.kind || 'text', payload: m.payload,
-        quoted: quoteView(quotedDocs.get(m.quoted_id)), storyReply: Boolean(m.payload?.story_reply),
+        quoted: quoteView(quotedDocs.get(m.quoted_id)), storyReply: Boolean(m.payload?.story_reply), why: Boolean(m.ai_reply_id),
       })),
       customer: customer && {
         id: customer._id, name: customer.name, phones: showPhones ? customer.phones : customer.phones.map((p) => `${p.slice(0, 3)}••••${p.slice(-3)}`),
@@ -400,6 +400,33 @@ export function inboxRoutes(db, config, { auth, inbox, agent, emit, notify }) {
     if (note.author_user_id !== req.user.id && req.user.role !== 'owner') throw new InboxError(403, 'Only the person who wrote a note can delete it');
     await db.notes.deleteOne({ _id: note._id });
     res.status(204).end();
+  });
+
+  // TRN-09 · "Why did the AI say this?": the steps and sources behind one AI reply.
+  async function aiReplyFor(req) {
+    const conv = await load(req, idOf(req));
+    const m = await db.messages.findOne({ _id: Number(req.params.messageId), conversation_id: conv._id, sent_by_ai: true }).lean();
+    if (!m?.ai_reply_id) throw new InboxError(404, 'No explanation was saved for this message');
+    const r = await db.aiReplies.findOne({ _id: m.ai_reply_id, workspace_id: conv.workspace_id }).lean();
+    if (!r) throw new InboxError(404, 'No explanation was saved for this message');
+    return { conv, m, r };
+  }
+  router.get('/inbox/:id/why/:messageId', auth, async (req, res) => {
+    const { conv, m, r } = await aiReplyFor(req);
+    const [row] = await hydrate([conv]);
+    const first = r.message_id && r.message_id !== m._id ? await db.messages.findById(r.message_id, { text: 1, created_at: 1 }).lean() : m;
+    res.json({
+      messageId: first?._id ?? m._id, text: first?.text ?? m.text, at: first?.created_at ?? m.created_at, customer: row.name,
+      steps: r.steps ?? [], sources: r.sources ?? [], cost: Math.round((r.cost ?? 0) * 100) / 100, cached: (r.cache_read_tokens ?? 0) > 0, tookMs: r.took_ms ?? null,
+      version: r.version ?? null, rating: r.rating ?? null,
+    });
+  });
+  router.post('/inbox/:id/why/:messageId/rate', auth, need(db, 'reply'), async (req, res) => {
+    const { r } = await aiReplyFor(req);
+    const rating = req.body?.rating === 'good' ? 'good' : req.body?.rating === 'bad' ? 'bad' : null;
+    if (!rating) throw new InboxError(400, 'Rate it good or bad');
+    await db.aiReplies.updateOne({ _id: r._id }, { $set: { rating, rated_by: req.user.id } });
+    res.json({ rating });
   });
 
   // AI copilot: ask about this customer (HND-04).

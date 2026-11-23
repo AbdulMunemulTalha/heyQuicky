@@ -57,6 +57,8 @@ function handoffActive(conversation, now = Date.now()) {
   return now - at < HANDOFF_LAPSE_MS;
 }
 
+const WHY_TYPES = REPLY_SCHEMA.properties.why.properties.sources.items.properties.type.enum;
+
 function normalize(data) {
   return {
     reply: String(data?.reply ?? '').trim(),
@@ -72,6 +74,10 @@ function normalize(data) {
     quote_request: data?.quote_request?.ready && String(data.quote_request.title ?? '').trim() ? data.quote_request : null,
     payment: TRX.test(String(data?.payment?.trx_id ?? '').trim().toUpperCase()) ? { trx_id: String(data.payment.trx_id).trim().toUpperCase(), method: data.payment.method === 'nagad' ? 'nagad' : 'bkash', amount: Number(data.payment.amount) || 0 } : null,
     customer_tags: (Array.isArray(data?.customer_tags) ? data.customer_tags : []).filter((x) => x in AI_TAGS),
+    why: {
+      steps: (Array.isArray(data?.why?.steps) ? data.why.steps : []).slice(0, 5).map((s) => ({ title: String(s?.title ?? '').trim().slice(0, 60), detail: String(s?.detail ?? '').trim().slice(0, 240) })).filter((s) => s.title),
+      sources: (Array.isArray(data?.why?.sources) ? data.why.sources : []).slice(0, 8).map((s) => ({ type: String(s?.type ?? ''), label: String(s?.label ?? '').trim().slice(0, 120) })).filter((s) => s.label && WHY_TYPES.includes(s.type)),
+    },
     act_now: Boolean(data?.act_now),
     act_now_reason: String(data?.act_now_reason ?? '').trim(),
   };
@@ -91,9 +97,10 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       err.paused = spend.reason;
       throw err;
     }
+    const started = Date.now();
     const out = await provider.generateJson(request);
-    await meter(db, config, { workspaceId, model: provider.model, usage: out.usage, notify, ...meta }).catch((e) => log.warn(`metering failed: ${e.message}`));
-    return out;
+    const metered = await meter(db, config, { workspaceId, model: provider.model, usage: out.usage, notify, ...meta }).catch((e) => { log.warn(`metering failed: ${e.message}`); return null; });
+    return { ...out, meterId: metered?.id ?? null, tookMs: Date.now() - started };
   }
   // conversationId -> { timer, resolve } for the reply waiting to be written.
   const pending = new Map();
@@ -174,6 +181,28 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     }
   }
 
+  // TRN-09: what the reply relied on — the model's own account plus what the server knows for certain.
+  async function explainReply(ctx, answer, { messageIds, placed, booked }) {
+    if (!messageIds.length) return;
+    // A model missing from the price list isn't metered; the explanation still gets a (free) record.
+    if (!answer.meterId) answer.meterId = (await db.insert(db.aiReplies, { workspace_id: ctx.conversation.workspace_id, conversation_id: ctx.conversation._id, kind: 'reply', model: provider?.model ?? '', cost: 0, summary: 'Answered the customer' })).id;
+    const known = [];
+    if (answer.products.length) {
+      const list = await db.products.find({ _id: { $in: answer.products }, workspace_id: ctx.conversation.workspace_id }, { name: 1, price: 1 }).lean();
+      for (const p of list) known.push({ type: 'catalog', label: `${p.name} · ৳${Number(p.price).toLocaleString('en-IN')}`, note: 'live' });
+    }
+    if (placed?.order) known.push({ type: 'order', label: `Order #${placed.order.number} · ৳${(placed.order.subtotal + placed.order.delivery_charge - placed.order.discount).toLocaleString('en-IN')}`, note: placed.kind === 'changed' ? 'changed' : 'placed' });
+    if (placed?.order) known.push({ type: 'delivery', label: `${String(placed.order.zone ?? placed.order.area).replace(/_/g, ' ')} · ৳${placed.order.delivery_charge}`, note: 'settings' });
+    if (booked) known.push({ type: 'booking', label: `${booked.service} · ${dhakaParts(booked.starts_at).date} ${dhakaParts(booked.starts_at).time}`, note: 'booked' });
+    if (/## Offers for this customer/.test(ctx.context ?? '')) known.push({ type: 'offer', label: 'Offers this customer has', note: 'customer' });
+    if (/## About this customer/.test(ctx.context ?? '') && /Past orders:|Order #/.test(ctx.context ?? '')) known.push({ type: 'memory', label: 'Past orders and notes', note: 'customer' });
+    // The model's sources first; the server's facts fill in what it didn't mention.
+    const seen = new Set(answer.why.sources.map((s) => `${s.type}:${s.label.toLowerCase()}`));
+    const sources = [...answer.why.sources.map((s) => ({ ...s, note: '' })), ...known.filter((k) => !answer.why.sources.some((s) => s.type === k.type && s.label.toLowerCase().includes(k.label.split(' · ')[0].toLowerCase())) && !seen.has(`${k.type}:${k.label.toLowerCase()}`))];
+    await db.aiReplies.updateOne({ _id: answer.meterId }, { $set: { message_id: messageIds[0], steps: answer.why.steps, sources, version: ctx.workspace?.ai_version ?? null, took_ms: answer.tookMs ?? null } });
+    await db.messages.updateMany({ _id: { $in: messageIds } }, { $set: { ai_reply_id: answer.meterId } });
+  }
+
   // BKG-01: free slots (when the shop takes bookings) and this customer's upcoming bookings.
   async function bookingContext(workspace, customerId, now) {
     if (!workspace || modulesFor(workspace).bookings !== true) return '';
@@ -199,10 +228,12 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     const system = buildSystemPrompt(ctx);
     try {
       const contactName = ctx.conversation.contact_id ? (await db.contacts.findById(ctx.conversation.contact_id, { name: 1 }).lean())?.name ?? '' : '';
-      const { data } = await callModel(ctx.conversation.workspace_id, { system, context: ctx.context, messages: turns, schema: REPLY_SCHEMA },
+      const { data, meterId, tookMs } = await callModel(ctx.conversation.workspace_id, { system, context: ctx.context, messages: turns, schema: REPLY_SCHEMA },
         { kind, conversationId: ctx.conversation._id, customerName: contactName, summary: kind === 'draft' ? 'Drafted a reply' : 'Answered the customer' });
       lastError = null;
       const answer = normalize(data);
+      answer.meterId = meterId;
+      answer.tookMs = tookMs;
       return answer;
     } catch (err) {
       if (!err.paused) lastError = { message: err.message, at: new Date() };
@@ -394,10 +425,13 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     if (answer.handoff) await setHandoff(conversationId, answer.handoff_reason || 'The AI asked for a person to take over', { intent: answer.intent });
     // A question the shop information didn't cover goes to "Questions it couldn't answer" (TRN-04).
     if (answer.handoff && /^unanswered:/i.test(answer.handoff_reason ?? '')) await recordUnanswered(db, ctx.workspace._id, ctx.lastInbound?.text);
+    const sentIds = [];
+    const keep = (m) => { if (m?.id) sentIds.push(m.id); return m; };
     if (answer.reply) {
       const sent = answer.quick_replies.length && !placed
         ? await inbox.sendAiRich(conversationId, quickReplies(answer.reply, answer.quick_replies))
         : await inbox.sendAiReply(conversationId, answer.reply);
+      keep(sent);
       if (!sent) {
         await setHandoff(conversationId, "Meta's reply window has closed, so the AI couldn't answer. Please follow up.");
         await saveDraft(conversationId, answer, messageId);
@@ -411,14 +445,15 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
       const byId = new Map(list.map((p) => [p._id, p]));
       const pageUrl = await pageLinker(db, ctx.conversation.workspace_id, config.publicUrl || '', conversationId).catch(() => null);
       const rich = productCards(answer.products.map((id) => byId.get(id)).filter(Boolean), { publicUrl: config.publicUrl || '', pageUrl });
-      if (rich.payload.cards.length) await inbox.sendAiRich(conversationId, rich);
+      if (rich.payload.cards.length) keep(await inbox.sendAiRich(conversationId, rich));
     }
     if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product, { publicUrl: config.publicUrl || '' });
-    if (placed) await inbox.sendAiRich(conversationId, placed.rich);
+    if (placed) keep(await inbox.sendAiRich(conversationId, placed.rich));
     if (booked) {
-      const ok = await inbox.sendAiReply(conversationId, confirmationText(booked, ctx.workspace)).catch(() => null);
+      const ok = keep(await inbox.sendAiReply(conversationId, confirmationText(booked, ctx.workspace)).catch(() => null));
       if (ok) await db.bookings.updateOne({ _id: booked._id }, { $set: { confirmation_sent_at: new Date() } });
     }
+    await explainReply(ctx, answer, { messageIds: sentIds, placed, booked }).catch((err) => log.warn(`could not save why the AI replied: ${err.message}`));
     // PAY-03: an advance is needed before this order goes ahead.
     if (placed?.advance) await inbox.sendAiReply(conversationId, advanceMessage(ctx.workspace, placed.advance.amount));
     await inbox.refresh(conversationId);

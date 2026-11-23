@@ -342,6 +342,7 @@ function Messages({ t, messages, conversation }) {
               <time>{t.time(m.at)}</time>
               {m.status === 'failed' && <span className="error-text" title={m.error}>{t('inbox.failed')}</span>}
               {m.byAi && messages.indexOf(m) === lastAiIdx && <RateButtons t={t} messageId={m.id} />}
+              {m.byAi && m.why && <WhyButton t={t} conversationId={conversation.id} messageId={m.id} />}
             </div>
           </li>
         )))}
@@ -353,6 +354,12 @@ function Messages({ t, messages, conversation }) {
       )}
     </ol>
   );
+}
+
+// TRN-09: opens "Why did the AI say this?" for an AI reply.
+function WhyButton({ t, conversationId, messageId }) {
+  const { openOverlay } = useDash();
+  return <button type="button" className="msg-why" onClick={() => openOverlay('why', { conversationId, messageId })}>{t('why.link')}</button>;
 }
 
 function RateButtons({ t, messageId }) {
