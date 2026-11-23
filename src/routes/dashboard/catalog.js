@@ -5,6 +5,8 @@ import { need } from '../../dashboard/permissions.js';
 import { audit, escapeRegex } from '../../dashboard/util.js';
 import { cleanProduct, missing, stockState, variantLabel, LOW_STOCK_AT } from '../../dashboard/catalog.js';
 import { ensureShopSlug, onPage, productPageUrl } from '../../dashboard/productPage.js';
+import { wooStoreUrl, fetchWooProducts, syncWooProducts } from '../../dashboard/woo.js';
+import { encryptSecret, decryptSecret } from '../../secrets.js';
 import { parseCsv, productsFromRows, googleSheetCsvUrl } from '../../productImport.js';
 
 const FILTERS = ['all', 'in', 'low', 'out', 'needs', 'archived'];
@@ -161,6 +163,56 @@ export function catalogRoutes(db, config, { auth, fetchImpl = fetch }) {
     if (!p || !post) throw new InboxError(404, 'Product or post not found');
     return [p, post];
   }
+
+  // ONB-12 · WooCommerce: connect with a read-only REST API key, import, and sync again later.
+  const wooState = (w) => (w?.url ? { connected: true, url: w.url, keyEnd: w.key_end ?? '', lastSync: w.last_sync ?? null, last: w.last ?? null } : { connected: false });
+  const wooRun = async (req, store, key, secret) => {
+    const { products, skipped, more } = await fetchWooProducts({ store, key, secret, fetchImpl });
+    const { added, updated } = await syncWooProducts(db, req.user.workspace_id, products, { pickColour });
+    const last = { added, updated, skipped, more };
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: { 'settings.woo.last_sync': new Date(), 'settings.woo.last': last } });
+    await audit(db, req.user, `Synced WooCommerce: ${added} added, ${updated} updated`, { where: 'Catalog' });
+    return last;
+  };
+
+  router.get('/catalog/woo', auth, need(db, 'edit_products'), async (req, res) => {
+    const ws = await db.workspaces.findById(req.user.workspace_id, { 'settings.woo': 1 }).lean();
+    res.json(wooState(ws?.settings?.woo));
+  });
+
+  router.post('/catalog/woo', auth, need(db, 'edit_products'), async (req, res) => {
+    const key = String(req.body?.key ?? '').trim();
+    const secret = String(req.body?.secret ?? '').trim();
+    if (!/^ck_[A-Za-z0-9]{20,64}$/.test(key)) throw new InboxError(400, 'The Consumer key starts with ck_');
+    if (!/^cs_[A-Za-z0-9]{20,64}$/.test(secret)) throw new InboxError(400, 'The Consumer secret starts with cs_');
+    if (config.isProduction && !config.tokenKey) throw new InboxError(503, "The server is missing TOKEN_ENCRYPTION_KEY, so the store keys can't be stored safely yet");
+    const store = await wooStoreUrl(req.body?.url);
+    const last = await wooRun(req, store, key, secret); // only saved once the store has answered
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: {
+      'settings.woo.url': store, 'settings.woo.key': encryptSecret(key, config.tokenKey), 'settings.woo.secret': encryptSecret(secret, config.tokenKey), 'settings.woo.key_end': key.slice(-4),
+    } });
+    const ws = await db.workspaces.findById(req.user.workspace_id, { 'settings.woo': 1 }).lean();
+    res.status(201).json({ ...wooState(ws.settings.woo), last });
+  });
+
+  router.post('/catalog/woo/sync', auth, need(db, 'edit_products'), async (req, res) => {
+    const ws = await db.workspaces.findById(req.user.workspace_id, { 'settings.woo': 1 }).lean();
+    const w = ws?.settings?.woo;
+    if (!w?.url) throw new InboxError(400, 'Connect your WooCommerce store first');
+    let key = '';
+    let secret = '';
+    try { key = decryptSecret(w.key, config.tokenKey); secret = decryptSecret(w.secret, config.tokenKey); } catch { /* key changed on the server */ }
+    if (!key || !secret) throw new InboxError(400, 'The saved store keys can no longer be read. Connect the store again');
+    const last = await wooRun(req, await wooStoreUrl(w.url), key, secret);
+    const fresh = await db.workspaces.findById(req.user.workspace_id, { 'settings.woo': 1 }).lean();
+    res.json({ ...wooState(fresh.settings.woo), last });
+  });
+
+  router.delete('/catalog/woo', auth, need(db, 'edit_products'), async (req, res) => {
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $unset: { 'settings.woo': '' } });
+    await audit(db, req.user, 'Disconnected WooCommerce', { where: 'Catalog' });
+    res.json({ connected: false });
+  });
 
   // Import CSV / Google Sheet. Products whose name already exists are skipped, so importing twice is safe.
   router.post('/catalog/import', auth, need(db, 'edit_products'), async (req, res) => {

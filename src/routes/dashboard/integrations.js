@@ -29,6 +29,7 @@ export function integrationRoutes(db, config, { auth, emit }) {
         lastAt: last?.created_at ?? null, lastStatus: last?.status ?? null, lastError: failed?.error ?? '', testMode: Boolean(config.dryRun) },
       widget: { on: Boolean(widget) && !ws.settings?.widget?.off, setUp: Boolean(widget), ...w, chats7d: chats,
         snippet: widget ? `<script src="${base(req)}/w/${widget.external_id}.js" async></script>` : '', previewUrl: widget ? `${base(req)}/w/${widget.external_id}` : '' },
+      woo: { connected: Boolean(ws.settings?.woo?.url), url: ws.settings?.woo?.url ?? '' },
       canEdit: ['owner', 'admin'].includes(req.user.role),
     };
   }

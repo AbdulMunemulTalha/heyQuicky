@@ -5,6 +5,7 @@ import { useDash } from '../lib/context.js';
 import { Link, navigate, setQuery, useLocation } from '../lib/router.jsx';
 import { Icon } from '../ui/icons.jsx';
 import { Button, Empty, ErrorState, Kpi, Modal, PageHead, Pill, Skeleton, toast } from '../ui/kit.jsx';
+import WooDialog from './WooDialog.jsx';
 import './catalog.css';
 
 const FILTERS = ['all', 'in', 'low', 'out'];
@@ -80,12 +81,7 @@ export default function Catalog() {
           <ul className="cat-grid">{d.products.map((p) => <ProductCard key={p.id} t={t} p={p} />)}</ul>
         )}
       {importing && <ImportDialog t={t} onClose={() => setImporting(false)} onDone={() => { setImporting(false); load(); }} />}
-      {woo && (
-        <Modal title={t('cat.woo')} onClose={() => setWoo(false)} footer={<><Button onClick={() => setWoo(false)}>{t('common.close')}</Button><Button variant="primary" onClick={() => { setWoo(false); setImporting(true); }}>{t('cat.import')}</Button></>}>
-          <p>{t('cat.wooSoon')}</p>
-          <p className="small muted">{t('cat.wooHow')}</p>
-        </Modal>
-      )}
+      {woo && <WooDialog t={t} onClose={() => setWoo(false)} onDone={load} />}
     </div>
   );
 }

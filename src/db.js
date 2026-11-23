@@ -338,6 +338,8 @@ function defineModels(conn) {
     visibility: { type: String, enum: ['everywhere', 'ai_only', 'hidden'], default: 'everywhere' },
     size_chart_id: { type: Number, default: null },
     upsell_ids: { type: [Number], default: [] },
+    // ONB-12: the product's id in the shop's WooCommerce store, so syncing again updates it.
+    woo_id: { type: Number, default: null },
     archived: { type: Boolean, default: false },
     sold_count: { type: Number, default: 0 },
     restock_waiting: { type: Number, default: 0 },

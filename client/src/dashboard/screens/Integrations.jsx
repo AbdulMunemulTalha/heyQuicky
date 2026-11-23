@@ -3,16 +3,18 @@ import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { navigate, setQuery } from '../lib/router.jsx';
 import { Button, ErrorState, Pill, Skeleton, Toggle, toast } from '../ui/kit.jsx';
+import WooDialog from './WooDialog.jsx';
+import './catalog.css';
 import './integrations.css';
 
-// The cards in the frame. Only the Conversions API and the website widget are built; the rest come later.
+// The cards in the frame. The Conversions API, the website widget and WooCommerce import are built; the rest come later.
 const GROUPS = [
   ['ads', [['capi', 'CA', '#1877f2'], ['ga', 'GA', '#e37400']]],
   ['website', [['widget', 'W', '#2b4bff'], ['shoplink', 'SL', '#111']]],
   ['stores', [['woo', 'Wo', '#7f54b3'], ['shopify', 'Sh', '#5e8e3e'], ['sheets', 'GS', '#188038']]],
   ['tools', [['extension', 'Ch', '#333'], ['webhooks', '{ }', '#6d28d9']]],
 ];
-const BUILT = ['capi', 'widget'];
+const BUILT = ['capi', 'widget', 'woo'];
 const EVENT_ORDER = ['purchase', 'lead', 'add_to_cart', 'delivered'];
 
 // Phase 2 · Integrations (ANL-09, INT-02), frame "Integrations".
@@ -28,10 +30,11 @@ export default function Integrations({ query }) {
   const state = (k) => {
     if (k === 'capi') return d.capi.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
     if (k === 'widget') return d.widget.on ? ['green', t('in.live')] : ['gray', t('in.notSetUp')];
+    if (k === 'woo') return d.woo?.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
     return ['blue', t('in.comingLater')];
   };
   return (
-    <div className={`integrations${open ? ' with-panel' : ''}`}>
+    <div className={`integrations${open && open !== 'woo' ? ' with-panel' : ''}`}>
       <div className="in-main">
         <button type="button" className="in-back" onClick={() => navigate('/settings')}>← {t('nav.settings')}</button>
         <header className="page-head"><div><h1>{t('in.title')}</h1><p className="page-sub">{t('in.sub')}</p></div></header>
@@ -56,6 +59,7 @@ export default function Integrations({ query }) {
       </div>
       {open === 'capi' && <CapiPanel t={t} d={d} onChange={setD} onClose={() => setQuery({ open: null })} />}
       {open === 'widget' && <WidgetPanel t={t} d={d} onChange={setD} onClose={() => setQuery({ open: null })} />}
+      {open === 'woo' && <WooDialog t={t} onClose={() => { setQuery({ open: null }); load(); }} onDone={load} />}
     </div>
   );
 }
