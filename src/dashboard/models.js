@@ -148,6 +148,20 @@ export function defineDashboardModels(conn) {
     created_at: createdAt,
   }, { versionKey: false });
 
+  // UX-05: a feature request; shared between shops (voters), workspace_id is the shop that asked first.
+  const featureRequest = S({
+    created_by: { type: Number, default: null },
+    title: { type: String, required: true },
+    text: { type: String, default: '' },
+    voice: { type: String, default: '' },
+    status: { type: String, enum: ['reviewing', 'planned', 'in_progress', 'done', 'not_now'], default: 'reviewing', index: true },
+    note: { en: { type: String, default: '' }, bn: { type: String, default: '' } },
+    link: { type: String, default: '' },
+    voters: { type: [Number], default: [], index: true },
+    merged_into: { type: Number, default: null },
+    released_at: { type: Date, default: null },
+  });
+
   // HND-05: a one-time code that connects the Chrome extension (expires on its own).
   const extensionCode = new Schema({ _id: String, user_id: { type: Number, required: true }, expires_at: { type: Date, required: true, expires: 0 } }, { versionKey: false });
 
@@ -559,6 +573,7 @@ export function defineDashboardModels(conn) {
     checkouts: conn.model('Checkout', checkout, 'checkouts'),
     extensionCodes: conn.model('ExtensionCode', extensionCode, 'extension_codes'),
     announcements: conn.model('Announcement', announcement, 'announcements'),
+    featureRequests: conn.model('FeatureRequest', featureRequest, 'feature_requests'),
     aiReplies: conn.model('AiReply', aiReply, 'ai_replies'),
     credit: conn.model('CreditEntry', creditEntry, 'credit_ledger'),
     notifications: conn.model('Notification', notification, 'notifications'),

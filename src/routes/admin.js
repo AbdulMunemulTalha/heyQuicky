@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { Router, json } from 'express';
 import { approveTopup, rejectTopup } from '../dashboard/credit.js';
 import { cleanAnnouncement, RELEASES } from '../dashboard/announcements.js';
+import { mergeRequests, updateRequest } from '../dashboard/requests.js';
 
 // HeyQuicky's own admin endpoints, behind ADMIN_TOKEN (HTTP Basic, any user name). Off when it isn't set.
 export function adminAuth(config, realm = 'HeyQuicky admin') {
@@ -28,11 +29,26 @@ export function adminRoutes(db, config, { notify = null } = {}) {
   router.post('/admin/announcements', guard, json(), async (req, res) => {
     let a;
     try { a = cleanAnnouncement(req.body); } catch (err) { return res.status(400).json({ error: err.message }); }
-    res.status(201).json(await db.insert(db.announcements, a));
+    const added = await db.insert(db.announcements, a);
+    res.status(201).json(await db.announcements.findById(added.id).lean());
   });
   router.delete('/admin/announcements/:id', guard, async (req, res) => {
     await db.announcements.deleteOne({ _id: Number(req.params.id) });
     res.json({ ok: true });
+  });
+
+  // UX-05: feature requests from shops, the most wanted first.
+  router.get('/admin/requests', guard, async (req, res) => {
+    const where = { merged_into: null, ...(req.query.status ? { status: String(req.query.status) } : {}) };
+    const rows = await db.featureRequests.find(where).lean();
+    const shops = new Map((await db.workspaces.find({ _id: { $in: [...new Set(rows.flatMap((r) => r.voters ?? []))] } }, { name: 1 }).lean()).map((w) => [w._id, w.name]));
+    res.json({ requests: rows.sort((a, b) => (b.voters?.length ?? 0) - (a.voters?.length ?? 0)).map((r) => ({ ...r, votes: r.voters?.length ?? 0, shops: (r.voters ?? []).map((v) => shops.get(v) ?? v) })) });
+  });
+  router.patch('/admin/requests/:id', guard, json(), async (req, res) => {
+    try { res.json(await updateRequest(db, req.params.id, req.body ?? {}, { notify })); } catch (err) { res.status(err.status ?? 500).json({ error: err.message }); }
+  });
+  router.post('/admin/requests/:id/merge', guard, json(), async (req, res) => {
+    try { res.json(await mergeRequests(db, req.params.id, req.body?.into)); } catch (err) { res.status(err.status ?? 500).json({ error: err.message }); }
   });
 
   router.get('/admin/topups', guard, async (_req, res) => {

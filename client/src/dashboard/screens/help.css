@@ -54,3 +54,32 @@
 #dash .wn-help { position: relative; }
 #dash .wn-help-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: #2B4BFF; box-shadow: 0 0 0 2px var(--panel, #fff); }
 @media (max-width: 700px) { #dash .wn-bar { flex-wrap: wrap; } }
+
+/* UX-05 · Requests */
+#dash .rq { display: flex; flex-direction: column; gap: 8px; }
+#dash .rq-label { font-weight: 600; font-size: 13px; }
+#dash .rq-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#dash .rq-row .btn { justify-content: center; }
+#dash .rq-speak { user-select: none; touch-action: none; }
+#dash .rq-speak.on { background: #fdecec; border-color: #d92d20; color: #b42318; }
+#dash .rq-voice { display: flex; align-items: center; gap: 6px; }
+#dash .rq-voice audio { height: 32px; flex: 1; }
+#dash .rq-x { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 6px; font-size: 16px; }
+#dash .rq-x:focus-visible, #dash .rq-vote:focus-visible, #dash .rq-link:focus-visible { outline: 2px solid var(--accent, #2B4BFF); outline-offset: 2px; }
+#dash .rq-similar { display: flex; flex-direction: column; gap: 6px; background: var(--panel-2, #f7f7f5); border-radius: 10px; padding: 10px; }
+#dash .rq-h { margin: 14px 0 2px; font-size: 13px; }
+#dash .rq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+#dash .rq-item { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--panel, #fff); }
+#dash .rq-item strong, #dash .rq-item small { display: block; }
+#dash .rq-item small { margin-top: 2px; }
+#dash .rq-vote { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center; min-width: 34px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; line-height: 1.2; }
+#dash .rq-vote strong { font-size: 13px; }
+#dash .rq-vote.on { background: #eef2ff; border-color: #2B4BFF; color: #1c3a99; }
+#dash .rq-vote:disabled { cursor: default; }
+#dash .rq-pill { flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+#dash .rq-pill.tone-yellow { background: #fde68a; color: #6b4e00; }
+#dash .rq-pill.tone-purple { background: #ede4ff; color: #5b21b6; }
+#dash .rq-pill.tone-blue { background: #dbe4ff; color: #1c3a99; }
+#dash .rq-pill.tone-green { background: #d7f2e1; color: #14532d; }
+#dash .rq-pill.tone-gray { background: #eceee8; color: #4b5160; }
+#dash .rq-link { all: unset; cursor: pointer; color: var(--accent, #2B4BFF); }
