@@ -3,10 +3,10 @@ import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
 import { navigate, setQuery } from '../lib/router.jsx';
-import { Button, Card, Empty, ErrorState, Pill, Skeleton, Tabs, Toggle, toast } from '../ui/kit.jsx';
+import { Button, Card, Empty, ErrorState, Modal, Pill, Skeleton, Tabs, Toggle, toast } from '../ui/kit.jsx';
 import './agent.css';
 
-const TABS = ['unanswered', 'rules', 'versions'];
+const TABS = ['unanswered', 'rules', 'versions', 'selftest'];
 const CAT_TONE = { price: 'blue', handoff: 'yellow', tone: 'green', delivery: 'gray', safety: 'red', selling: 'purple', never: 'red', other: 'gray' };
 // Gaps that stop the AI from selling are red; the rest are yellow.
 const URGENT = ['products', 'prices', 'delivery', 'payment', 'policy'];
@@ -97,11 +97,13 @@ export default function Training({ query }) {
             { key: 'unanswered', label: t('tr.tab.unanswered'), count: d.unanswered.length },
             { key: 'rules', label: t('tr.tab.rules'), count: d.rules.filter((x) => x.enabled).length },
             { key: 'versions', label: t('tr.tab.versions'), count: d.versions[0]?.number },
+            { key: 'selftest', label: d.selftestBroke ? t('st.tabBroke', { n: d.selftestBroke }) : t('st.tab') },
           ]} />
         </div>
         {tab === 'unanswered' && <Unanswered t={t} d={d} days={days} teach={teach} openOverlay={openOverlay} onChange={load} />}
         {tab === 'rules' && <Rules t={t} d={d} teach={teach} onChange={load} />}
         {tab === 'versions' && <Versions t={t} d={d} teach={teach} onChange={load} />}
+        {tab === 'selftest' && <SelfTest t={t} teach={teach} onChange={load} />}
       </div>
     </div>
   );
@@ -245,5 +247,86 @@ function Versions({ t, d, teach, onChange }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// TRN-06 · Self-test (frame "Weekly self-test"): every Monday 3 AM, and after changes, the AI re-asks itself
+// every taught answer. Broken ones are listed first with what went wrong and a Fix.
+function SelfTest({ t, teach, onChange }) {
+  const { socket } = useDash();
+  const [d, setD] = useState(null);
+  const [fixing, setFixing] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => dash('/training/selftest').then(setD, (err) => toast(err.message, 'red')), []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!socket) return undefined;
+    const fn = () => { load(); onChange?.(); };
+    socket.on('selftest', fn);
+    return () => socket.off('selftest', fn);
+  }, [socket, load, onChange]);
+  // While a run is going, check back every few seconds too (in case the live update is missed).
+  useEffect(() => {
+    if (!d?.running) return undefined;
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, [d?.running, load]);
+  if (!d) return <Skeleton h={240} r={12} />;
+  const r = d.last;
+  async function runNow() {
+    setBusy(true);
+    try { await dash('/training/selftest/run', { method: 'POST' }); toast(t('st.started'), 'green'); setD((x) => ({ ...x, running: true })); } catch (err) { toast(err.message, 'red'); } finally { setBusy(false); }
+  }
+  const when = (iso) => new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Dhaka' });
+  return (
+    <div className="st">
+      <div className="st-kpis">
+        <div><small>{t('st.tested')}</small><strong>{r ? t.num(r.tested) : '—'}</strong></div>
+        <div><small>{t('st.passed')}</small><strong className="green">{r ? t.num(r.passed) : '—'}</strong></div>
+        <div><small>{t('st.broke')}</small><strong className={r?.broke ? 'red' : ''}>{r ? t.num(r.broke) : '—'}</strong></div>
+        <div><small>{t('st.lastRun')}</small><strong>{r ? when(r.finishedAt ?? r.startedAt) : t('st.never')}</strong></div>
+      </div>
+      <div className="row st-bar">
+        <p className="small muted grow">{t('st.how', { next: when(d.nextRun) })}</p>
+        {teach && <Button busy={busy || d.running} disabled={!d.aiReady || !d.taught} onClick={runNow}>{d.running ? t('st.running') : t('st.runNow')}</Button>}
+      </div>
+      {!d.taught ? <p className="small muted">{t('st.noneTaught')}</p> : !r ? <p className="small muted">{d.running ? t('st.firstRunning') : t('st.noRun')}</p> : (
+        <ul className="st-list">
+          {r.results.map((x) => (
+            <li key={x.taughtId} className={x.pass ? '' : 'bad'}>
+              <span className={`st-ico${x.pass ? '' : ' bad'}`} aria-hidden="true">{x.pass ? '✓' : '!'}</span>
+              <span className="grow bn-ok">{x.question}</span>
+              <small className="muted">{x.pass ? t('st.pass', { note: x.note }) : t('st.brokeNote', { v: x.brokeAfter ?? '?', note: x.note })}</small>
+              {!x.pass && teach && <Button size="sm" onClick={() => setFixing(x)}>{t('st.fix')}</Button>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {fixing && <FixTaught t={t} x={fixing} onClose={() => setFixing(null)} onDone={(run) => { setFixing(null); if (run) setD((y) => ({ ...y, last: run })); onChange?.(); }} />}
+    </div>
+  );
+}
+
+function FixTaught({ t, x, onClose, onDone }) {
+  const [answer, setAnswer] = useState(x.expected);
+  const [busy, setBusy] = useState(false);
+  async function save() {
+    setBusy(true);
+    try {
+      const r = await dash('/training/selftest/fix', { method: 'POST', body: { taughtId: x.taughtId, answer } });
+      const now = r.run?.results.find((y) => y.taughtId === x.taughtId);
+      toast(now ? t(now.pass ? 'st.fixedPass' : 'st.fixedStill', { v: r.version }) : t('st.fixed', { v: r.version }), now && !now.pass ? 'yellow' : 'green');
+      onDone(r.run);
+    } catch (err) { toast(err.message, 'red'); setBusy(false); }
+  }
+  return (
+    <Modal title={t('st.fixTitle')} subtitle={x.question} onClose={onClose} width={520}
+      footer={<><Button onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" busy={busy} disabled={!answer.trim()} onClick={save}>{t('st.fixSave')}</Button></>}>
+      <p className="small"><strong>{t('st.aiSaid')}</strong></p>
+      <p className="st-said bn-ok">{x.reply || '—'}</p>
+      <p className="small muted">{x.note}</p>
+      <div className="field"><label htmlFor="st-ans">{t('st.rightAnswer')}</label><textarea id="st-ans" rows={4} className="bn-ok" value={answer} onChange={(e) => setAnswer(e.target.value)} maxLength={2000} /></div>
+      <p className="small muted">{t('st.fixHow')}</p>
+    </Modal>
   );
 }

@@ -7,6 +7,7 @@ import { runMigrations } from './dashboard/migrations.js';
 import { startCourierSync } from './routes/dashboard/orderDetail.js';
 import { startFollowups } from './dashboard/followups.js';
 import { startBookingReminders } from './dashboard/bookings.js';
+import { startSelfTests } from './dashboard/selftest.js';
 import { startPageSubscriptions } from './dashboard/pageSubscriptions.js';
 import { startSlaWatch } from './dashboard/team.js';
 import { remindCallbacks } from './dashboard/callbacks.js';
@@ -29,11 +30,12 @@ if (config.sqliteImportPath && existsSync(config.sqliteImportPath) && !(await db
   console.log(`Done: ${Object.values(counts).reduce((a, b) => a + b, 0)} records copied.`);
 }
 await runMigrations(db, { log: (line) => console.log(line) });
-const { server, inbox, io, notify, deliveryUpdates } = createApp(db, config);
+const { server, inbox, io, notify, deliveryUpdates, agent } = createApp(db, config);
 // Parcels on the way are checked with their courier every 30 minutes (CRR-02).
 // Follow-up reminders for customers who went quiet are checked every 5 minutes (FUP-01).
 startFollowups(db, inbox);
 startBookingReminders(db, inbox);
+startSelfTests(db, agent, { notify });
 // Connected Pages also get button taps from cards (screen 24).
 startPageSubscriptions(db, config);
 startSlaWatch(db, notify);

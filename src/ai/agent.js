@@ -22,6 +22,7 @@ import { fetchAttachment, IMAGE_TYPES, MAX_IMAGE_BYTES } from './media.js';
 import { MAX_AUDIO_BYTES } from './transcribe.js';
 import { decryptSecret } from '../secrets.js';
 import { pageLinker } from '../dashboard/productPage.js';
+import { JUDGE_SCHEMA, judgePrompt } from '../dashboard/selftest.js';
 
 // After a person replies (or the AI hands off), the AI stays out of that
 // conversation in auto mode for this long, then may answer again.
@@ -600,8 +601,19 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     replyToComment,
     matchPost,
 
+    // TRN-06: does this reply still give the taught facts? A short, metered judge call.
+    async judgeAnswer(workspaceId, { question, expected, reply }) {
+      if (!provider) throw new InboxError(503, 'AI replies are not set up on this server yet');
+      const { data } = await callModel(workspaceId, {
+        system: judgePrompt(),
+        messages: [{ role: 'user', content: `Customer asked: ${String(question).slice(0, 300)}\n\nTaught answer: ${String(expected).slice(0, 1200)}\n\nAssistant replied: ${String(reply || '(nothing)').slice(0, 1200)}` }],
+        schema: JUDGE_SCHEMA,
+      }, { kind: 'selftest', summary: 'Self-test check', customerName: 'Self-test' });
+      return { pass: Boolean(data?.pass), note: String(data?.note ?? '').trim().slice(0, 140) };
+    },
+
     // Practice chat during onboarding: the owner plays a customer. Nothing is stored or sent to Meta.
-    async practice(user, turns, { extraNotes = '', withActions = false } = {}) {
+    async practice(user, turns, { extraNotes = '', withActions = false, kind = 'practice' } = {}) {
       if (!provider) throw new InboxError(503, 'AI replies are not set up on this server yet');
       if (!Array.isArray(turns) || !turns.length || turns.length > 30) throw new InboxError(400, 'Send the practice conversation');
       const messages = turns.map((t) => ({
@@ -625,7 +637,7 @@ ${extraNotes}` } : trained;
       try {
         const { data } = await callModel(user.workspace_id, {
           system: buildSystemPrompt({ workspace, products, savedReplies, coupons: modulesFor(workspace).coupons === false ? [] : aiCoupons(coupons) }), messages: turnsForModel, schema: REPLY_SCHEMA,
-        }, { kind: 'practice', summary: 'Test chat', customerName: 'Test chat' });
+        }, { kind, summary: kind === 'selftest' ? 'Self-test' : 'Test chat', customerName: kind === 'selftest' ? 'Self-test' : 'Test chat' });
         lastError = null;
         const answer = normalize(data);
         // Onboarding's practice chat keeps its original answer shape (reply, handoff, reason, intent).

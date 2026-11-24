@@ -3,6 +3,7 @@ import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
 import { audit } from '../../dashboard/util.js';
 import { publish, rollback } from '../../dashboard/training.js';
+import { runSelfTest, nextWeeklyRun } from '../../dashboard/selftest.js';
 import { readiness } from '../../dashboard/readiness.js';
 
 // Frame "Training — rules": Price, Handoff, Tone, Delivery, Safety (older categories still shown).
@@ -72,10 +73,47 @@ const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 // Phase 2 · Training (TRN-02/03/04/05/07): readiness and gaps, unanswered questions,
 // the rules the AI always follows (with a preview), versions with rollback, and
 // teaching the AI from a reply in a chat.
-export function trainingRoutes(db, _config, { auth, agent, emit }) {
+export function trainingRoutes(db, _config, { auth, agent, emit, notify }) {
   const router = Router();
   const teach = need(db, 'teach_ai');
   const aiReady = () => Boolean(agent?.status().available);
+
+  // TRN-06 · Self-test: the latest run, and running it now.
+  const runView = (r) => r && ({ id: r._id, trigger: r.trigger, version: r.version, status: r.status, startedAt: r.started_at, finishedAt: r.finished_at, tested: r.tested, passed: r.passed, broke: r.broke,
+    results: (r.results ?? []).map((x) => ({ taughtId: x.taught_id, question: x.question, expected: x.expected, reply: x.reply, pass: x.pass, note: x.note, brokeAfter: x.broke_after })).sort((a, b) => Number(a.pass) - Number(b.pass)) });
+  router.get('/training/selftest', auth, async (req, res) => {
+    const ws = req.user.workspace_id;
+    const [last, running, taught] = await Promise.all([
+      db.selfTestRuns.findOne({ workspace_id: ws, status: 'done' }).sort({ _id: -1 }).lean(),
+      db.selfTestRuns.findOne({ workspace_id: ws, status: 'running', started_at: { $gt: new Date(Date.now() - 30 * 60_000) } }).lean(),
+      db.taughtAnswers.countDocuments({ workspace_id: ws }),
+    ]);
+    res.json({ last: runView(last), running: Boolean(running), taught, nextRun: nextWeeklyRun(), aiReady: aiReady() });
+  });
+  router.post('/training/selftest/run', auth, teach, async (req, res) => {
+    if (!aiReady()) throw new InboxError(503, 'The AI is not set up on this server yet');
+    const ws = req.user.workspace_id;
+    if (!(await db.taughtAnswers.exists({ workspace_id: ws }))) throw new InboxError(400, 'Teach the AI an answer first — the self-test re-asks taught answers');
+    if (await db.selfTestRuns.exists({ workspace_id: ws, status: 'running', started_at: { $gt: new Date(Date.now() - 30 * 60_000) } })) throw new InboxError(409, 'A self-test is already running');
+    // It takes a minute or two; the screen hears when it's done.
+    runSelfTest(db, agent, ws, { trigger: 'manual', notify }).then(() => emit?.(ws, 'selftest', {})).catch((err) => console.warn(`self-test: ${err.message}`));
+    await audit(db, req.user, 'Ran the AI self-test', { where: 'AI training' });
+    res.status(202).json({ started: true });
+  });
+  // Fix: correct the taught answer, publish, and test that question again straight away.
+  router.post('/training/selftest/fix', auth, teach, async (req, res) => {
+    const t = await db.taughtAnswers.findOne({ _id: Number(req.body?.taughtId), workspace_id: req.user.workspace_id }).lean();
+    if (!t) throw new InboxError(404, 'Taught answer not found');
+    const answer = String(req.body?.answer ?? '').trim().slice(0, 2000);
+    if (!answer) throw new InboxError(400, 'Write the right answer');
+    await db.taughtAnswers.updateOne({ _id: t._id }, { $set: { answer } });
+    const v = await publish(db, req.user, `Fixed a taught answer: ${t.question.slice(0, 60)}`, 'selftest');
+    await db.taughtAnswers.updateOne({ _id: t._id }, { $set: { version: v.number } });
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $unset: { 'settings.selftest_due_at': '' } }); // this one is re-tested now
+    await audit(db, req.user, `Published AI version ${v.number} (fixed after self-test)`, { where: 'AI training' });
+    const run = aiReady() ? await runSelfTest(db, agent, req.user.workspace_id, { trigger: 'manual', onlyIds: [t._id], notify }) : null;
+    res.json({ version: v.number, run: runView(run) });
+  });
 
   router.get('/training', auth, async (req, res) => {
     const ws = req.user.workspace_id;
@@ -99,6 +137,7 @@ export function trainingRoutes(db, _config, { auth, agent, emit }) {
       unanswered: unanswered.map((u) => ({ id: u._id, question: u.question, count: u.count, lastAt: u.last_asked_at, topic: topicOf(u.question) })),
       rules: rules.map((r) => ({ id: r._id, text: r.text, category: r.category, enabled: r.enabled, author: r.author, at: r.created_at })),
       versions: versions.map((v, i) => ({ id: v._id, number: v.number, summary: v.summary, by: v.by_name, source: v.source, at: v.created_at, live: i === 0 })),
+      selftestBroke: (await db.selfTestRuns.findOne({ workspace_id: ws, status: 'done' }, { broke: 1 }).sort({ _id: -1 }).lean())?.broke ?? null,
     });
   });
 

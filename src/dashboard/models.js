@@ -325,6 +325,19 @@ export function defineDashboardModels(conn) {
     revoked_at: { type: Date, default: null },
   });
 
+  // TRN-06: one self-test run of every taught answer.
+  const selfTestRun = S({
+    trigger: { type: String, default: 'manual' }, // weekly | publish | manual
+    version: { type: Number, default: null },
+    status: { type: String, enum: ['running', 'done'], default: 'running' },
+    started_at: { type: Date, default: () => new Date() },
+    finished_at: { type: Date, default: null },
+    tested: { type: Number, default: 0 },
+    passed: { type: Number, default: 0 },
+    broke: { type: Number, default: 0 },
+    results: { type: [Mixed], default: [] }, // [{ taught_id, question, expected, reply, pass, note, newly_broken, broke_after }]
+  });
+
   const broadcast = S({
     audience: { type: Mixed, default: {} },
     format: { type: String, default: 'text' },
@@ -498,6 +511,7 @@ export function defineDashboardModels(conn) {
     followups: conn.model('Followup', followup, 'followups'),
     broadcasts: conn.model('Broadcast', broadcast, 'broadcasts'),
     offers: conn.model('Offer', offer, 'offers'),
+    selfTestRuns: conn.model('SelfTestRun', selfTestRun, 'selftest_runs'),
     webhookDeliveries: conn.model('WebhookDelivery', webhookDelivery, 'webhook_deliveries'),
     apiKeys: conn.model('ApiKey', apiKey, 'api_keys'),
     bookings: conn.model('Booking', booking, 'bookings'),

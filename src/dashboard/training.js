@@ -1,4 +1,5 @@
 import { normalize } from './autoAnswer.js';
+import { selfTestAfterPublish } from './selftest.js';
 
 // What the shop taught the AI (TRN-01/02/05/10), as text added to the shop information in the prompt.
 export async function trainedNotes(db, workspaceId) {
@@ -50,6 +51,7 @@ export async function snapshot(db, workspaceId) {
 
 export async function publish(db, user, summary, source = '') {
   const ws = await db.workspaces.findOneAndUpdate({ _id: user.workspace_id }, { $inc: { ai_version: 1 } }, { new: true, lean: true });
+  await selfTestAfterPublish(db, ws._id).catch(() => {});
   return db.insert(db.aiVersions, { workspace_id: ws._id, number: ws.ai_version, summary, by_name: user.name, source, snapshot: await snapshot(db, ws._id) });
 }
 
