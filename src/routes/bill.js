@@ -4,6 +4,7 @@ import { orderTotal } from '../dashboard/orderOps.js';
 import { zonesFor } from '../dashboard/orderBuild.js';
 import { trackingUrl } from '../platforms/rich.js';
 import { teamId } from '../dashboard/brands.js';
+import { onlineFor, openCheckout, checkoutAmount, gatewaySettings } from '../dashboard/gateway.js';
 
 // Screen 20 / ORD-03: the customer's bill — a public page behind an unguessable link (/b/:token),
 // Bangla first, readable on any phone without JavaScript. Shows the live status, lets the customer
@@ -26,6 +27,7 @@ const T = {
     courier: 'কুরিয়ার', tracking: 'ট্র্যাকিং নম্বর', track: 'পার্সেল ট্র্যাক করুন',
     message: 'মেসেজ করুন', call: 'কল করুন', cancelAsk: 'অর্ডার বাতিল করতে চাই', cancelConfirm: 'অর্ডার বাতিলের অনুরোধ পাঠাবেন? শপ আপনার সাথে যোগাযোগ করবে।', cancelSent: 'বাতিলের অনুরোধ পাঠানো হয়েছে। শপ শীঘ্রই যোগাযোগ করবে।',
     powered: 'Powered by HeyQuicky', notFound: 'এই বিলটি পাওয়া যায়নি', notFoundBody: 'লিংকটি ভুল হতে পারে। শপকে মেসেজ করে আবার লিংক চান।', badPhone: 'ফোন নম্বর ১১ সংখ্যার হতে হবে এবং ০১৩–০১৯ দিয়ে শুরু হবে', badTrx: 'TrxID ঠিকমতো লিখুন (৮–১২ অক্ষর)', badAddress: 'নতুন ঠিকানা লিখুন', dupTrx: 'এই TrxID আগেই পাঠানো হয়েছে',
+    payOnline: (n) => `${n} অগ্রিম অনলাইনে দিন`, payFull: (n) => `পুরো ${n} অনলাইনে দিন`, fullOff: (p) => `${p}% ছাড়`, onlineHint: 'বিকাশ, নগদ বা কার্ড — পেমেন্ট হলেই কনফার্ম, TrxID লাগবে না', orManual: 'অথবা Send Money করে TrxID দিন',
   },
   en: {
     lang: 'বাংলা', order: 'Order', hero: { pending: 'We got your order', approved: 'Your order is confirmed 🎉', ready_to_ship: 'Your parcel is being packed 📦', in_transit: 'Your parcel is on the way 🚚', delivered: 'Delivered ✅', cancelled: 'This order was cancelled', returned: 'This parcel went back' },
@@ -39,6 +41,7 @@ const T = {
     courier: 'Courier', tracking: 'Tracking number', track: 'Track parcel',
     message: 'Message', call: 'Call', cancelAsk: 'I want to cancel this order', cancelConfirm: 'Send a cancel request? The shop will contact you.', cancelSent: 'Cancel request sent. The shop will contact you soon.',
     powered: 'Powered by HeyQuicky', notFound: "This bill wasn't found", notFoundBody: 'The link may be wrong. Message the shop for a new one.', badPhone: 'The phone number should be 11 digits and start with 013–019', badTrx: 'Enter the TrxID (8–12 letters and numbers)', badAddress: 'Write the new address', dupTrx: 'This TrxID was already sent',
+    payOnline: (n) => `Pay ${n} advance online`, payFull: (n) => `Pay the full ${n} online`, fullOff: (p) => `${p}% off`, onlineHint: 'bKash, Nagad or card — confirmed as soon as you pay, no TrxID needed', orManual: 'Or Send Money and enter the TrxID',
   },
 };
 
@@ -111,6 +114,20 @@ export function billRoutes(db, config, { notify = null } = {}) {
     } catch (err) { next(err); }
   });
 
+  // PAY-02: pay online — opens (or reuses) a checkout and goes to the pay page.
+  router.post('/b/:token/online', form, async (req, res, next) => {
+    try {
+      const lang = req.body.lang === 'en' ? 'en' : 'bn';
+      const order = await load(req.params.token);
+      if (!order || !OPEN.includes(order.status) || order.paid_in_full) return res.redirect(303, back(req, lang));
+      const ws = await db.workspaces.findById(order.workspace_id).lean();
+      const purpose = req.body.purpose === 'full' ? 'full' : 'advance';
+      const c = await openCheckout(db, ws, { order, purpose }).catch(() => null);
+      if (!c) return res.redirect(303, back(req, lang));
+      res.redirect(303, `/pay/${c.token}${lang === 'en' ? '?lang=en' : ''}`);
+    } catch (err) { next(err); }
+  });
+
   // "I want to cancel": the shop decides (and can call); nothing is cancelled automatically.
   router.post('/b/:token/cancel', form, async (req, res, next) => {
     try {
@@ -161,6 +178,11 @@ export function billRoutes(db, config, { notify = null } = {}) {
       : page_?.platform === 'whatsapp' ? `https://wa.me/${String(page_.name ?? '').replace(/\D/g, '').replace(/^0/, '880')}` : '';
     const flash = { change: t.changeSent, pay: t.paySent, cancel: t.cancelSent, 'err-phone': t.badPhone, 'err-trx': t.badTrx, 'err-address': t.badAddress, 'err-dup': t.dupTrx }[done];
     const advanceAmount = order.advance?.amount || ws?.settings?.advance?.amount || 300;
+    const onlineAdvance = open && !order.paid_in_full && order.advance?.amount && !order.advance?.verified && onlineFor(ws, 'advance');
+    const onlineFull = open && !order.paid_in_full && onlineFor(ws, 'full');
+    const fullAmount = onlineFull ? await checkoutAmount(db, ws, { order, purpose: 'full' }) : 0;
+    const fullOff = gatewaySettings(ws).use.full_discount || 0;
+    const onlineForm = (purpose, label) => `<form method="post" action="/b/${esc(order.bill_token)}/online">${lang === 'en' ? '<input type="hidden" name="lang" value="en">' : ''}<input type="hidden" name="purpose" value="${purpose}"><button class="btn full">${esc(label)}</button></form>`;
     const courier = order.courier ? String(order.courier).toLowerCase() : '';
     const track = trackingUrl(courier, order.consignment_id);
     const L = lang === 'en' ? '<input type="hidden" name="lang" value="en">' : '';
@@ -209,9 +231,12 @@ ${courier && ['in_transit', 'delivered', 'shipped'].includes(order.status) ? `<s
     <label>${t.newPhone}<input name="phone" inputmode="tel" maxlength="20"></label>
     <div class="row"><a class="btn ghost" href="#">${t.cancel}</a><button class="btn">${t.send}</button></div></form>` : ''}
 </section>
-${open && !order.paid_in_full && (ws?.bkash_number || ws?.nagad_number) ? `<section class="card">
+${open && !order.paid_in_full && (ws?.bkash_number || ws?.nagad_number || onlineAdvance || onlineFull) ? `<section class="card">
   <h2>${t.payTitle}</h2><p class="muted">${t.payBody}</p>
   ${pending ? `<p class="note">${esc(t.payWaiting(money(pending.amount)))}</p>` : `
+  ${onlineAdvance ? onlineForm('advance', t.payOnline(money(order.advance.amount))) : ''}
+  ${onlineFull && fullAmount >= 10 ? onlineForm('full', `${t.payFull(money(fullAmount))}${fullOff ? ` · ${t.fullOff(num(fullOff))}` : ''}`) : ''}
+  ${onlineAdvance || onlineFull ? `<p class="muted" style="font-size:12.5px">${t.onlineHint}</p>${ws.bkash_number || ws.nagad_number ? `<small class="muted">${t.orManual}</small>` : ''}` : ''}
   ${ws.bkash_number ? `<a class="btn bkash full" href="#pay-bkash">${esc(t.bkash(money(advanceAmount)))}</a>` : ''}
   ${ws.nagad_number ? `<a class="btn nagad full" href="#pay-nagad">${t.nagad}</a>` : ''}
   ${['bkash', 'nagad'].filter((m) => ws[`${m}_number`]).map((m) => `<form id="pay-${m}" class="sheet" method="post" action="/b/${esc(order.bill_token)}/pay">${L}<input type="hidden" name="method" value="${m}">

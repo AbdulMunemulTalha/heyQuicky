@@ -3,13 +3,14 @@ import { InboxError } from '../../inbox.js';
 import { need } from '../../dashboard/permissions.js';
 import { audit, bdPhone, dhakaDayStart } from '../../dashboard/util.js';
 import { orderTotal } from '../../dashboard/orderOps.js';
+import { GATEWAYS, cleanCredentials, gatewayView, testCredentials } from '../../dashboard/gateway.js';
 import { advanceSettings, approvePayment, rejectPayment, recordPayment, DEFAULT_ADVANCE_MESSAGE, ADVANCE_RULES } from '../../dashboard/payments.js';
 
 const STATUSES = ['waiting', 'approved', 'rejected'];
 
 // Phase 2 · Payments (PAY-01 / PAY-03): approve or reject the bKash / Nagad advances customers
 // send (from the bill page or in chat), and the rules for when to ask for one.
-export function paymentRoutes(db, _config, { auth, inbox, emit, notify }) {
+export function paymentRoutes(db, config, { auth, inbox, emit, notify, fetchImpl = fetch }) {
   const router = Router();
   const edit = need(db, 'edit_orders');
   const owner = async (req, res, next) => (['owner', 'admin'].includes(req.user.role) ? next() : res.status(403).json({ error: 'Only the owner or an admin can change payment rules' }));
@@ -46,7 +47,7 @@ export function paymentRoutes(db, _config, { auth, inbox, emit, notify }) {
         if ((numberOrders.get(p.from_number) ?? 0) > 1) checks.push('number_reused');
         if (!o) checks.push('no_order');
         return {
-          id: p._id, method: p.method, amount: p.amount, expected, trxId: p.trx_id, from: p.from_number, screenshot: p.screenshot, source: p.source ?? 'bill', at: p.created_at,
+          id: p._id, method: p.method, amount: p.amount, expected, trxId: p.trx_id, from: p.from_number, screenshot: p.screenshot, source: p.source ?? 'bill', gateway: p.gateway ?? '', at: p.created_at,
           status: p.status, decidedAt: p.decided_at, decidedBy: users.get(p.decided_by) ?? '', reason: p.reject_reason ?? '', checks,
           order: o ? { id: o._id, number: o.number, customer: o.customer_name, phone: o.phone, total: orderTotal(o), cod: o.cod_amount, status: o.status, conversationId: o.conversation_id } : null,
         };
@@ -149,6 +150,47 @@ export function paymentRoutes(db, _config, { auth, inbox, emit, notify }) {
     await audit(db, req.user, 'Changed payment numbers or advance rules', { where: 'Payments' });
     const ws = await db.workspaces.findById(req.user.workspace_id).lean();
     res.json({ advance: advanceSettings(ws), bkash: ws.bkash_number ?? '', nagad: ws.nagad_number ?? '' });
+  });
+
+  // PAY-02 · Gateway tab: connect SSLCommerz / bKash PG / Nagad with the shop's own keys, and what online payment is for.
+  router.get('/payments/gateway', auth, async (req, res) => {
+    const ws = await db.workspaces.findById(req.user.workspace_id).lean();
+    res.json({ ...gatewayView(ws), publicUrl: Boolean(config.publicUrl), canEdit: ['owner', 'admin'].includes(req.user.role) });
+  });
+
+  router.put('/payments/gateway/:kind', auth, owner, async (req, res) => {
+    const kind = req.params.kind;
+    if (!GATEWAYS[kind]) throw new InboxError(404, 'Unknown payment gateway');
+    if (!config.publicUrl && !config.dryRun) throw new InboxError(409, 'PUBLIC_URL must be set so customers can come back after paying');
+    const ws = await db.workspaces.findById(req.user.workspace_id).lean();
+    const creds = cleanCredentials(kind, req.body ?? {}, ws.settings?.gateway?.[kind], config);
+    await testCredentials(kind, creds, config, { fetchImpl });
+    await db.workspaces.updateOne({ _id: ws._id }, { $set: { [`settings.gateway.${kind}`]: { ...creds, connected_at: ws.settings?.gateway?.[kind]?.connected_at ?? new Date() } } });
+    await audit(db, req.user, `Connected ${GATEWAYS[kind].name}${creds.sandbox ? ' (sandbox)' : ''}`, { where: 'Payments → Gateway' });
+    res.json(gatewayView(await db.workspaces.findById(ws._id).lean()));
+  });
+
+  router.delete('/payments/gateway/:kind', auth, owner, async (req, res) => {
+    const kind = req.params.kind;
+    if (!GATEWAYS[kind]) throw new InboxError(404, 'Unknown payment gateway');
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $unset: { [`settings.gateway.${kind}`]: 1 } });
+    await audit(db, req.user, `Disconnected ${GATEWAYS[kind].name}`, { where: 'Payments → Gateway' });
+    res.json(gatewayView(await db.workspaces.findById(req.user.workspace_id).lean()));
+  });
+
+  router.patch('/payments/gateway/use', auth, owner, async (req, res) => {
+    const b = req.body ?? {};
+    const set = {};
+    for (const k of ['advance', 'full', 'deposit']) if (b[k] !== undefined) set[`settings.gateway.use.${k}`] = Boolean(b[k]);
+    if (b.fullDiscount !== undefined) {
+      const n = Number(b.fullDiscount);
+      if (!Number.isFinite(n) || n < 0 || n > 50) throw new InboxError(400, 'The discount for paying in full must be 0 to 50%');
+      set['settings.gateway.use.full_discount'] = Math.round(n);
+    }
+    if (!Object.keys(set).length) throw new InboxError(400, 'Nothing to change');
+    await db.workspaces.updateOne({ _id: req.user.workspace_id }, { $set: set });
+    await audit(db, req.user, 'Changed what online payment is used for', { where: 'Payments → Gateway' });
+    res.json(gatewayView(await db.workspaces.findById(req.user.workspace_id).lean()));
   });
 
   return router;

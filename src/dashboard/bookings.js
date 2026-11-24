@@ -173,8 +173,12 @@ export function whenBn(at) {
   return `${DAY_NAMES_BN[p.day]}বার ${Number(p.date.slice(8))}/${Number(p.date.slice(5, 7))}, ${part} ${h12}${m ? `:${String(m).padStart(2, '0')}` : ''}টায়`;
 }
 
-export function confirmationText(b, ws) {
+export function confirmationText(b, ws, { payLink = '' } = {}) {
   const pay = ws.bkash_number || ws.nagad_number;
+  // PAY-02: a link to pay the deposit online (confirmed as soon as it is paid).
+  if (b.status === 'pending' && b.advance?.amount && payLink) {
+    return `✅ ${b.service} — ${whenBn(b.starts_at)} সময়টা আপনার জন্য রাখা হলো। কনফার্ম করতে ${taka(b.advance.amount)} অগ্রিম এই লিংকে পেমেন্ট করুন: ${payLink}`;
+  }
   if (b.status === 'pending' && b.advance?.amount) {
     return `✅ ${b.service} — ${whenBn(b.starts_at)} সময়টা আপনার জন্য রাখা হলো। কনফার্ম করতে ${taka(b.advance.amount)} অগ্রিম ${pay ? `${ws.bkash_number ? 'বিকাশ' : 'নগদ'} ${pay} নম্বরে Send Money করে ` : ''}TrxID পাঠান।`;
   }

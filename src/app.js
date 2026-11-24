@@ -35,6 +35,7 @@ import { productPageRoutes } from './routes/productPage.js';
 import { storefrontRoutes } from './routes/storefront.js';
 import { createPostbackHandler } from './dashboard/postbacks.js';
 import { createWebhooks, fireEvent, orderData, messageEvent } from './dashboard/webhooks.js';
+import { payRoutes } from './routes/pay.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 // The React dashboard, built by `npm run build`.
@@ -127,6 +128,7 @@ export function createApp(db, config, { fetchImpl, clientDir = CLIENT_DIR, aiPro
   app.use(legalRoutes(config));
   // Customer bill pages (screen 20): public, behind each order's unguessable link.
   app.use(billRoutes(db, config, { notify }));
+  app.use(payRoutes(db, config, { inbox, notify, fetchImpl }));
   app.use(sizePageRoutes(db));
   app.use(productPageRoutes(db, config, { inbox, notify }));
   app.use(storefrontRoutes(db, config));

@@ -1,5 +1,6 @@
 import { InboxError } from '../inbox.js';
 import { orderTotal } from './orderOps.js';
+import { onlineFor } from './gateway.js';
 
 // bKash / Nagad advances (PAY-01) and the rules for when to ask for one (PAY-03).
 
@@ -38,7 +39,7 @@ const ruleAmount = (r, total) => Math.min(total, r.kind === 'percent' ? Math.rou
 // Whether this order needs an advance, and why. When several rules match, the largest advance wins.
 // courierRate: the customer's delivery success % from the courier check (null when unknown).
 export function advanceFor(ws, { riskLevel = 'low', courierRate = null, zone = 'inside_dhaka', total = 0, previousOrders = 0 }) {
-  if (!ws?.bkash_number && !ws?.nagad_number) return null; // nowhere to pay
+  if (!ws?.bkash_number && !ws?.nagad_number && !onlineFor(ws, 'advance')) return null; // nowhere to pay
   const { rules } = advanceSettings(ws);
   const hits = [];
   if (rules.outside_dhaka.on && zone === 'outside_dhaka') hits.push('outside_dhaka');
@@ -95,7 +96,7 @@ export async function approvePayment(db, user, payment, { orderId = null, inbox 
   if (order.status === 'on_hold' && /advance/i.test(order.hold_reason ?? '')) { set.status = 'approved'; set.hold_reason = ''; }
   await db.orders.updateOne({ _id: order._id }, { $set: set });
   await db.insert(db.orderEvents, { workspace_id: order.workspace_id, order_id: order._id, type: 'payment', by: user ? 'user' : 'ai', user_id: user?.id ?? null,
-    text: `${payment.method === 'nagad' ? 'Nagad' : 'bKash'} ৳${payment.amount} approved (TrxID ${payment.trx_id})${set.status ? ' — order approved' : ''}` });
+    text: payment.gateway ? `Paid ৳${payment.amount} online with ${({ sslcommerz: 'SSLCommerz', bkash: 'bKash', nagad: 'Nagad' })[payment.gateway] ?? payment.gateway} — checked with the gateway (${payment.trx_id})${set.status ? ' — order approved' : ''}` : `${payment.method === 'nagad' ? 'Nagad' : 'bKash'} ৳${payment.amount} approved (TrxID ${payment.trx_id})${set.status ? ' — order approved' : ''}` });
   if (inbox && order.conversation_id) {
     await inbox.purchaseUpdate(order.conversation_id, `আপনার ৳${payment.amount.toLocaleString('en-IN')} পেমেন্ট পেয়েছি ✅ অর্ডার #${order.number}${set.cod_amount ? ` — বাকি ৳${set.cod_amount.toLocaleString('en-IN')} ডেলিভারির সময় দিবেন।` : ' পুরো পরিশোধ হয়েছে।'}`).catch(() => null);
   }

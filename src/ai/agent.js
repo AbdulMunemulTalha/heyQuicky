@@ -24,6 +24,7 @@ import { decryptSecret } from '../secrets.js';
 import { pageLinker } from '../dashboard/productPage.js';
 import { JUDGE_SCHEMA, judgePrompt } from '../dashboard/selftest.js';
 import { WRITE_SCHEMA, writePrompt } from '../dashboard/content.js';
+import { onlineFor, openCheckout, payUrl, payLinkMessage } from '../dashboard/gateway.js';
 
 // After a person replies (or the AI hands off), the AI stays out of that
 // conversation in auto mode for this long, then may answer again.
@@ -452,12 +453,19 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     if (answer.size_chart_product) await sendSizeChart(db, inbox, conversationId, ctx.conversation.workspace_id, answer.size_chart_product, { publicUrl: config.publicUrl || '' });
     if (placed) keep(await inbox.sendAiRich(conversationId, placed.rich));
     if (booked) {
-      const ok = keep(await inbox.sendAiReply(conversationId, confirmationText(booked, ctx.workspace)).catch(() => null));
+      const link = booked.status === 'pending' && booked.advance?.amount && onlineFor(ctx.workspace, 'deposit')
+        ? await openCheckout(db, ctx.workspace, { booking: booked, purpose: 'deposit' }).then((c) => payUrl(config, c)).catch(() => '') : '';
+      const ok = keep(await inbox.sendAiReply(conversationId, confirmationText(booked, ctx.workspace, { payLink: link })).catch(() => null));
       if (ok) await db.bookings.updateOne({ _id: booked._id }, { $set: { confirmation_sent_at: new Date() } });
     }
     await explainReply(ctx, answer, { messageIds: sentIds, placed, booked }).catch((err) => log.warn(`could not save why the AI replied: ${err.message}`));
     // PAY-03: an advance is needed before this order goes ahead.
-    if (placed?.advance) await inbox.sendAiReply(conversationId, advanceMessage(ctx.workspace, placed.advance.amount));
+    // PAY-02: with online payment on, a pay link (checked with the gateway, nothing to verify) instead of a TrxID.
+    if (placed?.advance) {
+      const link = onlineFor(ctx.workspace, 'advance') && placed.order
+        ? await openCheckout(db, ctx.workspace, { order: placed.order, purpose: 'advance' }).then((c) => payUrl(config, c)).catch(() => '') : '';
+      await inbox.sendAiReply(conversationId, link ? payLinkMessage(placed.advance.amount, link) : advanceMessage(ctx.workspace, placed.advance.amount));
+    }
     await inbox.refresh(conversationId);
     // TEAM-04: nobody on duty → the customer hears when the team will reply (once per handoff).
     if (answer.handoff && !placed) await tellIfNobodyOnDuty(conversationId);

@@ -55,3 +55,21 @@
 #dash .pm-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 #dash .pm-shot { flex: none; width: 56px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--panel-2); }
 #dash .pm-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* PAY-02 · Gateway tab */
+#dash .pg-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+#dash .pg-card { display: flex; flex-direction: column; gap: 6px; }
+#dash .pg-card h3 { margin: 4px 0 0; font-size: 15px; }
+#dash .pg-card p { margin: 0; }
+#dash .pg-card .btn { margin-top: auto; width: 100%; justify-content: center; }
+#dash .pg-fee { margin-bottom: 8px !important; }
+#dash .pg-logo { width: 34px; height: 34px; border-radius: 9px; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12px; }
+#dash .pg-use { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+#dash .pg-full { gap: 16px; align-items: flex-start; }
+#dash .pg-disc { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+#dash .pg-disc .input { width: 56px; }
+#dash .pg-form { display: flex; flex-direction: column; gap: 10px; }
+#dash .pg-key { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
+#dash .pg-sandbox { gap: 10px; align-items: flex-start; }
+#dash .pg-danger { color: #b42318; }
+@media (max-width: 900px) { #dash .pg-cards { grid-template-columns: minmax(0, 1fr); } }

@@ -4,6 +4,7 @@ import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
 import { navigate, setQuery } from '../lib/router.jsx';
 import { Button, Card, Chips, Empty, ErrorState, Kpi, Modal, Pill, Skeleton, Tabs, Toggle, toast } from '../ui/kit.jsx';
+import PaymentGateway from './PaymentGateway.jsx';
 import './payments.css';
 
 const STATUSES = ['waiting', 'approved', 'rejected'];
@@ -13,15 +14,15 @@ const CHECK_TONE = { matches: 'green', short: 'red', more: 'yellow', other_numbe
 // Phase 2 · Payments (PAY-01 / PAY-03): verify bKash / Nagad advances and set when to ask for one.
 export default function Payments({ query }) {
   const t = useT();
-  const tab = query.tab === 'rules' ? 'rules' : 'verify';
+  const tab = ['rules', 'gateway'].includes(query.tab) ? query.tab : 'verify';
   return (
     <div className="payments">
       <header className="page-head">
         <div><h1>{t('pm.title')}</h1><p className="page-sub">{t('pm.sub')}</p></div>
       </header>
       <Tabs label={t('pm.title')} value={tab} onChange={(v) => setQuery({ tab: v === 'verify' ? null : v, status: null })}
-        items={[{ key: 'verify', label: t('pm.tab.verify') }, { key: 'rules', label: t('pm.tab.rules') }]} />
-      {tab === 'verify' ? <Verify t={t} query={query} /> : <Rules t={t} />}
+        items={[{ key: 'verify', label: t('pm.tab.verify') }, { key: 'rules', label: t('pm.tab.rules') }, { key: 'gateway', label: t('pm.tab.gateway') }]} />
+      {tab === 'verify' ? <Verify t={t} query={query} /> : tab === 'rules' ? <Rules t={t} /> : <PaymentGateway t={t} />}
     </div>
   );
 }
@@ -80,7 +81,7 @@ function PaymentCard({ t, p, edit, onDone }) {
     <Card className={`pm-card${p.checks.includes('short') ? ' warn' : ''}`}>
       <div className="pm-top">
         {p.screenshot ? <a href={p.screenshot} target="_blank" rel="noreferrer" className="pm-shot" aria-label={t('pm.screenshot')}><img src={p.screenshot} alt={t('pm.screenshot')} /></a> : null}
-        <span className={`pm-method ${p.method}`}>{p.method === 'nagad' ? 'Nagad' : 'bKash'}</span>
+        <span className={`pm-method ${p.method}`}>{p.gateway ? t('pg.online', { name: { sslcommerz: 'SSLCommerz', bkash: 'bKash', nagad: 'Nagad' }[p.gateway] }) : p.method === 'nagad' ? 'Nagad' : 'bKash'}</span>
         <div className="grow">
           <strong className="pm-amount">{t.money(p.amount)}</strong>
           {p.expected != null && <small className="muted"> · {t('pm.expected', { n: t.money(p.expected) })}</small>}

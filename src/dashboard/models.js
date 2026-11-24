@@ -128,7 +128,25 @@ export function defineDashboardModels(conn) {
     decided_by: { type: Number, default: null },
     decided_at: { type: Date, default: null },
     reject_reason: { type: String, default: '' },
-    source: { type: String, default: 'bill' }, // bill | chat | team
+    source: { type: String, default: 'bill' }, // bill | chat | team | gateway
+    gateway: { type: String, default: '' }, // PAY-02: sslcommerz | bkash | nagad when paid online (already checked with the gateway)
+  });
+
+  // PAY-02: one online-payment link for an order or booking (advance, full payment or booking deposit).
+  const checkout = S({
+    order_id: { type: Number, default: null, index: true },
+    booking_id: { type: Number, default: null, index: true },
+    purpose: { type: String, enum: ['advance', 'full', 'deposit'], required: true },
+    amount: { type: Number, required: true },
+    discount: { type: Number, default: 0 },
+    token: { type: String, required: true, unique: true },
+    status: { type: String, enum: ['open', 'paid', 'failed', 'expired'], default: 'open' },
+    gateway: { type: String, default: '' },
+    external_id: { type: String, default: '', index: true },
+    attempts: { type: Number, default: 0 },
+    trx_id: { type: String, default: '' },
+    paid_at: { type: Date, default: null },
+    error: { type: String, default: '' },
   });
 
   // Every AI reply with its cost, so billing can list them and "Why did the AI say this?" can explain them.
@@ -519,6 +537,7 @@ export function defineDashboardModels(conn) {
     returns: conn.model('Return', returnItem, 'returns'),
     courierAccounts: conn.model('CourierAccount', courierAccount, 'courier_accounts'),
     payments: conn.model('Payment', payment, 'payments'),
+    checkouts: conn.model('Checkout', checkout, 'checkouts'),
     aiReplies: conn.model('AiReply', aiReply, 'ai_replies'),
     credit: conn.model('CreditEntry', creditEntry, 'credit_ledger'),
     notifications: conn.model('Notification', notification, 'notifications'),
