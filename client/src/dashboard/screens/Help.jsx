@@ -3,13 +3,16 @@ import { dash } from '../lib/api.js';
 import { useT } from '../lib/i18n.js';
 import { useDash } from '../lib/context.js';
 import { navigate, useLocation } from '../lib/router.jsx';
-import { Button, Drawer, Skeleton, toast } from '../ui/kit.jsx';
+import { Button, Drawer, Skeleton, Tabs, toast } from '../ui/kit.jsx';
+import { WhatsNewList } from './WhatsNew.jsx';
 import './help.css';
 
 // Phase 2 · Help (UX-03) with "Stuck? We'll call you" (ONB-11), frame "Help videos & help bot".
-export default function Help({ onClose }) {
+export default function Help({ onClose, tab: startTab = 'help' }) {
   const t = useT();
   const { me } = useDash();
+  const [tab, setTab] = useState(startTab === 'new' ? 'new' : 'help');
+  const unread = me?.badges?.whatsNew ?? 0;
   const { path } = useLocation();
   const [d, setD] = useState(null);
   const [open, setOpen] = useState(null); // an article being read
@@ -32,7 +35,10 @@ export default function Help({ onClose }) {
   const wa = d?.support.whatsapp ? `https://wa.me/${d.support.whatsapp.replace(/\D/g, '').replace(/^0/, '880')}` : '';
   return (
     <Drawer title={t('hp.title')} onClose={onClose} width={400} className="help-drawer">
-      {!d ? <Skeleton h={300} r={12} /> : open ? (
+      {/* UX-04: Help · What's new (Requests comes with UX-05). */}
+      <Tabs label={t('hp.title')} value={tab} onChange={setTab} className="hp-tabs"
+        items={[{ key: 'help', label: t('hp.tabHelp') }, { key: 'new', label: t('wn.tab'), ...(unread && tab !== 'new' ? { count: unread } : {}) }]} />
+      {tab === 'new' ? <WhatsNewList t={t} onGo={go} /> : !d ? <Skeleton h={300} r={12} /> : open ? (
         <article className="hp-article">
           <button type="button" className="hp-back" onClick={() => setOpen(null)}>← {t('hp.back')}</button>
           <h3 className="bn-ok">{open.title}</h3>

@@ -141,7 +141,7 @@ export function Sidebar({ open, onClose }) {
         </div>
         <div className="side-settings">
           <Link to="/settings" className={`nav-item${active === 'settings' ? ' on' : ''}`}><Icon name="settings" size={17} /><span className="nav-label">{t('nav.settings')}</span></Link>
-          <button type="button" className="icon-btn" aria-label={t('help.title')} onClick={() => openOverlay('help')}><Icon name="help" size={16} /></button>
+          <button type="button" className="icon-btn wn-help" aria-label={badges?.whatsNew ? `${t('help.title')} · ${t('wn.newCount', { n: badges.whatsNew })}` : t('help.title')} onClick={() => openOverlay('help', badges?.whatsNew ? { tab: 'new' } : {})}><Icon name="help" size={16} />{badges?.whatsNew ? <span className="wn-help-dot" aria-hidden="true" /> : null}</button>
         </div>
         <div className="row">
           <Link to="/profile" className="me-row" style={{ flex: 1 }}>

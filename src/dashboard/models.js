@@ -132,6 +132,22 @@ export function defineDashboardModels(conn) {
     gateway: { type: String, default: '' }, // PAY-02: sslcommerz | bkash | nagad when paid online (already checked with the gateway)
   });
 
+  // UX-04: an announcement added by HeyQuicky's team (release notes in code live in announcements.js).
+  const announcement = new Schema({
+    _id: numericId,
+    kind: { type: String, enum: ['new', 'improved', 'fixed'], default: 'new' },
+    title: { en: String, bn: String },
+    body: { en: String, bn: String },
+    link: { type: String, default: '' },
+    video: { type: String, default: '' },
+    seconds: { type: Number, default: 0 },
+    bar: { type: Boolean, default: false },
+    date: { type: Date, default: () => new Date(), index: true },
+    asked_by: { type: [Number], default: [] }, // shops that asked for it ("You asked for this")
+    published: { type: Boolean, default: true },
+    created_at: createdAt,
+  }, { versionKey: false });
+
   // HND-05: a one-time code that connects the Chrome extension (expires on its own).
   const extensionCode = new Schema({ _id: String, user_id: { type: Number, required: true }, expires_at: { type: Date, required: true, expires: 0 } }, { versionKey: false });
 
@@ -542,6 +558,7 @@ export function defineDashboardModels(conn) {
     payments: conn.model('Payment', payment, 'payments'),
     checkouts: conn.model('Checkout', checkout, 'checkouts'),
     extensionCodes: conn.model('ExtensionCode', extensionCode, 'extension_codes'),
+    announcements: conn.model('Announcement', announcement, 'announcements'),
     aiReplies: conn.model('AiReply', aiReply, 'ai_replies'),
     credit: conn.model('CreditEntry', creditEntry, 'credit_ledger'),
     notifications: conn.model('Notification', notification, 'notifications'),

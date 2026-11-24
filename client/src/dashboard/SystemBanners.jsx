@@ -4,6 +4,7 @@ import { useDash } from './lib/context.js';
 import { navigate } from './lib/router.jsx';
 import { Icon } from './ui/icons.jsx';
 import { Button } from './ui/kit.jsx';
+import { WhatsNewBar } from './screens/WhatsNew.jsx';
 
 const COURIER = { steadfast: 'Steadfast', pathao: 'Pathao', redx: 'RedX', paperfly: 'Paperfly', ecourier: 'eCourier' };
 
@@ -34,9 +35,10 @@ export function SystemBanners() {
       action: ['owner', 'admin'].includes(me.user.role) ? <Button size="sm" onClick={() => navigate('/settings/courier')}>{t('state.courier.cta')}</Button> : null,
     });
   }
-  if (!items.length) return null;
+  if (!items.length) return <WhatsNewBar />;
   return (
     <div className="sys-banners">
+      <WhatsNewBar />
       {items.map((b) => (
         <div key={b.key} className={`sys-banner tone-${b.tone}`} role="alert">
           <span className="sys-icon"><Icon name={b.icon} size={15} /></span>

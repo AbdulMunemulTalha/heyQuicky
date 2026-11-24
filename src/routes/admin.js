@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
-import { Router } from 'express';
+import { Router, json } from 'express';
 import { approveTopup, rejectTopup } from '../dashboard/credit.js';
+import { cleanAnnouncement, RELEASES } from '../dashboard/announcements.js';
 
 // HeyQuicky's own admin endpoints, behind ADMIN_TOKEN (HTTP Basic, any user name). Off when it isn't set.
 export function adminAuth(config, realm = 'HeyQuicky admin') {
@@ -19,6 +20,20 @@ export function adminAuth(config, realm = 'HeyQuicky admin') {
 export function adminRoutes(db, config, { notify = null } = {}) {
   const router = Router();
   const guard = adminAuth(config);
+
+  // UX-04: announcements shown in What's new (and as a bar when bar is true).
+  router.get('/admin/announcements', guard, async (_req, res) => {
+    res.json({ added: await db.announcements.find().sort({ date: -1 }).limit(100).lean(), releases: RELEASES.map((r) => ({ id: r.id, date: r.date, title: r.title.en })) });
+  });
+  router.post('/admin/announcements', guard, json(), async (req, res) => {
+    let a;
+    try { a = cleanAnnouncement(req.body); } catch (err) { return res.status(400).json({ error: err.message }); }
+    res.status(201).json(await db.insert(db.announcements, a));
+  });
+  router.delete('/admin/announcements/:id', guard, async (req, res) => {
+    await db.announcements.deleteOne({ _id: Number(req.params.id) });
+    res.json({ ok: true });
+  });
 
   router.get('/admin/topups', guard, async (_req, res) => {
     const pending = await db.credit.find({ type: 'top_up', status: 'pending' }).sort({ created_at: 1 }).limit(500).lean();

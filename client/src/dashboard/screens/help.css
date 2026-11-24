@@ -28,3 +28,29 @@
 #dash .hp-article h3 { margin: 0; font: 600 16px/1.35 var(--display); }
 #dash .hp-article p { margin: 0; font-size: 13.5px; line-height: 1.6; }
 #dash .hp-back { all: unset; cursor: pointer; font-size: 12.5px; color: var(--accent, #2f6fed); }
+
+/* UX-04 · What's new */
+#dash .hp-tabs { margin: -4px 0 12px; }
+#dash .wn-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+#dash .wn-item { display: flex; flex-direction: column; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+#dash .wn-item p { margin: 0; }
+#dash .wn-top { display: flex; align-items: center; gap: 6px; }
+#dash .wn-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+#dash .wn-tag.tone-yellow { background: #fde68a; color: #6b4e00; }
+#dash .wn-tag.tone-blue { background: #dbe4ff; color: #1c3a99; }
+#dash .wn-tag.tone-green { background: #d7f2e1; color: #14532d; }
+#dash .wn-dot { width: 7px; height: 7px; border-radius: 50%; background: #2B4BFF; }
+#dash .wn-asked { color: #1f8a4c; font-weight: 600; }
+#dash .wn-asked::after { content: ' ✓'; }
+#dash .wn-actions { display: flex; gap: 6px; margin-top: 4px; }
+#dash .wn-actions:empty { display: none; }
+#dash .wn-video { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; }
+#dash .wn-video iframe, #dash .wn-video video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+#dash .wn-bar { align-items: center; gap: 10px; margin-bottom: 12px; }
+#dash .wn-bar .grow strong { margin-right: 6px; }
+#dash .wn-x { all: unset; cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 6px; color: var(--muted); }
+#dash .wn-x:hover { background: rgba(0,0,0,.06); }
+#dash .wn-x:focus-visible { outline: 2px solid var(--accent, #2B4BFF); outline-offset: 2px; }
+#dash .wn-help { position: relative; }
+#dash .wn-help-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: #2B4BFF; box-shadow: 0 0 0 2px var(--panel, #fff); }
+@media (max-width: 700px) { #dash .wn-bar { flex-wrap: wrap; } }

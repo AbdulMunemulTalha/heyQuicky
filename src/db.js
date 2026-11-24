@@ -105,6 +105,9 @@ function defineModels(conn) {
     on_duty: { type: Boolean, default: true },
     notify_prefs: { type: Schema.Types.Mixed, default: null },
     google_sub: { type: String, default: null },
+    // UX-04: What's new read up to here, and announcement bars closed with ×.
+    whats_new_seen_at: { type: Date, default: null },
+    dismissed_bars: { type: [String], default: [] },
     two_step: { type: Boolean, default: false },
     invite_pending: { type: Boolean, default: false },
     password_changed_at: { type: Date, default: null },
