@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HeyQuicky</title>
+<style>
+  body { width: 300px; margin: 0; font: 13px/1.45 system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", sans-serif; color: #101217; }
+  header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #ececea; }
+  header img { width: 22px; height: 22px; border-radius: 6px; }
+  header strong { flex: 1; font-size: 14px; }
+  main { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 12px; }
+  input { font: inherit; padding: 8px 10px; border: 1px solid #d9d9d2; border-radius: 8px; }
+  input.code { font-family: ui-monospace, Menlo, monospace; letter-spacing: 2px; text-transform: uppercase; }
+  button { font: inherit; font-weight: 600; height: 34px; border-radius: 8px; border: 0; background: #2B4BFF; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #101217; border: 1px solid #d9d9d2; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #2B4BFF; outline-offset: 2px; }
+  .muted { color: #6b7280; font-size: 12px; margin: 0; }
+  .err { color: #b42318; font-size: 12px; margin: 0; min-height: 16px; }
+  .ok { background: #e7f6ee; color: #14532d; padding: 8px 10px; border-radius: 8px; margin: 0; }
+  select { font: inherit; padding: 4px; border-radius: 6px; border: 1px solid #d9d9d2; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header><img src="icons/icon48.png" alt=""><strong>HeyQuicky</strong>
+  <select id="lang" aria-label="Language"><option value="en">English</option><option value="bn">বাংলা</option></select></header>
+<main>
+  <section id="out" hidden>
+    <p class="muted" data-t="howTo"></p>
+    <label id="serverRow"><span data-t="server"></span><input id="server" placeholder="https://app.example.com" autocomplete="off"></label>
+    <label><span data-t="code"></span><input id="code" class="code" maxlength="9" autocomplete="off"></label>
+    <p class="err" id="err" role="alert"></p>
+    <button id="connect" data-t="connect"></button>
+  </section>
+  <section id="in" hidden>
+    <p class="ok" id="who"></p>
+    <p class="muted" data-t="ready"></p>
+    <button id="open" data-t="openInbox"></button>
+    <button id="signout" class="ghost" data-t="signout"></button>
+  </section>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

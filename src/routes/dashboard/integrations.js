@@ -34,6 +34,8 @@ export function integrationRoutes(db, config, { auth, emit, webhooks }) {
       widget: { on: Boolean(widget) && !ws.settings?.widget?.off, setUp: Boolean(widget), ...w, chats7d: chats,
         snippet: widget ? `<script src="${base(req)}/w/${widget.external_id}.js" async></script>` : '', previewUrl: widget ? `${base(req)}/w/${widget.external_id}` : '' },
       woo: { connected: Boolean(ws.settings?.woo?.url), url: ws.settings?.woo?.url ?? '' },
+      // HND-05: browsers where this person connected the Business Suite extension.
+      extension: { connected: await db.sessions.countDocuments({ user_id: req.user.id, device: 'Chrome extension · Business Suite', expires_at: { $gt: new Date() } }) },
       webhooks: await webhooksView(ws, req),
       shopLink: { url: `${base(req)}/s/${shopSlug}`, products: await db.products.countDocuments({ workspace_id: ws._id, archived: { $ne: true }, visibility: 'everywhere' }) },
       canEdit: ['owner', 'admin'].includes(req.user.role),

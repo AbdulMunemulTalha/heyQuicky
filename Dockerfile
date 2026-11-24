@@ -17,6 +17,7 @@ RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY src ./src
 COPY public ./public
 COPY scripts ./scripts
+COPY extension ./extension
 COPY --from=client /app/client/dist ./client/dist
 USER node
 

@@ -712,6 +712,18 @@ ${extraNotes}` } : trained;
       return inbox.refresh(conversationId);
     },
 
+    // HND-05 "Shorter": the same reply in fewer words (metered like a suggestion).
+    async shorten(user, text) {
+      if (!provider) throw new InboxError(503, 'AI replies are not set up on this server');
+      const { data } = await callModel(user.workspace_id, {
+        system: 'Rewrite this shop reply to a customer so it is about half as long. Keep the same language and script, every number, price, size, link and promise, and the friendly tone. Return only the new reply.',
+        messages: [{ role: 'user', content: text }],
+        schema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'], additionalProperties: false },
+        maxTokens: 400,
+      }, { kind: 'suggest', summary: 'Shortened a reply', customerName: 'Business Suite' });
+      return String(data?.text ?? '').trim() || text;
+    },
+
     // Copilot: answers a teammate's question about one customer from their chat and orders (HND-04).
     // UX-03 help bot: answers a shop's question about HeyQuicky from the help articles. Not charged to the shop.
     async helpAnswer(question, articles, lang = 'en') {

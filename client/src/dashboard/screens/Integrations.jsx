@@ -14,7 +14,7 @@ const GROUPS = [
   ['stores', [['woo', 'Wo', '#7f54b3'], ['shopify', 'Sh', '#5e8e3e'], ['sheets', 'GS', '#188038']]],
   ['tools', [['extension', 'Ch', '#333'], ['webhooks', '{ }', '#6d28d9']]],
 ];
-const BUILT = ['capi', 'widget', 'woo', 'shoplink', 'webhooks'];
+const BUILT = ['capi', 'widget', 'woo', 'shoplink', 'webhooks', 'extension'];
 const EVENT_ORDER = ['purchase', 'lead', 'add_to_cart', 'delivered'];
 
 // Phase 2 · Integrations (ANL-09, INT-02), frame "Integrations".
@@ -33,6 +33,7 @@ export default function Integrations({ query }) {
     if (k === 'webhooks') return d.webhooks?.endpoints.length || d.webhooks?.keys.length ? ['green', t('in.connected')] : ['gray', t('in.notSetUp')];
     if (k === 'shoplink') return d.shopLink?.products ? ['green', t('in.live')] : ['gray', t('in.notSetUp')];
     if (k === 'woo') return d.woo?.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
+    if (k === 'extension') return d.extension?.connected ? ['green', t('in.connected')] : ['gray', t('in.notConnected')];
     return ['blue', t('in.comingLater')];
   };
   return (
@@ -63,6 +64,7 @@ export default function Integrations({ query }) {
       {open === 'widget' && <WidgetPanel t={t} d={d} onChange={setD} onClose={() => setQuery({ open: null })} />}
       {open === 'webhooks' && <WebhooksPanel t={t} d={d} onChange={(w) => setD((x) => ({ ...x, webhooks: w }))} reload={load} onClose={() => setQuery({ open: null })} />}
       {open === 'shoplink' && <ShopLinkPanel t={t} d={d} onClose={() => setQuery({ open: null })} />}
+      {open === 'extension' && <ExtensionPanel t={t} reload={load} onClose={() => setQuery({ open: null })} />}
       {open === 'woo' && <WooDialog t={t} onClose={() => { setQuery({ open: null }); load(); }} onDone={load} />}
     </div>
   );
@@ -192,6 +194,46 @@ function ShopLinkPanel({ t, d, onClose }) {
       </div>
       <p className="small muted" style={{ marginTop: 12 }}>{l.products ? t('sl.count', { n: t.num(l.products) }) : t('sl.none')}</p>
       <p className="small muted">{t('sl.where')}</p>
+    </Panel>
+  );
+}
+
+// HND-05 · Business Suite Chrome extension: download it, connect it with a one-time code, see where it's connected.
+function ExtensionPanel({ t, reload, onClose }) {
+  const [d, setD] = useState(null);
+  const [code, setCode] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => dash('/extension').then(setD, (err) => toast(err.message, 'red')), []);
+  useEffect(() => { load(); }, [load]);
+  async function getCode() {
+    setBusy(true);
+    try { setCode(await dash('/extension/code', { method: 'POST' })); } catch (err) { toast(err.message, 'red'); } finally { setBusy(false); }
+  }
+  async function disconnect(id) {
+    try { await dash(`/profile/sessions/${id}`, { method: 'DELETE' }); toast(t('ext.disconnected'), 'green'); load(); reload(); } catch (err) { toast(err.message, 'red'); }
+  }
+  return (
+    <Panel t={t} title={t('in.c.extension')} sub={t('in.d.extension')} chip="Ch" colour="#333" onClose={onClose}>
+      <ol className="small ext-steps">
+        <li>{t('ext.s1')} <a className="btn btn-default btn-sm" href="/extension/heyquicky-extension.zip" download>{t('ext.download')}</a></li>
+        <li>{t('ext.s2')}</li>
+        <li>{t('ext.s3')}</li>
+        <li>{t('ext.s4')}</li>
+      </ol>
+      {code ? (
+        <div className="ext-code">
+          <span className="muted small">{t('ext.codeLabel')}</span>
+          <strong aria-live="polite">{code.code.slice(0, 4)}-{code.code.slice(4)}</strong>
+          {d?.server && <span className="muted small">{t('ext.server')}: {d.server}</span>}
+          <Button size="sm" onClick={() => navigator.clipboard?.writeText(code.code).then(() => toast(t('ext.copied'), 'green'))}>{t('ext.copy')}</Button>
+          <span className="muted small">{t('ext.expires')}</span>
+        </div>
+      ) : <Button variant="primary" busy={busy} onClick={getCode}>{t('ext.getCode')}</Button>}
+      <h4 className="ext-h">{t('ext.connectedTitle')}</h4>
+      {!d ? <Skeleton h={40} r={8} /> : d.connected.length === 0 ? <p className="small muted">{t('ext.none')}</p> : d.connected.map((s) => (
+        <div key={s.id} className="row ext-row"><span className="grow small">{t('ext.browser')} · {t('ext.lastUsed', { when: t.ago(s.lastSeen) })}</span><Button size="sm" onClick={() => disconnect(s.id)}>{t('ext.disconnect')}</Button></div>
+      ))}
+      <p className="small muted" style={{ marginTop: 12 }}>{t('ext.what')}</p>
     </Panel>
   );
 }

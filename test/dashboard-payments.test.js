@@ -36,6 +36,9 @@ test('each advance rule has its own amount (৳ or %); the largest matching adva
   assert.equal(advanceFor({ ...ws, settings: { advance: { rules: { ...rules, first_order: { on: true, kind: 'fixed', value: 200 } } } } }, { total: 500, previousOrders: 0 }).amount, 200);
   assert.equal(advanceFor({ settings: ws.settings }, { zone: 'outside_dhaka', total: 900 }), null, 'no payment number, no advance');
   assert.equal(advanceFor(ws, { courierRate: 10, total: 200 }).amount, 200, 'never more than the order');
+  // The courier check stores a fraction: 0.85 is 85% (no advance), 0.55 is 55% (advance).
+  assert.equal(advanceFor(ws, { courierRate: 0.85, total: 900 }), null, '85% delivered as a fraction');
+  assert.equal(advanceFor(ws, { courierRate: 0.55, total: 900 }).reason, 'courier_risk', '55% delivered as a fraction');
   // Settings saved before per-rule amounts: one amount, high risk on, outside Dhaka on.
   const old = { bkash_number: '01711111111', settings: { advance: { high_risk: true, outside_over: 2000, amount: 250 } } };
   assert.deepEqual(advanceFor(old, { zone: 'outside_dhaka', total: 900 }), { amount: 250, reason: 'outside_dhaka' });

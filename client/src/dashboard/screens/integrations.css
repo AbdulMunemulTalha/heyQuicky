@@ -57,3 +57,11 @@
 #dash .wh-pre { font-size: 11.5px; background: var(--panel-2, #f3f4f6); padding: 10px; border-radius: 8px; overflow-x: auto; white-space: pre; }
 #dash .wh-log { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 #dash .wh-log th, #dash .wh-log td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+
+/* HND-05 · Chrome extension panel */
+#dash .ext-steps { margin: 0 0 12px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+#dash .ext-steps .btn { margin-left: 6px; }
+#dash .ext-code { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; border: 1px dashed var(--border); border-radius: 10px; padding: 12px; }
+#dash .ext-code strong { font: 700 22px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 3px; }
+#dash .ext-h { margin: 16px 0 6px; font-size: 13px; }
+#dash .ext-row { gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); }

@@ -30,6 +30,7 @@ import { integrationRoutes } from './integrations.js';
 import { planRoutes } from './plan.js';
 import { bookingRoutes } from './bookings.js';
 import { contentRoutes } from './content.js';
+import { extensionRoutes } from './extension.js';
 
 // Dashboard feature routers, mounted under /api/dash in this order. Each is (db, config, ctx) => Router.
-export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes, settingsRoutes, notificationRoutes, searchRoutes, trainingRoutes, ticketRoutes, postRoutes, sizeChartRoutes, couponRoutes, paymentRoutes, segmentRoutes, teamRoutes, moneyRoutes, profileRoutes, moduleRoutes, brandRoutes, helpRoutes, integrationRoutes, planRoutes, bookingRoutes, contentRoutes];
+export const dashboardMounts = [shellRoutes, overviewRoutes, inboxRoutes, commentRoutes, orderRoutes, orderDetailRoutes, customerRoutes, growthRoutes, savedReplyRoutes, agentRoutes, catalogRoutes, analyticsRoutes, settingsRoutes, notificationRoutes, searchRoutes, trainingRoutes, ticketRoutes, postRoutes, sizeChartRoutes, couponRoutes, paymentRoutes, segmentRoutes, teamRoutes, moneyRoutes, profileRoutes, moduleRoutes, brandRoutes, helpRoutes, integrationRoutes, planRoutes, bookingRoutes, contentRoutes, extensionRoutes];

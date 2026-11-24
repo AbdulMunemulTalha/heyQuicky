@@ -132,6 +132,9 @@ export function defineDashboardModels(conn) {
     gateway: { type: String, default: '' }, // PAY-02: sslcommerz | bkash | nagad when paid online (already checked with the gateway)
   });
 
+  // HND-05: a one-time code that connects the Chrome extension (expires on its own).
+  const extensionCode = new Schema({ _id: String, user_id: { type: Number, required: true }, expires_at: { type: Date, required: true, expires: 0 } }, { versionKey: false });
+
   // PAY-02: one online-payment link for an order or booking (advance, full payment or booking deposit).
   const checkout = S({
     order_id: { type: Number, default: null, index: true },
@@ -538,6 +541,7 @@ export function defineDashboardModels(conn) {
     courierAccounts: conn.model('CourierAccount', courierAccount, 'courier_accounts'),
     payments: conn.model('Payment', payment, 'payments'),
     checkouts: conn.model('Checkout', checkout, 'checkouts'),
+    extensionCodes: conn.model('ExtensionCode', extensionCode, 'extension_codes'),
     aiReplies: conn.model('AiReply', aiReply, 'ai_replies'),
     credit: conn.model('CreditEntry', creditEntry, 'credit_ledger'),
     notifications: conn.model('Notification', notification, 'notifications'),

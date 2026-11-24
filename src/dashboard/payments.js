@@ -43,7 +43,9 @@ export function advanceFor(ws, { riskLevel = 'low', courierRate = null, zone = '
   const { rules } = advanceSettings(ws);
   const hits = [];
   if (rules.outside_dhaka.on && zone === 'outside_dhaka') hits.push('outside_dhaka');
-  if (rules.courier_risk.on && (courierRate != null ? courierRate < rules.courier_risk.below : riskLevel === 'high')) hits.push('courier_risk');
+  // The courier check stores a 0–1 fraction (0.85 = 85%); the rule is in %.
+  const pct = courierRate != null && courierRate <= 1 ? courierRate * 100 : courierRate;
+  if (rules.courier_risk.on && (pct != null ? pct < rules.courier_risk.below : riskLevel === 'high')) hits.push('courier_risk');
   if (rules.order_over.on && total > rules.order_over.over) hits.push('order_over');
   if (rules.first_order.on && previousOrders === 0) hits.push('first_order');
   let best = null;

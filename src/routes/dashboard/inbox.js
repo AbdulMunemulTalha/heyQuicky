@@ -517,7 +517,7 @@ function spamReasonOr(conv, fallback) {
 }
 
 // A short summary from what we know, used until the AI writes one (HND-04).
-function autoSummary(customer, orders) {
+export function autoSummary(customer, orders) {
   const parts = [];
   const n = customer.stats?.orders ?? orders.length;
   if (n) parts.push(`${n > 2 ? 'Regular buyer' : 'Buyer'} (${n} order${n === 1 ? '' : 's'}).`);
