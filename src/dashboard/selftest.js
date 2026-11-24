@@ -1,3 +1,4 @@
+import { practiceOn } from './aiMode.js';
 // TRN-06 · Self-test & weekly re-test (frame "Weekly self-test"). The AI is asked every taught question
 // again, exactly as in the test chat (nothing is sent to customers), and a short second call judges whether
 // the reply still gives the taught facts. Runs every Monday 3 AM Dhaka time, ~10 minutes after a published
@@ -82,7 +83,8 @@ export async function runSelfTest(db, agent, workspaceId, { trigger = 'manual', 
 export async function dueSelfTests(db, agent, { notify = null, now = new Date() } = {}) {
   if (!agent?.status?.().available) return 0;
   let n = 0;
-  const shops = await db.workspaces.find({ ai_mode: { $in: ['auto', 'suggest'] } }, { settings: 1 }).lean();
+  // Shops whose AI is on (live, or Practice when that mode is switched on).
+  const shops = await db.workspaces.find({ ai_mode: { $in: practiceOn() ? ['auto', 'suggest'] : ['auto'] } }, { settings: 1 }).lean();
   for (const ws of shops) {
     const due = ws.settings?.selftest_due_at && new Date(ws.settings.selftest_due_at) <= now;
     const last = await db.selfTestRuns.findOne({ workspace_id: ws._id, trigger: 'weekly' }).sort({ _id: -1 }).lean();

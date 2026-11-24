@@ -25,6 +25,7 @@ import { pageLinker } from '../dashboard/productPage.js';
 import { JUDGE_SCHEMA, judgePrompt } from '../dashboard/selftest.js';
 import { WRITE_SCHEMA, writePrompt } from '../dashboard/content.js';
 import { onlineFor, openCheckout, payUrl, payLinkMessage } from '../dashboard/gateway.js';
+import { aiModeOf, practiceOn } from '../dashboard/aiMode.js';
 
 // After a person replies (or the AI hands off), the AI stays out of that
 // conversation in auto mode for this long, then may answer again.
@@ -32,7 +33,7 @@ const HANDOFF_LAPSE_MS = 12 * 3_600_000;
 // Stops a runaway back-and-forth: after this many AI messages in a day, a person takes over.
 const MAX_AI_REPLIES_PER_DAY = 20;
 
-const modeOf = (workspace) => workspace?.ai_mode ?? 'suggest';
+const modeOf = (workspace) => aiModeOf(workspace); // 'auto' | 'off' (and 'suggest' when Practice is on)
 // The shop's "Reply delay" (AI-02), in ms. It also lets a burst of short messages arrive first (AI-06),
 // so "instant" still waits a moment.
 const DELAY_RANGES = { instant: [800, 800], '1-3': [1000, 3000], '3-6': [3000, 6000], '6-10': [6000, 10000] };
@@ -692,7 +693,9 @@ ${extraNotes}` } : trained;
       if (!provider) throw new InboxError(503, 'AI replies are not set up on this server');
       await accessible(user, conversationId);
       const ctx = await loadContext(conversationId);
-      if (modeOf(ctx.workspace) === 'off') throw new InboxError(409, 'The AI agent is turned off in Settings');
+      // A teammate asking for a draft is fine while the AI is off: off means it sends nothing by itself.
+      // (With Practice switched on, drafting is what Practice is for, so Off means no drafts either.)
+      if (modeOf(ctx.workspace) === 'off' && practiceOn()) throw new InboxError(409, 'The AI agent is turned off in Settings');
       let answer;
       try {
         answer = await generate(ctx, 'draft');

@@ -3,6 +3,7 @@ import { publish } from './training.js';
 import { hashPassword } from '../auth.js';
 import { addCredit } from './credit.js';
 import { seedHistory } from './demoHistory.js';
+import { sandboxOn } from './aiMode.js';
 
 // The "Nokshi Threads" shop from the designs. Used by `npm run seed:demo` (development) and, with
 // sandbox: true, for the demo shop new owners can explore (ONB-09). Never sends anything anywhere.
@@ -60,6 +61,8 @@ const ORDERS = [
 
 // history: a month of past chats and orders for Analytics (on for `npm run seed:demo`, off in tests that count exact rows).
 export async function seedNokshi(db, { reset = false, sandbox = false, history = false, email = 'talha@nokshithreads.com', password = 'password123' } = {}) {
+  // ONB-09 Sandbox demo shop is switched off on HeyQuicky for now (FEATURE_SANDBOX=1 brings it back; see aiMode.js).
+  if (sandbox && !sandboxOn()) throw new Error('The sandbox demo shop is switched off (set FEATURE_SANDBOX=1)');
   const existing = await db.users.findOne({ email }).lean();
   if (existing && !reset) return { created: false, workspaceId: existing.workspace_id };
   if (existing && reset) await wipe(db, existing.workspace_id);

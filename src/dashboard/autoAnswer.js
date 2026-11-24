@@ -1,3 +1,4 @@
+import { aiModeOf } from './aiMode.js';
 // Saved replies that answer by themselves (SR-02, SR-06, SR-07, SR-10): no AI call, no cost,
 // and they keep working when the AI credit runs out.
 
@@ -90,7 +91,7 @@ export async function tryAutoAnswer(db, inbox, conversationId, messageId) {
   if (!conv || conv.spam || conv.status === 'closed') return false;
   if (conv.ai_handoff && (!conv.human_until || new Date(conv.human_until) > new Date())) return false; // a teammate has it
   const ws = await db.workspaces.findById(conv.workspace_id, { ai_mode: 1, settings: 1 }).lean();
-  if (ws?.ai_mode !== 'auto') return false;
+  if (aiModeOf(ws) !== 'auto') return false;
   const channel = await db.channels.findById(conv.channel_id, { ai_enabled: 1 }).lean();
   if (channel?.ai_enabled === false) return false;
   const customer = conv.customer_id ? await db.customers.findById(conv.customer_id).lean() : null;

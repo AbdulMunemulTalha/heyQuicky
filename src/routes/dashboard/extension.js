@@ -7,6 +7,7 @@ import { EXT_DEVICE, findChat, newConnectCode, pageStatuses } from '../../dashbo
 import { createHash } from 'node:crypto';
 import { autoSummary } from './inbox.js';
 import { chatStatus } from '../../dashboard/extension.js';
+import { aiModeOf } from '../../dashboard/aiMode.js';
 
 const sid = (token) => createHash('sha256').update(String(token)).digest('hex').slice(0, 16);
 
@@ -31,7 +32,7 @@ export function extensionRoutes(db, config, { auth, agent, inbox }) {
   // ---- Called by the extension ----
   router.get('/ext/me', auth, async (req, res) => {
     const ws = await db.workspaces.findById(req.user.workspace_id, { name: 1, ai_mode: 1 }).lean();
-    res.json({ name: req.user.name, shop: ws?.name ?? '', role: req.user.role, aiMode: ws?.ai_mode ?? 'suggest', app: (config.publicUrl || '').replace(/\/+$/, '') });
+    res.json({ name: req.user.name, shop: ws?.name ?? '', role: req.user.role, aiMode: aiModeOf(ws), app: (config.publicUrl || '').replace(/\/+$/, '') });
   });
 
   router.get('/ext/find', auth, async (req, res) => {
@@ -67,7 +68,7 @@ export function extensionRoutes(db, config, { auth, agent, inbox }) {
     const cc = customer?.courier_check;
     res.json({
       id: conv._id, name: contact?.name || customer?.name || 'Customer',
-      status: chatStatus(conv, { userId: req.user.id, aiMode: ws?.ai_mode, orderToday }), takenBy: takenBy?.name ?? '', reason: conv.ai_handoff_reason || '',
+      status: chatStatus(conv, { userId: req.user.id, aiMode: aiModeOf(ws), orderToday }), takenBy: takenBy?.name ?? '', reason: conv.ai_handoff_reason || '',
       summary: conv.summary || (customer ? autoSummary(customer, orders) : ''),
       suggestion: conv.ai_draft?.text || saved?.text || '', suggestionFrom: conv.ai_draft?.text ? 'ai' : saved ? 'saved' : '',
       lastMessage: lastIn?.text ?? '',

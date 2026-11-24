@@ -2,16 +2,19 @@ import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { audit } from '../../dashboard/util.js';
 import { addCredit } from '../../dashboard/credit.js';
+import { aiModes, practiceOn } from '../../dashboard/aiMode.js';
 
 // Top bar and sidebar actions: AI live / practice, on duty, language and theme.
 export function shellRoutes(db, config, { auth, emit }) {
   const router = Router();
 
-  // "AI live" = the AI replies to customers by itself; "Practice" = it only drafts and answers testers.
+  // "AI live" = the AI replies to customers by itself; "Off" = it sends nothing. ("Practice" — it only drafts —
+  // is switched off for now; see src/dashboard/aiMode.js.)
   router.post('/ai-mode', auth, async (req, res) => {
     if (req.user.role !== 'owner' && req.user.role !== 'admin') throw new InboxError(403, 'Only the owner or an admin can switch the AI live');
     const mode = req.body?.mode;
-    if (!['auto', 'suggest', 'off'].includes(mode)) throw new InboxError(400, 'Unknown AI mode');
+    if (mode === 'suggest' && !practiceOn()) throw new InboxError(400, 'Practice mode is not available');
+    if (!aiModes().includes(mode)) throw new InboxError(400, 'Unknown AI mode');
     const ws = await db.workspaces.findById(req.user.workspace_id).lean();
     const set = { ai_mode: mode };
     // The free trial starts when the shop first goes live, not at sign-up (ONB-08, BIL-04).

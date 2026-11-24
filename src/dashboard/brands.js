@@ -1,3 +1,4 @@
+import { practiceOn } from './aiMode.js';
 // UX-10 · Brands: an owner can run several shops (brands). Each brand is its own workspace with its
 // own inbox, AI, catalog and orders; the team and the AI credit belong to the main shop, and every
 // other brand points at it with brand_group. People are stored on the main shop.
@@ -29,7 +30,7 @@ const COPY_FIELDS = ['category', 'ai_name', 'ai_style', 'ai_address', 'ai_sales'
 export async function createBrand(db, user, { name, copyFrom = null }) {
   const root = await teamId(db, user.workspace_id);
   const source = copyFrom ? await db.workspaces.findById(copyFrom).lean() : await db.workspaces.findById(root, { category: 1 }).lean();
-  const base = { name, brand_group: root, ai_mode: 'suggest', onboarding_step: 'channels' };
+  const base = { name, brand_group: root, ai_mode: practiceOn() ? 'suggest' : 'off', onboarding_step: 'channels' };
   if (copyFrom && source) {
     for (const k of COPY_FIELDS) if (source[k] !== undefined) base[k] = source[k];
     base.settings = { ...(source.settings ?? {}) };

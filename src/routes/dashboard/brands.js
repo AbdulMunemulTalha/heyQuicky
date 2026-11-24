@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { InboxError } from '../../inbox.js';
 import { audit } from '../../dashboard/util.js';
 import { brandsOf, createBrand, teamId } from '../../dashboard/brands.js';
+import { aiModeOf } from '../../dashboard/aiMode.js';
 
 // UX-10 · Brand / page switcher and Add a brand (frames "Brand / page switcher", "Add a brand").
 export function brandRoutes(db, _config, { auth }) {
@@ -19,7 +20,7 @@ export function brandRoutes(db, _config, { auth }) {
     res.json({
       brands: list.map((b) => {
         const ch = channels.filter((c) => c.workspace_id === b._id);
-        return { id: b._id, name: b.name, aiMode: b.ai_mode ?? 'suggest', channels: ch.length, platforms: [...new Set(ch.map((c) => c.platform))], waiting: waitingBy.get(b._id) ?? 0,
+        return { id: b._id, name: b.name, aiMode: aiModeOf(b), channels: ch.length, platforms: [...new Set(ch.map((c) => c.platform))], waiting: waitingBy.get(b._id) ?? 0,
           current: b._id === req.user.workspace_id, main: !b.brand_group };
       }),
       canAdd: req.user.role === 'owner',

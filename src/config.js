@@ -15,6 +15,8 @@ export function loadConfig(env = process.env) {
     isProduction: env.NODE_ENV === 'production',
     // When true, replies are stored but never sent to Meta. Useful for local demos.
     dryRun: env.DRY_RUN === '1' || env.DRY_RUN === 'true',
+    // Modes that are built but switched off on HeyQuicky for now (src/dashboard/aiMode.js says how to bring them back).
+    features: { practice: env.FEATURE_PRACTICE === '1', sandbox: env.FEATURE_SANDBOX === '1' },
     // Public https address of this server, used for the Facebook login redirect.
     // Falls back to the address the request came in on.
     publicUrl: (env.PUBLIC_URL || '').replace(/\/+$/, ''),

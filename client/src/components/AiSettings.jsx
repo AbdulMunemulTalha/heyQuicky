@@ -81,7 +81,7 @@ export function AiSettings({ me, setMe, open }) {
         </p>
       )}
       <div className="ai-modes" role="radiogroup" aria-label="AI mode">
-        {MODES.map(([value, label, help]) => (
+        {MODES.filter(([value]) => value !== 'suggest' || me.features?.practice).map(([value, label, help]) => (
           <label key={value} className={`ai-mode ${ws.aiMode === value ? 'selected' : ''}`}>
             <input type="radio" name="aiMode" value={value} checked={ws.aiMode === value} onChange={() => setMode(value)} />
             <span><strong>{label}</strong><span className="muted small">{help}</span></span>

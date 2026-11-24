@@ -3,6 +3,7 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { escapeRegex } from './util.js';
+import { aiModeOf } from './aiMode.js';
 
 // HND-05 · Business Suite Chrome extension (frame "HND-05 · Business Suite Chrome extension"): a HeyQuicky
 // panel inside business.facebook.com's inbox — take over / give back to the AI, the summary, a suggested
@@ -78,7 +79,7 @@ export async function pageStatuses(db, user, workspace, { page = '' }) {
   const names = new Map((await db.contacts.find({ _id: { $in: convs.map((c) => c.contact_id) } }, { name: 1 }).lean()).map((c) => [c._id, c.name]));
   const dayAgo = new Date(Date.now() - 86_400_000);
   const ordered = new Set((await db.orders.find({ workspace_id: user.workspace_id, conversation_id: { $in: convs.map((c) => c._id) }, taken_by: 'ai', created_at: { $gte: dayAgo } }, { conversation_id: 1 }).lean()).map((o) => o.conversation_id));
-  return convs.filter((c) => names.get(c.contact_id)).map((c) => ({ id: c._id, name: names.get(c.contact_id), status: chatStatus(c, { userId: user.id, aiMode: workspace?.ai_mode, orderToday: ordered.has(c._id) }) }));
+  return convs.filter((c) => names.get(c.contact_id)).map((c) => ({ id: c._id, name: names.get(c.contact_id), status: chatStatus(c, { userId: user.id, aiMode: aiModeOf(workspace), orderToday: ordered.has(c._id) }) }));
 }
 
 // ---- The extension as a zip with this server's address filled in (store-only zip, no compression) ----

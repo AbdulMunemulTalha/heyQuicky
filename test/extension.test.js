@@ -36,6 +36,7 @@ test('chat status for the badges and the panel', () => {
 
 test('Business Suite extension: connect with a code, find the open chat, take over, shorter, size chart, disconnect', async () => {
   const ctx = await setup({ env: { DRY_RUN: '1', PUBLIC_URL: 'https://shop.test' } });
+  await ctx.db.workspaces.updateOne({ _id: ctx.ws }, { $set: { ai_mode: 'auto' } }); // AI live
   const provider = { name: 'fake', model: 'claude-sonnet-5-5', async generateJson() { return { data: { text: 'XL আছে, ৳১২৫০।' }, usage: { input_tokens: 40, output_tokens: 10 } }; } };
   const app = createApp(ctx.db, ctx.config, { aiProvider: provider, adapters: createAdapters({ ADAPTERS: 'fake' }), clientDir: '/nonexistent' });
   await new Promise((r) => app.server.listen(0, r));

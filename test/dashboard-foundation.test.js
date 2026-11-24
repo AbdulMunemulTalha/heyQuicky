@@ -147,7 +147,7 @@ test('the overview adds up the seeded Nokshi Threads shop', async () => {
   const db = await freshDb();
   await runMigrations(db);
   await runMigrations(db); // runs once only
-  assert.equal(await db.migrations.countDocuments(), 3);
+  assert.equal(await db.migrations.countDocuments(), 4);
   const { workspaceId } = await seedNokshi(db);
   const config = (await import('../src/config.js')).loadConfig({});
   const app = await start(db, config);

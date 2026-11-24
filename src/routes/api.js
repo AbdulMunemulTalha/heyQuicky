@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword, createSession, deleteSession, bearerToken
 import { InboxError } from '../inbox.js';
 import { ordersCsv, normalizeBdPhone } from '../orders.js';
 import { encryptSecret } from '../secrets.js';
+import { aiModeOf, aiModes, practiceOn } from '../dashboard/aiMode.js';
 
 const PLATFORMS = ['messenger', 'instagram', 'whatsapp'];
 
@@ -41,7 +42,7 @@ const publicWorkspace = (w) => ({
   onboardingStep: w.onboarding_step,
   deliveryInsideDhaka: w.delivery_inside_dhaka,
   deliveryOutsideDhaka: w.delivery_outside_dhaka,
-  aiMode: w.ai_mode ?? 'suggest',
+  aiMode: aiModeOf(w),
   shopNotes: w.shop_notes ?? '',
   orderFields: w.order_fields ?? null,
   address: w.address ?? '',
@@ -287,6 +288,7 @@ export function apiRoutes(db, config, inbox, orders, importer, agent, { fetchImp
       devTools: !config.isProduction,
       support: { email: config.legal?.supportEmail || null },
       ai: agent ? { available: agent.status().available, model: agent.status().model } : { available: false, model: null },
+      features: { practice: practiceOn() }, // Practice mode is switched off for now (src/dashboard/aiMode.js)
       connect: {
         facebook: Boolean(config.meta.appId && config.meta.appSecret),
         whatsapp: Boolean(config.meta.appId && config.meta.appSecret && config.meta.whatsappConfigId),
@@ -356,7 +358,8 @@ export function apiRoutes(db, config, inbox, orders, importer, agent, { fetchImp
     }
     if (body.aiMode !== undefined) {
       if (!AI_MODES.includes(body.aiMode)) throw new InboxError(400, 'Unknown AI mode');
-      updates.ai_mode = body.aiMode;
+      // Practice is switched off: "not yet" from an older screen means the AI stays off.
+      updates.ai_mode = aiModes().includes(body.aiMode) ? body.aiMode : 'off';
     }
     if (body.shopNotes !== undefined) {
       const notes = String(body.shopNotes);

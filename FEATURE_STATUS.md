@@ -1,4 +1,4 @@
-# Feature status
+| ONB-09 | Switched off for now — the Sandbox demo shop is not on HeyQuicky; the seed it would use is kept behind FEATURE_SANDBOX=1 (src/dashboard/demoSeed.js) | — || ONB-08 | Switched off for now — Practice mode (the AI only drafts) is not on HeyQuicky: the top bar is AI live | Off, new shops start Off and go live from onboarding or the top bar, and a teammate can still ask for a draft in a chat. The code is kept behind FEATURE_PRACTICE=1 (src/dashboard/aiMode.js); shops moved off Practice remember their old mode (settings.practice_retired, undo with node scripts/retire-practice.js --restore) | /app (top bar) |# Feature status
 
 Updated after each screen. **Done** = built, wired to real data and tested. **Partial** = what's missing is listed.
 ONB rows belong to onboarding, which is frozen and was built earlier; only their dashboard-side parts are tracked here.

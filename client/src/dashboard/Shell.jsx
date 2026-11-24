@@ -171,7 +171,7 @@ export function Topbar({ onMenu }) {
   async function setMode(mode) {
     if (mode === ws.aiMode || !canSwitch) return;
     // eslint-disable-next-line no-alert
-    if (!window.confirm(t(mode === 'auto' ? 'shell.goLiveConfirm' : 'shell.practiceConfirm'))) return;
+    if (!window.confirm(t(mode === 'auto' ? 'shell.goLiveConfirm' : mode === 'suggest' ? 'shell.practiceConfirm' : 'shell.offConfirm'))) return;
     setBusy(true);
     try {
       const { aiMode } = await dash('/ai-mode', { method: 'POST', body: { mode } });
@@ -194,8 +194,9 @@ export function Topbar({ onMenu }) {
           <button type="button" role="radio" aria-checked={ws.aiMode === 'auto'} className={ws.aiMode === 'auto' ? 'on' : ''} disabled={busy || !canSwitch} onClick={() => setMode('auto')}>
             <span className={`dot${ws.aiMode === 'auto' ? '' : ' gray'}`} />{t('shell.aiLive')}
           </button>
-          <button type="button" role="radio" aria-checked={ws.aiMode !== 'auto'} className={ws.aiMode !== 'auto' ? 'on' : ''} disabled={busy || !canSwitch} onClick={() => setMode('suggest')}>
-            {t('shell.practice')}
+          {/* Practice ("suggest") is switched off for now; with FEATURE_PRACTICE=1 the server sends practice: true and it comes back. */}
+          <button type="button" role="radio" aria-checked={ws.aiMode !== 'auto'} className={ws.aiMode !== 'auto' ? 'on' : ''} disabled={busy || !canSwitch} onClick={() => setMode(ws.practice ? 'suggest' : 'off')}>
+            {ws.practice ? t('shell.practice') : t('shell.off')}
           </button>
         </div>
         <button type="button" className="btn hide-mobile" title={t('shell.testChat')} onClick={() => openOverlay('testChat')}><Icon name="chat" size={15} /><span className="btn-label">{t('shell.testChat')}</span></button>

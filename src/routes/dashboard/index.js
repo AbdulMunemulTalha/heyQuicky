@@ -6,6 +6,7 @@ import { modulesFor } from '../../dashboard/settings.js';
 import { dashboardAuthRoutes } from './auth.js';
 import { averageReplyCost } from '../../dashboard/credit.js';
 import { announcementsFor } from '../../dashboard/announcements.js';
+import { aiModeOf, practiceOn } from '../../dashboard/aiMode.js';
 
 // Everything the dashboard needs, under /api/dash. Onboarding's routes in routes/api.js are untouched.
 export function dashboardRoutes(db, config, ctx) {
@@ -35,7 +36,7 @@ export function dashboardRoutes(db, config, ctx) {
         onDuty: user.on_duty !== false && user.is_online !== false,
       },
       workspace: {
-        id: workspace._id, name: workspace.name, category: workspace.category, aiMode: workspace.ai_mode ?? 'suggest',
+        id: workspace._id, name: workspace.name, category: workspace.category, aiMode: aiModeOf(workspace), practice: practiceOn(),
         onboardingStep: workspace.onboarding_step, credit,
         repliesLeft: Math.floor(credit / await averageReplyCost(db, workspace._id)), plan: workspace.plan ?? 'starter',
         wentLiveAt: workspace.went_live_at, modules: modulesFor(workspace),

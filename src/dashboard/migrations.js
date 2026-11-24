@@ -40,12 +40,28 @@ export const MIGRATIONS = [
   },
 ];
 
+// Practice mode is switched off for now (aiMode.js): move shops off it once (reversible, see practice.js).
+// When Practice is switched on this does nothing, and it isn't marked done, so it can still run later.
+MIGRATIONS.push({
+  id: '004-retire-practice',
+  async up(db) {
+    const { retirePractice } = await import('./practice.js');
+    const r = await retirePractice(db, { log: (line) => console.log(line) });
+    if (r.skipped) throw Object.assign(new Error(r.skipped), { skip: true });
+  },
+});
+
 export async function runMigrations(db, { log = () => {} } = {}) {
   const done = new Set((await db.migrations.find({}, { _id: 1 }).lean()).map((m) => m._id));
   for (const m of MIGRATIONS) {
     if (done.has(m.id)) continue;
     log(`migration ${m.id}`);
-    await m.up(db);
+    try {
+      await m.up(db);
+    } catch (err) {
+      if (err.skip) continue; // not for now; try again next start
+      throw err;
+    }
     await db.migrations.create({ _id: m.id });
   }
 }

@@ -95,7 +95,7 @@ test('a new shop starts onboarding and walks through the steps', async () => {
   });
   assert.deepEqual(
     { ...saved.data, id: undefined },
-    { ...saved.data, id: undefined, name: 'Rupa Fashion House', phone: '01711111111', category: 'fashion', onboardingStep: 'channels', deliveryInsideDhaka: 60, deliveryOutsideDhaka: 120, aiMode: 'suggest', shopNotes: '' },
+    { ...saved.data, id: undefined, name: 'Rupa Fashion House', phone: '01711111111', category: 'fashion', onboardingStep: 'channels', deliveryInsideDhaka: 60, deliveryOutsideDhaka: 120, aiMode: 'off', shopNotes: '' },
   );
 
   await call('/api/team', { method: 'POST', token, body: { name: 'Mim', email: 'mim@shop.test', password: 'password123' } });

@@ -83,7 +83,10 @@ test('the conversation is turned into alternating customer and shop turns', () =
   assert.equal(REPLY_SCHEMA.additionalProperties, false);
 });
 
-test('suggest mode drafts a reply for the moderator and sends nothing', async () => {
+// Practice ("suggest") is switched off on HeyQuicky for now; this keeps it working for when it comes back.
+test('suggest mode drafts a reply for the moderator and sends nothing (when Practice is switched on)', async (t) => {
+  process.env.FEATURE_PRACTICE = '1';
+  t.after(() => { delete process.env.FEATURE_PRACTICE; });
   const s = await shop({ mode: 'suggest' });
   const { conversation, message } = await s.inbox.ingestMessage(inbound({ text: 'Red kurti er dam koto?' }));
   assert.deepEqual(await s.settle(), ['drafted']);
@@ -245,7 +248,7 @@ test('API: products, AI settings and the suggest button', async () => {
 
     const me = await call('/api/me', { token: owner });
     assert.deepEqual(me.data.ai, { available: true, model: 'fake-1' });
-    assert.equal(me.data.workspace.aiMode, 'suggest');
+    assert.equal(me.data.workspace.aiMode, 'off', 'a new shop’s AI is off until it goes live (Practice is switched off)');
 
     // Products: the owner manages them, moderators can read them.
     const created = await call('/api/products', { method: 'POST', token: owner, body: { name: 'Red kurti', price: 1200, variants: 'M, L' } });

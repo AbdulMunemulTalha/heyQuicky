@@ -604,8 +604,17 @@ function LiveStep({ ws, me, data, save, back, onFinish }) {
             ? 'Live: the AI replies to customers itself and hands orders, payments and complaints to your team.'
             : 'The AI starts replying as soon as AI is switched on for this server. Everything else works now.'}</p>
           <button type="button" className="yellow" disabled={busy} onClick={() => finish('auto')}>Go live now</button>
-          <button type="button" className="dark-ghost" disabled={busy} onClick={() => finish('suggest')}>Stay in practice mode</button>
-          <small>Practice mode: the AI only drafts replies; your team checks and sends them.</small>
+          {me.features?.practice ? (
+            <>
+              <button type="button" className="dark-ghost" disabled={busy} onClick={() => finish('suggest')}>Stay in practice mode</button>
+              <small>Practice mode: the AI only drafts replies; your team checks and sends them.</small>
+            </>
+          ) : (
+            <>
+              <button type="button" className="dark-ghost" disabled={busy} onClick={() => finish('off')}>Not yet — keep the AI off</button>
+              <small>You can switch the AI live any time from the top bar.</small>
+            </>
+          )}
         </aside>
       </div>
       <ErrorText>{error}</ErrorText>

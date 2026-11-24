@@ -99,7 +99,7 @@ test('every onboarding step saves its settings, with validation', async () => {
     assert.deepEqual(
       { ...data, id: undefined, name: undefined, shopNotes: undefined },
       { id: undefined, name: undefined, shopNotes: undefined, phone: '01712345678', category: 'clothing', onboardingStep: 'test',
-        deliveryInsideDhaka: 70, deliveryOutsideDhaka: 130, aiMode: 'suggest',
+        deliveryInsideDhaka: 70, deliveryOutsideDhaka: 130, aiMode: 'off',
         orderFields: [{ label: 'Size', hint: 'S, M, L' }, { label: 'Colour', hint: '' }],
         address: 'Mirpur 10, Dhaka', sellsOffline: true, audience: ['women', 'girls'], deliveryInsideDays: '1–2', deliveryOutsideDays: '2–3',
         cashOnDelivery: false, freeDeliveryOver: 3000, bkashNumber: '01812345678', nagadNumber: '',

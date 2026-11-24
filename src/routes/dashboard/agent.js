@@ -4,6 +4,7 @@ import { need } from '../../dashboard/permissions.js';
 import { audit, dhakaDayStart } from '../../dashboard/util.js';
 import { publish, rollback } from '../../dashboard/training.js';
 import { AI_STYLES, AI_ADDRESS, AI_SALES } from '../../db.js';
+import { aiModeOf } from '../../dashboard/aiMode.js';
 
 const DELAYS = ['instant', '1-3', '3-6', '6-10'];
 const KINDS = ['policy', 'delivery', 'exchange', 'hours', 'faq', 'payment', 'other'];
@@ -27,7 +28,7 @@ export function agentRoutes(db, _config, { auth, agent, emit }) {
     const persona = ws.settings?.persona ?? {};
     res.json({
       persona: { name: ws.ai_name || '', role: persona.role || '', style: ws.ai_style, sales: ws.ai_sales, address: ws.ai_address, delay: DELAYS.includes(persona.delay) ? persona.delay : '3-6', autoReturnMin: ws.settings?.auto_return_min ?? 30 },
-      aiMode: ws.ai_mode, available: Boolean(agent?.status().available),
+      aiMode: aiModeOf(ws), available: Boolean(agent?.status().available),
       channels: [
         ...channels.map((c) => ({ id: c._id, platform: c.platform, name: c.name, on: c.ai_enabled !== false })),
         { id: 'comments', platform: 'comments', name: 'Comments', on: ws.settings?.comments_ai !== false },
