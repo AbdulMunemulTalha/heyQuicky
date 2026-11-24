@@ -1,0 +1,45 @@
+/* Phase 3 · Content studio (CMT-06) */
+#dash .cs { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+#dash .cs-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 12px; }
+#dash .cs-head h1 { margin: 0; }
+#dash .cs-month { gap: 8px; align-items: center; }
+#dash .cs-nav { all: unset; cursor: pointer; width: 26px; height: 26px; text-align: center; line-height: 24px; border: 1px solid var(--border); border-radius: 7px; }
+#dash .cs-nav:focus-visible, #dash .cs-num:focus-visible, #dash .cs-chip:focus-visible { outline: 2px solid var(--accent, #2f6fed); outline-offset: 2px; }
+#dash .cs-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0; overflow: hidden; }
+#dash .cs-dow { padding: 6px 8px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); }
+#dash .cs-day { min-height: 92px; padding: 4px 6px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+#dash .cs-day:nth-child(7n) { border-right: 0; }
+#dash .cs-day.out { background: var(--panel-2, #f7f7f8); }
+#dash .cs-day.out .cs-num { color: var(--muted); }
+#dash .cs-day.today { background: color-mix(in srgb, var(--accent, #2f6fed) 6%, transparent); }
+#dash .cs-day.on { box-shadow: inset 0 0 0 2px var(--accent, #2f6fed); }
+#dash .cs-num { all: unset; cursor: pointer; font-size: 12px; font-weight: 600; align-self: flex-start; padding: 0 3px; border-radius: 4px; }
+#dash .cs-chip { all: unset; box-sizing: border-box; cursor: pointer; display: block; font-size: 10.5px; padding: 2px 6px; border-radius: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; border-left: 3px solid; }
+#dash .cs-chip.tone-green { background: #e5f5ea; border-color: #1f8a4c; color: #12512e; }
+#dash .cs-chip.tone-blue { background: #e6eeff; border-color: #2f6fed; color: #1c3a99; }
+#dash .cs-chip.tone-yellow { background: #fff3cf; border-color: #d39e00; color: #6b4e00; }
+#dash .cs-chip.tone-red { background: #fdecea; border-color: #d92d20; color: #8a1c14; }
+#dash .cs-chip.on { box-shadow: 0 0 0 2px var(--accent, #2f6fed); }
+#dash .cs-legend { display: flex; gap: 14px; margin-top: 8px; }
+#dash .cs-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+#dash .cs-legend i.tone-green { background: #1f8a4c; } #dash .cs-legend i.tone-blue { background: #2f6fed; } #dash .cs-legend i.tone-yellow { background: #d39e00; } #dash .cs-legend i.tone-red { background: #d92d20; }
+#dash .cs-drafts { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#dash .cs-drafts h3 { width: 100%; margin: 0; font-size: 12.5px; }
+#dash .cs-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; position: sticky; top: 12px; display: flex; flex-direction: column; gap: 10px; }
+#dash .cs-panel h2 { margin: 0; font-size: 16px; }
+#dash .cs-prod { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 8px; }
+#dash .cs-prod img, #dash .cs-prod > span:first-child { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex: none; }
+#dash .cs-prod strong, #dash .cs-prod small { display: block; }
+#dash .cs-tones { display: flex; flex-wrap: wrap; gap: 6px; }
+#dash .cs-tone { all: unset; cursor: pointer; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+#dash .cs-tone.on { background: #15171c; color: #fff; border-color: #15171c; }
+#dash .cs-tone:disabled { opacity: .45; cursor: default; }
+#dash .cs-tone:focus-visible, #dash .cs-version:focus-visible { outline: 2px solid var(--accent, #2f6fed); outline-offset: 2px; }
+#dash .cs-versions { display: flex; flex-direction: column; gap: 6px; }
+#dash .cs-version { all: unset; box-sizing: border-box; cursor: pointer; padding: 9px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 12.5px; white-space: pre-wrap; }
+#dash .cs-version.on { border-color: var(--accent, #2f6fed); background: var(--accent-tint, #eef2ff); box-shadow: 0 0 0 1px var(--accent, #2f6fed); }
+#dash .cs-link { display: flex; gap: 8px; align-items: flex-start; }
+#dash .cs-actions { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+#dash .cs-danger { color: #b42318; }
+#dash .cs-err { color: #b42318; margin: 0; }
+@media (max-width: 1100px) { #dash .cs { grid-template-columns: minmax(0, 1fr); } #dash .cs-panel { position: static; } }

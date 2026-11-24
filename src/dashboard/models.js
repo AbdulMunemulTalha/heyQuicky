@@ -338,6 +338,24 @@ export function defineDashboardModels(conn) {
     results: { type: [Mixed], default: [] }, // [{ taught_id, question, expected, reply, pass, note, newly_broken, broke_after }]
   });
 
+  // CMT-06: a post written in the Content studio (by the AI or the team), scheduled for the Page / Instagram.
+  const contentPost = S({
+    product_id: { type: Number, default: null },
+    topic: { type: String, default: '' },
+    tone: { type: String, default: 'warm' },
+    text: { type: String, required: true },
+    image: { type: String, default: '' },
+    platforms: { type: [String], default: ['facebook'] },
+    link_product: { type: Boolean, default: false },
+    status: { type: String, enum: ['draft', 'scheduled', 'posting', 'posted', 'ready', 'failed'], default: 'draft' },
+    scheduled_at: { type: Date, default: null, index: true },
+    posted_at: { type: Date, default: null },
+    external: { type: Mixed, default: {} }, // { facebook: post id, instagram: media id }
+    error: { type: String, default: '' },
+    source: { type: String, default: 'team' }, // ai | team
+    created_by: { type: Number, default: null },
+  });
+
   const broadcast = S({
     audience: { type: Mixed, default: {} },
     format: { type: String, default: 'text' },
@@ -511,6 +529,7 @@ export function defineDashboardModels(conn) {
     followups: conn.model('Followup', followup, 'followups'),
     broadcasts: conn.model('Broadcast', broadcast, 'broadcasts'),
     offers: conn.model('Offer', offer, 'offers'),
+    contentPosts: conn.model('ContentPost', contentPost, 'content_posts'),
     selfTestRuns: conn.model('SelfTestRun', selfTestRun, 'selftest_runs'),
     webhookDeliveries: conn.model('WebhookDelivery', webhookDelivery, 'webhook_deliveries'),
     apiKeys: conn.model('ApiKey', apiKey, 'api_keys'),

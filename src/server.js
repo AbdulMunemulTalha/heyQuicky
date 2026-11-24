@@ -8,6 +8,7 @@ import { startCourierSync } from './routes/dashboard/orderDetail.js';
 import { startFollowups } from './dashboard/followups.js';
 import { startBookingReminders } from './dashboard/bookings.js';
 import { startSelfTests } from './dashboard/selftest.js';
+import { startContentPublisher } from './dashboard/content.js';
 import { startPageSubscriptions } from './dashboard/pageSubscriptions.js';
 import { startSlaWatch } from './dashboard/team.js';
 import { remindCallbacks } from './dashboard/callbacks.js';
@@ -36,6 +37,7 @@ const { server, inbox, io, notify, deliveryUpdates, agent } = createApp(db, conf
 startFollowups(db, inbox);
 startBookingReminders(db, inbox);
 startSelfTests(db, agent, { notify });
+startContentPublisher(db, config, { notify });
 // Connected Pages also get button taps from cards (screen 24).
 startPageSubscriptions(db, config);
 startSlaWatch(db, notify);

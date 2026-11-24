@@ -61,6 +61,8 @@ export function loadConfig(env = process.env) {
       graphVersion: env.META_GRAPH_VERSION || 'v23.0',
       // Facebook Login for Business configuration (Messenger + Instagram permissions).
       loginConfigId: env.META_LOGIN_CONFIG_ID || '',
+      // CMT-06: also ask for posting permissions when connecting (turn on once Meta approves them).
+      publishScopes: env.META_PUBLISH_SCOPES === '1',
       // WhatsApp Embedded Signup configuration.
       whatsappConfigId: env.META_WHATSAPP_CONFIG_ID || '',
     },

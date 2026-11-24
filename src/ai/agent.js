@@ -23,6 +23,7 @@ import { MAX_AUDIO_BYTES } from './transcribe.js';
 import { decryptSecret } from '../secrets.js';
 import { pageLinker } from '../dashboard/productPage.js';
 import { JUDGE_SCHEMA, judgePrompt } from '../dashboard/selftest.js';
+import { WRITE_SCHEMA, writePrompt } from '../dashboard/content.js';
 
 // After a person replies (or the AI hands off), the AI stays out of that
 // conversation in auto mode for this long, then may answer again.
@@ -600,6 +601,17 @@ export function createAgent(db, inbox, provider, { replyDelayMs = null, log = co
     respond,
     replyToComment,
     matchPost,
+
+    // CMT-06: three versions of an organic post (metered as content).
+    async writePosts(workspaceId, { shop, product, topic, tone }) {
+      if (!provider) throw new InboxError(503, 'AI replies are not set up on this server yet');
+      const { data } = await callModel(workspaceId, {
+        system: writePrompt({ shop, product, topic, tone }),
+        messages: [{ role: 'user', content: 'Write the 3 posts now.' }],
+        schema: WRITE_SCHEMA,
+      }, { kind: 'content', summary: 'Wrote posts', customerName: 'Content studio' });
+      return (Array.isArray(data?.versions) ? data.versions : []).map((v) => String(v).trim()).filter(Boolean).slice(0, 3);
+    },
 
     // TRN-06: does this reply still give the taught facts? A short, metered judge call.
     async judgeAnswer(workspaceId, { question, expected, reply }) {

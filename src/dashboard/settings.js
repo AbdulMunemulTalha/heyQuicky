@@ -9,7 +9,7 @@ export const MODULES = {
 export const BUSINESS_TYPES = ['clothing', 'cosmetics', 'electronics', 'mobile_accessories', 'jewellery', 'shoes', 'grocery', 'food', 'salon', 'clinic', 'coaching', 'other'];
 const OLD_TYPE = { fashion: 'clothing', beauty: 'cosmetics', home: 'other', kids: 'other' };
 // Modules whose screens are not built yet (Phase 3): shown, but can't be switched on.
-export const NOT_BUILT = ['content'];
+export const NOT_BUILT = [];
 
 // Recommended modules per business type (UX-07).
 const SHOP = ['courier', 'catalog', 'growth', 'coupons', 'payments', 'tickets'];

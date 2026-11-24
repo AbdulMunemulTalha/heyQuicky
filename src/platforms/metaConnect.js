@@ -13,9 +13,12 @@ export const LOGIN_SCOPES = [
   'business_management',
 ];
 
+// CMT-06: posting to the Page and Instagram. Asked only when META_PUBLISH_SCOPES=1 — Meta must approve them first.
+export const PUBLISH_SCOPES = ['pages_manage_posts', 'instagram_content_publish'];
+
 const MAX_PAGE_REQUESTS = 10;
 
-export function createMetaClient({ appId, appSecret, graphVersion, fetchImpl = globalThis.fetch }) {
+export function createMetaClient({ appId, appSecret, graphVersion, publishScopes = false, fetchImpl = globalThis.fetch }) {
   const base = `https://graph.facebook.com/${graphVersion}`;
   const url = (path, params = {}) => {
     const u = new URL(`${base}/${path}`);
@@ -33,7 +36,7 @@ export function createMetaClient({ appId, appSecret, graphVersion, fetchImpl = g
       u.searchParams.set('state', state);
       u.searchParams.set('response_type', 'code');
       if (configId) u.searchParams.set('config_id', configId);
-      else u.searchParams.set('scope', LOGIN_SCOPES.join(','));
+      else u.searchParams.set('scope', [...LOGIN_SCOPES, ...(publishScopes ? PUBLISH_SCOPES : [])].join(','));
       // Asks again for permissions the person switched off last time.
       if (rerequest) u.searchParams.set('auth_type', 'rerequest');
       return u.toString();

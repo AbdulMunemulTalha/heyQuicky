@@ -23,6 +23,7 @@ const NAV = [
   { key: 'growth', to: '/growth', icon: 'growth', label: 'nav.growth', module: 'growth',
     sub: [{ to: '/growth', label: 'nav.followups' }, { to: '/growth/leads', label: 'nav.leadsPipeline' }, { to: '/growth/not-ordered', label: 'nav.didntOrder' }] },
   { key: 'coupons', to: '/coupons', icon: 'tag', label: 'nav.coupons', module: 'coupons' },
+  { key: 'content', to: '/content', icon: 'edit', label: 'nav.content', module: 'content' },
   { key: 'saved', to: '/saved-replies', icon: 'saved', label: 'nav.saved' },
   { section: 'nav.ai' },
   { key: 'agent', to: '/agent', icon: 'agent', label: 'nav.agent', badge: 'agent', tone: 'gray',
@@ -50,7 +51,7 @@ export const SETTINGS_NAV = [
 export function activeKey(path) {
   const first = path.split('/')[1] ?? '';
   const map = { '': 'overview', inbox: 'inbox', comments: 'inbox', orders: 'orders', tickets: 'tickets', customers: 'customers',
-    growth: 'growth', coupons: 'coupons', content: 'growth', 'saved-replies': 'saved', agent: 'agent', catalog: 'catalog',
+    growth: 'growth', coupons: 'coupons', content: 'content', 'saved-replies': 'saved', agent: 'agent', catalog: 'catalog',
     analytics: 'analytics', payments: 'payments', bookings: 'bookings', settings: 'settings', profile: 'profile' };
   return map[first] ?? '';
 }

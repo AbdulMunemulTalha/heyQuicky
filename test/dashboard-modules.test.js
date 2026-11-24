@@ -28,12 +28,12 @@ test('modules: switch sections on and off, business type and "use recommended"; 
     assert.equal(page.status, 200);
     assert.equal(page.body.modules.length, 12);
     assert.equal(page.body.modules.find((m) => m.key === 'inbox').always, true);
-    assert.equal(page.body.modules.find((m) => m.key === 'content').notBuilt, true);
+    assert.ok(!page.body.modules.find((m) => m.key === 'content').notBuilt, 'the content studio is built now');
     assert.ok(!page.body.modules.find((m) => m.key === 'bookings').notBuilt, 'bookings is built now');
 
     assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.mod, body: { modules: { coupons: false } } })).status, 403);
     assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { inbox: false } } })).status, 400);
-    assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { content: true } } })).status, 409);
+    assert.equal((await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { content: false } } })).status, 200);
     const off = await s.call('/settings/modules', { method: 'PATCH', token: s.owner, body: { modules: { coupons: false, tickets: false } } });
     assert.equal(off.body.modules.find((m) => m.key === 'coupons').on, false);
     assert.equal(off.body.matchesRecommended, false);
