@@ -14,10 +14,10 @@
 #dash .nt-item p { margin: 0; font-size: 13px; line-height: 1.4; }
 #dash .nt-item small { display: block; margin-top: 2px; font-size: 11.5px; }
 #dash .nt-icon { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; }
-#dash .nt-icon.tone-yellow { background: #fff4d6; color: #a56a00; }
+#dash .nt-icon.tone-yellow { background: var(--yellow-soft); color: #a56a00; }
 #dash .nt-icon.tone-blue { background: var(--accent-soft); color: var(--accent); }
-#dash .nt-icon.tone-red { background: #fde4e4; color: #b42318; }
-#dash .nt-icon.tone-orange { background: #ffe8d6; color: #b54708; }
+#dash .nt-icon.tone-red { background: var(--red-soft); color: var(--red-text); }
+#dash .nt-icon.tone-orange { background: var(--orange-soft); color: #b54708; }
 #dash .nt-icon.tone-gray { background: var(--gray-soft); color: var(--muted); }
 #dash .nt-actions { gap: 6px; margin-top: 8px; }
 #dash .nt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; margin-top: 6px; }

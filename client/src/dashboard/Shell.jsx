@@ -163,7 +163,7 @@ export function Sidebar({ open, onClose }) {
 
 export function Topbar({ onMenu }) {
   const t = useT();
-  const { me, setMe, badges, openOverlay, setLanguage } = useDash();
+  const { me, setMe, badges, openOverlay, setLanguage, theme, setTheme } = useDash();
   const ws = me.workspace;
   const canSwitch = me.user.role === 'owner' || me.user.role === 'admin';
   const [busy, setBusy] = useState(false);
@@ -199,6 +199,9 @@ export function Topbar({ onMenu }) {
           </button>
         </div>
         <button type="button" className="btn hide-mobile" title={t('shell.testChat')} onClick={() => openOverlay('testChat')}><Icon name="chat" size={15} /><span className="btn-label">{t('shell.testChat')}</span></button>
+        <button type="button" className="btn hide-mobile theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-pressed={theme === 'dark'} title={t('shell.themeHint')}>
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} /><span className="btn-label">{theme === 'dark' ? t('shell.light') : t('shell.dark')}</span>
+        </button>
         <button type="button" className={`btn hide-mobile${t.lang === 'en' ? ' bn' : ''}`} onClick={() => setLanguage(t.lang === 'en' ? 'bn' : 'en')} lang={t.lang === 'en' ? 'bn' : 'en'}>
           {t('shell.otherLang')}
         </button>

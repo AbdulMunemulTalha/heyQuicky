@@ -71,5 +71,5 @@
 #dash .pg-form { display: flex; flex-direction: column; gap: 10px; }
 #dash .pg-key { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
 #dash .pg-sandbox { gap: 10px; align-items: flex-start; }
-#dash .pg-danger { color: #b42318; }
+#dash .pg-danger { color: var(--red-text); }
 @media (max-width: 900px) { #dash .pg-cards { grid-template-columns: minmax(0, 1fr); } }

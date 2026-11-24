@@ -3107,4 +3107,7 @@ export default {
   'rq.st.not_now': "এখন না",
   'nt.ev.product': "আপনার ফিচার অনুরোধ",
   'nt.evHint.product': "আপনার চাওয়া কোনো অনুরোধ পরিকল্পনায় এলে বা চালু হলে",
+  'shell.dark': "ডার্ক",
+  'shell.light': "লাইট",
+  'shell.themeHint': "লাইট আর ডার্কের মধ্যে বদলান (আরও বিকল্প প্রোফাইলে)",
 };

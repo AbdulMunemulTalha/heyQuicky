@@ -8,7 +8,7 @@
 #dash .po-card.on { border-color: var(--accent, #2f6fed); box-shadow: 0 0 0 1px var(--accent, #2f6fed); }
 #dash .po-card:focus-visible { outline: 2px solid var(--accent, #2f6fed); outline-offset: 2px; }
 #dash .po-img { position: relative; display: block; aspect-ratio: 16 / 10; background: var(--gray-soft) center / cover no-repeat; }
-#dash .po-badge { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,.92); color: #111; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+#dash .po-badge { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,.92); color: var(--text); font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
 #dash .po-body { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; }
 #dash .po-cap { font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 #dash .po-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
@@ -16,7 +16,7 @@
 /* Side panel */
 #dash .po-panel { position: sticky; top: 64px; align-self: start; height: calc(100vh - 64px); overflow-y: auto; background: var(--panel); border-left: 1px solid var(--border); }
 #dash .po-hero { position: relative; height: 150px; background: var(--gray-soft) center / cover no-repeat; }
-#dash .po-close { all: unset; cursor: pointer; position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 14px; background: rgba(255,255,255,.9); color: #111; font-size: 18px; }
+#dash .po-close { all: unset; cursor: pointer; position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 14px; background: rgba(255,255,255,.9); color: var(--text); font-size: 18px; }
 #dash .po-close:focus-visible { outline: 2px solid var(--accent, #2f6fed); }
 #dash .po-pbody { padding: 14px 18px 24px; display: flex; flex-direction: column; gap: 16px; }
 #dash .po-caption { margin: 0 0 4px; font-size: 14px; font-weight: 600; white-space: pre-wrap; }

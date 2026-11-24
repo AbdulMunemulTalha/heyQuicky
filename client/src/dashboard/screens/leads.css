@@ -7,7 +7,7 @@
 #dash .ld-kpis small { font-size: 11.5px; color: var(--muted); }
 #dash .ld-kpis strong { font: 700 20px/1.2 var(--display); }
 #dash .ld-kpis .green { color: var(--green-text, #12733f); }
-#dash .ld-kpis .red { color: #b42318; }
+#dash .ld-kpis .red { color: var(--red-text); }
 #dash .ld-board { display: grid; grid-template-columns: repeat(5, minmax(200px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 6px; }
 #dash .ld-col { background: var(--panel-2, #f3f4f6); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 280px; }
 #dash .ld-col header { display: flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 2px 4px; }
@@ -18,9 +18,9 @@
 #dash .ld-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
 #dash .ld-card strong { font-size: 13px; }
 #dash .ld-chip { align-self: flex-start; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--panel-2, #f3f4f6); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#dash .ld-chip.tone-green { background: #e5f5ea; color: #12733f; } #dash .ld-chip.tone-red { background: #fdecea; color: #b42318; }
-#dash .ld-chip.tone-purple { background: #efe7fb; color: #5b3a99; } #dash .ld-chip.tone-yellow { background: #fff3cf; color: #7a5600; }
-#dash .ld-chip.tone-blue { background: #e6eeff; color: #2238c9; } #dash .ld-chip.tone-orange { background: #fdebdc; color: #9a4a12; }
+#dash .ld-chip.tone-green { background: var(--green-soft); color: var(--green-text); } #dash .ld-chip.tone-red { background: var(--red-soft); color: var(--red-text); }
+#dash .ld-chip.tone-purple { background: var(--purple-soft); color: var(--purple); } #dash .ld-chip.tone-yellow { background: var(--yellow-soft); color: var(--yellow-text); }
+#dash .ld-chip.tone-blue { background: var(--accent-soft); color: var(--accent); } #dash .ld-chip.tone-orange { background: var(--orange-soft); color: var(--orange-text); }
 #dash .ld-foot { gap: 6px; align-items: center; margin-top: 2px; }
 #dash .ld-owner { font-size: 11px; color: var(--muted); }
 #dash .ld-link { all: unset; cursor: pointer; font-size: 11.5px; color: var(--accent, #2f6fed); }

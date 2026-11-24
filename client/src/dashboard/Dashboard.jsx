@@ -117,6 +117,19 @@ function pick(path) {
 }
 
 const LANG_KEY = 'quicky:lang';
+const THEME_KEY = 'quicky:theme';
+
+function useDeviceDark() {
+  const query = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-color-scheme: dark)') : null;
+  const [dark, setDark] = useState(Boolean(query?.matches));
+  useEffect(() => {
+    if (!query) return undefined;
+    const on = (e) => setDark(e.matches);
+    query.addEventListener?.('change', on);
+    return () => query.removeEventListener?.('change', on);
+  }, [query]);
+  return dark;
+} // UX-02: remembered so the loading screen doesn't flash light
 // Which module each page belongs to (UX-07).
 const SCREEN_MODULE = { tickets: 'tickets', growth: 'growth', leads: 'growth', content: 'content', coupons: 'coupons', payments: 'payments', catalog: 'catalog', posts: 'catalog', sizeCharts: 'catalog', product: 'catalog', deliveryUpdates: 'courier' };
 
@@ -205,9 +218,16 @@ export function Dashboard({ onSignOut }) {
     dash('/prefs', { method: 'PATCH', body: { language: next } }).catch(() => {});
   }, []);
 
-  const theme = me?.user.theme === 'system'
-    ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : me?.user.theme ?? 'light';
+  // UX-02: light / dark / match my device — "match" follows the device as it changes (e.g. at sunset).
+  const deviceDark = useDeviceDark();
+  const choice = me?.user.theme ?? localStorage.getItem(THEME_KEY) ?? 'light';
+  const theme = choice === 'system' ? (deviceDark ? 'dark' : 'light') : choice === 'dark' ? 'dark' : 'light';
+  useEffect(() => { if (me?.user.theme) localStorage.setItem(THEME_KEY, me.user.theme); }, [me?.user.theme]);
+  const setTheme = useCallback((next) => {
+    setMe((m) => (m ? { ...m, user: { ...m.user, theme: next } } : m));
+    localStorage.setItem(THEME_KEY, next);
+    dash('/prefs', { method: 'PATCH', body: { theme: next } }).catch(() => {});
+  }, []);
 
   const ctx = useMemo(() => me && ({
     me, setMe, t, socket, query, reload: load, refreshBadges,
@@ -216,12 +236,13 @@ export function Dashboard({ onSignOut }) {
     openOverlay: (name, props = {}) => setOverlay({ name, props }),
     closeOverlay: () => setOverlay(null),
     setLanguage,
+    theme, setTheme,
     signOut: onSignOut,
-  }), [me, t, socket, query, load, refreshBadges, setLanguage, onSignOut]);
+  }), [me, t, socket, query, load, refreshBadges, setLanguage, onSignOut, theme, setTheme]);
 
   if (!me) {
     return (
-      <div id="dash" lang={lang}>
+      <div id="dash" lang={lang} data-theme={theme}>
         {error ? <div style={{ paddingTop: 80 }}><I18n.Provider value={t}><ErrorState thing="The dashboard" error={error} onRetry={load} /></I18n.Provider></div>
           : <div className="shell"><div className="sidebar" /><div className="content" style={{ paddingTop: 80 }}><Skeleton w="40%" h={28} /><br /><Skeleton h={120} r={12} /></div></div>}
       </div>

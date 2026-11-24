@@ -3113,4 +3113,7 @@ export default {
   'rq.st.not_now': "Not now",
   'nt.ev.product': "Your feature requests",
   'nt.evHint.product': "When a request you asked for is planned or released",
+  'shell.dark': "Dark",
+  'shell.light': "Light",
+  'shell.themeHint': "Switch between light and dark (more choices in Profile)",
 };

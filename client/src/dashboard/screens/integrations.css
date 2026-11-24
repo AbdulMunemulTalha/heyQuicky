@@ -20,7 +20,7 @@
 #dash .in-phead .grow { display: flex; flex-direction: column; min-width: 0; }
 #dash .in-close { all: unset; cursor: pointer; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 13px; color: var(--muted); font-size: 18px; }
 #dash .in-close:hover, #dash .in-close:focus-visible { background: var(--panel-2); }
-#dash .in-ok { padding: 12px; border-radius: 10px; background: var(--green-soft, #e7f6ec); border: 1px solid #b7e4c7; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
+#dash .in-ok { padding: 12px; border-radius: 10px; background: var(--green-soft, #e7f6ec); border: 1px solid var(--green-soft); display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
 #dash .in-ok strong { color: var(--green-text, #12733f); }
 #dash .in-form, #dash .in-sec { display: flex; flex-direction: column; gap: 8px; }
 #dash .in-form .field, #dash .in-sec .field { display: flex; flex-direction: column; gap: 4px; margin: 0; }
@@ -47,7 +47,7 @@
 /* INT-04 · Webhooks & API */
 #dash .wh-ep { border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 3px; }
 #dash .wh-url { font-size: 12px; overflow-wrap: anywhere; }
-#dash .wh-err { color: #b42318; font-size: 12px; }
+#dash .wh-err { color: var(--red-text); font-size: 12px; }
 #dash .wh-events { border: 0; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 #dash .wh-ev { display: flex; gap: 8px; align-items: center; font-size: 13px; }
 #dash .wh-code { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 8px 10px; background: var(--panel-2, #f3f4f6); border-radius: 8px; overflow-wrap: anywhere; margin: 6px 0; }

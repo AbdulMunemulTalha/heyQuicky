@@ -12,12 +12,12 @@
 #dash .why-sources { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 #dash .why-sources li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 12.5px; }
 #dash .why-chip { flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--panel-2, #f3f4f6); }
-#dash .why-chip.tone-purple { background: #efe7fb; color: #5b3a99; }
-#dash .why-chip.tone-blue { background: #e6eeff; color: #2238c9; }
-#dash .why-chip.tone-green { background: #e5f5ea; color: #12733f; }
-#dash .why-chip.tone-yellow { background: #fff3cf; color: #7a5600; }
-#dash .why-chip.tone-orange { background: #fdebdc; color: #9a4a12; }
-#dash .why-chip.tone-red { background: #fdecea; color: #b42318; }
+#dash .why-chip.tone-purple { background: var(--purple-soft); color: var(--purple); }
+#dash .why-chip.tone-blue { background: var(--accent-soft); color: var(--accent); }
+#dash .why-chip.tone-green { background: var(--green-soft); color: var(--green-text); }
+#dash .why-chip.tone-yellow { background: var(--yellow-soft); color: var(--yellow-text); }
+#dash .why-chip.tone-orange { background: var(--orange-soft); color: var(--orange-text); }
+#dash .why-chip.tone-red { background: var(--red-soft); color: var(--red-text); }
 #dash .why-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--panel-2, #f6f7f9); font-size: 12px; color: var(--muted); }
 #dash .msg-why { all: unset; cursor: pointer; font-size: 11.5px; color: var(--accent, #2f6fed); margin-left: 6px; }
 #dash .msg-why:hover, #dash .msg-why:focus-visible { text-decoration: underline; }

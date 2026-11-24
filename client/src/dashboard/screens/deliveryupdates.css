@@ -34,7 +34,7 @@
 #dash .du-side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 76px; }
 #dash .du-preview { padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--panel-2); }
 #dash .du-sidetitle { font-size: 12px; font-weight: 600; color: var(--muted); }
-#dash .du-card { background: #fff; color: #111; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+#dash .du-card { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
 #dash .du-banner { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 18px 12px; font-size: 15px; }
 #dash .du-banner.tone-yellow { background: #f2b705; color: #fff; }
 #dash .du-banner.tone-blue { background: #2f6fed; color: #fff; }
@@ -42,7 +42,7 @@
 #dash .du-banner.tone-gray { background: #6b7280; color: #fff; }
 #dash .du-banner.tone-red { background: #d64545; color: #fff; }
 #dash .du-card p { margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
-#dash .du-cardbtn { display: block; text-align: center; padding: 9px; border-top: 1px solid #e5e7eb; color: #2f6fed; font-weight: 600; font-size: 13px; }
+#dash .du-cardbtn { display: block; text-align: center; padding: 9px; border-top: 1px solid var(--border); color: #2f6fed; font-weight: 600; font-size: 13px; }
 #dash .du-couriers { padding: 12px 14px; }
 #dash .du-couriers h3 { margin: 0 0 8px; font-size: 13.5px; font-weight: 600; }
 #dash .du-couriers li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); }

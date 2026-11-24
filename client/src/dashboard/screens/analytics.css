@@ -4,7 +4,7 @@
 #dash .an-who { display: flex; flex-direction: column; gap: 14px; }
 #dash .an-who strong { font-size: 13.5px; }
 #dash .an-bar { display: block; height: 8px; border-radius: 4px; background: var(--gray-soft); overflow: hidden; margin-top: 6px; }
-#dash .an-bar > span { display: block; height: 100%; border-radius: 4px; background: #111; }
+#dash .an-bar > span { display: block; height: 100%; border-radius: 4px; background: var(--ink); }
 #dash .an-bar.sm { margin: 0; height: 6px; }
 #dash .an-reasons { display: flex; flex-direction: column; gap: 10px; }
 #dash .an-reasons li { display: grid; grid-template-columns: minmax(0, 1.3fr) 1fr 40px; align-items: center; gap: 10px; font-size: 13px; }
@@ -19,8 +19,8 @@
 #dash .an-heat { display: flex; flex-direction: column; gap: 3px; overflow-x: auto; padding-bottom: 2px; }
 #dash .an-heat-row { display: grid; grid-template-columns: 34px repeat(24, minmax(0, 1fr)); gap: 3px; align-items: center; min-width: 460px; }
 #dash .an-heat-day { font-size: 11px; color: var(--muted); }
-#dash .an-cell { height: 18px; border-radius: 3px; background: #eef0f6; }
-#dash .an-cell.l1 { background: #dfe5fb; }
+#dash .an-cell { height: 18px; border-radius: 3px; background: var(--gray-soft); }
+#dash .an-cell.l1 { background: var(--accent-soft); }
 #dash .an-cell.l2 { background: #c3cff8; }
 #dash .an-cell.l3 { background: #9eb1f3; }
 #dash .an-cell.l4 { background: #6f89ec; }

@@ -49,12 +49,12 @@
 #dash .sc-page { display: inline-block; }
 
 /* The chart as an image */
-#dash .sc-img { background: #fff; color: #111; border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+#dash .sc-img { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
 #dash .sc-imghead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 #dash .sc-imghead strong { font: 700 13px/1.2 var(--display); }
 #dash .sc-imghead small { font-size: 9.5px; letter-spacing: .06em; color: #555; }
 #dash .sc-img table { width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: center; }
-#dash .sc-img thead th { background: #111; color: #fff; font-weight: 600; padding: 5px 4px; }
+#dash .sc-img thead th { background: var(--ink); color: var(--panel); font-weight: 600; padding: 5px 4px; }
 #dash .sc-img tbody th { font-weight: 700; padding: 5px 4px; }
 #dash .sc-img tbody td { padding: 5px 4px; }
 #dash .sc-img tbody tr:nth-child(even) { background: #f4f4f5; }

@@ -27,9 +27,9 @@
 #dash .pf-thumb i, #dash .pf-thumb b { position: absolute; display: block; }
 #dash .pf-thumb i { left: 0; top: 0; bottom: 0; width: 26%; }
 #dash .pf-thumb b { left: 34%; right: 8%; top: 12px; height: 7px; border-radius: 3px; }
-#dash .th-light { background: #fff; } #dash .th-light i { background: #f3f4f6; } #dash .th-light b { background: #111; }
+#dash .th-light { background: var(--panel); } #dash .th-light i { background: var(--gray-soft); } #dash .th-light b { background: var(--ink); }
 #dash .th-dark { background: #17181c; } #dash .th-dark i { background: #0e0f12; } #dash .th-dark b { background: #f2f3f5; }
-#dash .th-system { background: linear-gradient(90deg, #fff 50%, #17181c 50%); } #dash .th-system i { background: #f3f4f6; } #dash .th-system b { background: #888; }
+#dash .th-system { background: linear-gradient(90deg, var(--panel) 50%, #17181c 50%); } #dash .th-system i { background: var(--gray-soft); } #dash .th-system b { background: #888; }
 #dash .pf-form { display: flex; flex-direction: column; gap: 12px; }
 #dash .pf-err { color: var(--red-text, #b42318); }
 @media (max-width: 1000px) { #dash .pf-cols, #dash .pf-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -3,7 +3,7 @@
 #dash .hp-hero { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-height: 150px; padding: 14px; border-radius: 12px;
   background: linear-gradient(135deg, #2f4bff, #5a73ff); color: #fff; position: relative; }
 #dash .hp-hero:focus-visible { outline: 2px solid var(--accent, #2f6fed); outline-offset: 2px; }
-#dash .hp-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%); width: 52px; height: 52px; border-radius: 26px; background: #fff; display: grid; place-items: center; font-size: 22px; }
+#dash .hp-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%); width: 52px; height: 52px; border-radius: 26px; background: var(--panel); display: grid; place-items: center; font-size: 22px; }
 #dash .hp-herotext { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
 #dash .hp-herotext strong { font-size: 13px; }
 #dash .hp-herotext small { background: rgba(0,0,0,.35); padding: 2px 7px; border-radius: 6px; font-size: 11px; white-space: nowrap; }
@@ -36,11 +36,11 @@
 #dash .wn-item p { margin: 0; }
 #dash .wn-top { display: flex; align-items: center; gap: 6px; }
 #dash .wn-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-#dash .wn-tag.tone-yellow { background: #fde68a; color: #6b4e00; }
-#dash .wn-tag.tone-blue { background: #dbe4ff; color: #1c3a99; }
-#dash .wn-tag.tone-green { background: #d7f2e1; color: #14532d; }
+#dash .wn-tag.tone-yellow { background: var(--yellow-soft); color: var(--yellow-text); }
+#dash .wn-tag.tone-blue { background: var(--accent-soft); color: var(--accent); }
+#dash .wn-tag.tone-green { background: var(--green-soft); color: var(--green-text); }
 #dash .wn-dot { width: 7px; height: 7px; border-radius: 50%; background: #2B4BFF; }
-#dash .wn-asked { color: #1f8a4c; font-weight: 600; }
+#dash .wn-asked { color: var(--green-text); font-weight: 600; }
 #dash .wn-asked::after { content: ' ✓'; }
 #dash .wn-actions { display: flex; gap: 6px; margin-top: 4px; }
 #dash .wn-actions:empty { display: none; }
@@ -61,7 +61,7 @@
 #dash .rq-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 #dash .rq-row .btn { justify-content: center; }
 #dash .rq-speak { user-select: none; touch-action: none; }
-#dash .rq-speak.on { background: #fdecec; border-color: #d92d20; color: #b42318; }
+#dash .rq-speak.on { background: var(--red-soft); border-color: var(--red-text); color: var(--red-text); }
 #dash .rq-voice { display: flex; align-items: center; gap: 6px; }
 #dash .rq-voice audio { height: 32px; flex: 1; }
 #dash .rq-x { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 6px; font-size: 16px; }
@@ -74,12 +74,12 @@
 #dash .rq-item small { margin-top: 2px; }
 #dash .rq-vote { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; align-items: center; min-width: 34px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; line-height: 1.2; }
 #dash .rq-vote strong { font-size: 13px; }
-#dash .rq-vote.on { background: #eef2ff; border-color: #2B4BFF; color: #1c3a99; }
+#dash .rq-vote.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 #dash .rq-vote:disabled { cursor: default; }
 #dash .rq-pill { flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-#dash .rq-pill.tone-yellow { background: #fde68a; color: #6b4e00; }
-#dash .rq-pill.tone-purple { background: #ede4ff; color: #5b21b6; }
-#dash .rq-pill.tone-blue { background: #dbe4ff; color: #1c3a99; }
-#dash .rq-pill.tone-green { background: #d7f2e1; color: #14532d; }
-#dash .rq-pill.tone-gray { background: #eceee8; color: #4b5160; }
+#dash .rq-pill.tone-yellow { background: var(--yellow-soft); color: var(--yellow-text); }
+#dash .rq-pill.tone-purple { background: var(--purple-soft); color: var(--purple); }
+#dash .rq-pill.tone-blue { background: var(--accent-soft); color: var(--accent); }
+#dash .rq-pill.tone-green { background: var(--green-soft); color: var(--green-text); }
+#dash .rq-pill.tone-gray { background: var(--gray-soft); color: var(--muted); }
 #dash .rq-link { all: unset; cursor: pointer; color: var(--accent, #2B4BFF); }

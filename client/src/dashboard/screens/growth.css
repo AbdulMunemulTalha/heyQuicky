@@ -33,5 +33,5 @@
 #dash .gr-cb-outcomes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 #dash .gr-cb-out { all: unset; box-sizing: border-box; cursor: pointer; text-align: center; padding: 8px 6px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; font-weight: 500; }
 #dash .gr-cb-out:hover:not(:disabled), #dash .gr-cb-out:focus-visible { border-color: var(--accent, #2f6fed); }
-#dash .gr-cb-out.o-ordered { background: var(--green-soft, #e7f6ec); border-color: #b7e4c7; color: var(--green-text, #12733f); }
+#dash .gr-cb-out.o-ordered { background: var(--green-soft, #e7f6ec); border-color: var(--green-soft); color: var(--green-text, #12733f); }
 #dash .gr-cb-out:disabled { opacity: .5; cursor: default; }

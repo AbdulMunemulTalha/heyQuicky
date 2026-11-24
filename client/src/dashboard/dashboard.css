@@ -262,6 +262,8 @@
 #dash .tone-green { background: var(--green-soft); color: var(--green-text); }
 #dash .tone-gray { background: var(--gray-soft); color: var(--muted); }
 #dash .empty-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+/* style.css gives code a light landing-page background; inside the dashboard it follows the theme. */
+#dash code { background: var(--panel-2); color: inherit; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--border); }
 #dash .error-code { display: block; color: var(--faint); font-size: 11px; margin-top: 6px; }
 #dash .skeleton { display: block; background: linear-gradient(90deg, var(--gray-soft) 0%, var(--hover) 50%, var(--gray-soft) 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }

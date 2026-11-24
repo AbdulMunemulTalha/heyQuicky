@@ -1,12 +1,12 @@
 /* INB-09 · Team notes & @mentions */
-#dash .tn-modal { background: #fffbea; }
+#dash .tn-modal { background: var(--yellow-soft); }
 #dash[data-theme="dark"] .tn-modal { background: #2a2618; }
 #dash[data-theme="dark"] .tn-ico { background: #4a3f1c; }
 #dash[data-theme="dark"] .tn-mention { background: #26305c; color: #c7d2ff; }
 /* The thread scrolls on its own, so the @ picker can hang below the box. */
 #dash .tn-modal .modal-body { overflow: visible; }
 #dash .tn-title { display: inline-flex; align-items: center; gap: 8px; }
-#dash .tn-ico { width: 28px; height: 28px; border-radius: 8px; background: #fde9a8; display: inline-grid; place-items: center; font-size: 14px; }
+#dash .tn-ico { width: 28px; height: 28px; border-radius: 8px; background: var(--yellow-soft); display: inline-grid; place-items: center; font-size: 14px; }
 #dash .tn-thread { display: flex; flex-direction: column; gap: 12px; max-height: 340px; overflow-y: auto; padding: 4px 2px 8px; }
 #dash .tn-empty { margin: 8px 0; }
 #dash .tn-note { display: flex; gap: 10px; align-items: flex-start; }
@@ -17,7 +17,7 @@
 #dash .tn-body p { margin: 2px 0 0; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
 #dash .tn-del { all: unset; cursor: pointer; margin-left: auto; font-size: 11.5px; color: var(--muted); }
 #dash .tn-del:hover, #dash .tn-del:focus-visible { color: var(--red-text, #b42318); text-decoration: underline; }
-#dash .tn-mention { background: #dfe6ff; color: #2238c9; border-radius: 6px; padding: 0 4px; font-weight: 600; }
+#dash .tn-mention { background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 0 4px; font-weight: 600; }
 #dash .tn-compose { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
 #dash .tn-field { position: relative; flex: 1; }
 #dash .tn-field .input { width: 100%; }
