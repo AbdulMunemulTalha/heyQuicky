@@ -64,7 +64,37 @@ function aiStatus(t, ws) {
   return { text: `${t('shell.aiOff')} · ${channels}`, cls: 'off' };
 }
 
+// The sidebar's shape: the full menu or the narrow icon rail. By default big screens get the full menu and narrow ones
+// (769–1024 px) the rail; the toggle button flips it, and the choice is remembered for that screen size.
+const NARROW = '(min-width: 769px) and (max-width: 1024px)';
+const sideKey = (narrow) => (narrow ? 'quicky_side_narrow' : 'quicky_side_wide');
+function useSideMode() {
+  const mq = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(NARROW) : null;
+  const [narrow, setNarrow] = useState(() => !!mq?.matches);
+  const [pref, setPref] = useState(() => { try { return localStorage.getItem(sideKey(!!mq?.matches)); } catch { return null; } });
+  useEffect(() => {
+    if (!mq) return undefined;
+    const on = () => { setNarrow(mq.matches); try { setPref(localStorage.getItem(sideKey(mq.matches))); } catch { setPref(null); } };
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+  const rail = pref ? pref === 'rail' : narrow;
+  useEffect(() => {
+    const root = document.getElementById('dash');
+    if (!root) return undefined;
+    root.dataset.side = rail ? 'rail' : 'full';
+    return () => { delete root.dataset.side; };
+  }, [rail]);
+  const toggle = () => {
+    const next = rail ? 'full' : 'rail';
+    try { localStorage.setItem(sideKey(narrow), next); } catch { /* private mode: still flips for this visit */ }
+    setPref(next);
+  };
+  return { rail, toggle };
+}
+
 export function Sidebar({ open, onClose }) {
+  const side = useSideMode();
   const t = useT();
   const { me, badges, openOverlay, setMe } = useDash();
   const { path } = useLocation();
@@ -89,6 +119,9 @@ export function Sidebar({ open, onClose }) {
   return (
     <aside className={`sidebar${open ? ' open' : ''}`} aria-label={t('nav.menu')} onClick={(e) => { if (e.target.closest('a')) onClose?.(); }}>
       <Link to="/" className="logo" aria-label="Quicky"><BrandMark size={30} /><Wordmark height={34} /></Link>
+      <button type="button" className="side-toggle" onClick={side.toggle} aria-expanded={!side.rail} aria-label={t(side.rail ? 'shell.expandMenu' : 'shell.collapseMenu')} title={t(side.rail ? 'shell.expandMenu' : 'shell.collapseMenu')}>
+        <Icon name={side.rail ? 'chevronRight' : 'chevronLeft'} size={16} />
+      </button>
       <button type="button" className="brand-switch" onClick={() => openOverlay('brands')} aria-label={t('shell.switchBrand')}>
         <Avatar name={ws.name} size={30} tone="peach" />
         <span className="grow brand-text">

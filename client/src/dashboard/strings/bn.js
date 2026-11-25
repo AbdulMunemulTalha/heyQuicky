@@ -3112,4 +3112,6 @@ export default {
   'shell.themeHint': "লাইট আর ডার্কের মধ্যে বদলান (আরও বিকল্প প্রোফাইলে)",
   'shell.off': "বন্ধ",
   'shell.offConfirm': "AI বন্ধ করবেন? আবার চালু না করা পর্যন্ত কাস্টমারদের উত্তর দেবে না।",
+  'shell.expandMenu': "পুরো মেনু দেখান",
+  'shell.collapseMenu': "মেনু ছোট করুন",
 };

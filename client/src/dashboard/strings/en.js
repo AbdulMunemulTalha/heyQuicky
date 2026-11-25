@@ -3118,4 +3118,6 @@ export default {
   'shell.themeHint': "Switch between light and dark (more choices in Profile)",
   'shell.off': "Off",
   'shell.offConfirm': "Turn the AI off? It will stop replying to customers until you switch it live again.",
+  'shell.expandMenu': "Show the full menu",
+  'shell.collapseMenu': "Make the menu narrow",
 };
