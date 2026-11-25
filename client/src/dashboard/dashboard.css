@@ -448,6 +448,7 @@
   #dash:not([data-side="full"]) .logo .wordmark { display: none !important; }
   #dash:not([data-side="full"]) .sidebar > .nav { width: auto; align-self: stretch; margin-left: -8px; margin-right: -8px; padding: 0 8px 6px; }
   #dash:not([data-side="full"]) .side-toggle { position: static; margin: 0 0 8px; }
+  #dash:not([data-side="full"]) .brand-switch, #dash:not([data-side="full"]) .wn-help { display: none; }
 }
 @media (min-width: 1025px) {
   #dash[data-side="rail"] .shell { grid-template-columns: 68px minmax(0, 1fr); }
@@ -477,4 +478,5 @@
   #dash[data-side="rail"] .logo .wordmark { display: none !important; }
   #dash[data-side="rail"] .sidebar > .nav { width: auto; align-self: stretch; margin-left: -8px; margin-right: -8px; padding: 0 8px 6px; }
   #dash[data-side="rail"] .side-toggle { position: static; margin: 0 0 8px; }
+  #dash[data-side="rail"] .brand-switch, #dash[data-side="rail"] .wn-help { display: none; }
 }
