@@ -63,7 +63,10 @@
 
 /* ---------- Sidebar ---------- */
 #dash .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: var(--panel);
-  border-right: 1px solid var(--border); padding: 16px 12px 12px; overflow-y: auto; }
+  border-right: 1px solid var(--border); padding: 16px 12px 12px; overflow: hidden; }
+/* The logo, shop switch and the footer (credit, settings, profile) stay put; only the menu scrolls. */
+#dash .sidebar > .logo, #dash .sidebar > .brand-switch, #dash .sidebar > .side-foot { flex: none; }
+#dash .sidebar > .nav { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 6px; }
 #dash .logo { text-decoration: none !important; display: flex; align-items: center; gap: 8px; padding: 0 6px 14px; font: 700 17px/1 var(--display); color: var(--text); letter-spacing: -0.02em; }
 #dash .brand-switch { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid var(--border);
   border-radius: 10px; background: var(--panel); cursor: pointer; text-align: left; }
