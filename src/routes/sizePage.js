@@ -16,7 +16,7 @@ table{border-collapse:collapse;width:100%;font-size:14px;margin-top:6px}
 th,td{border:1px solid #e6e3dc;padding:8px 6px;text-align:center}thead th{background:#f3f1ec}tbody th{background:#fafaf7}
 img{max-width:100%;border-radius:12px;border:1px solid #e6e3dc}
 .how{white-space:pre-wrap}footer{text-align:center;margin-top:24px}
-</style></head><body><main>${body}<footer class="muted">Powered by HeyQuicky</footer></main></body></html>`;
+</style></head><body><main>${body}<footer class="muted"><img src="/brand/favicon.svg" alt="" width="14" height="14" style="vertical-align:-2px;border-radius:3px;margin-right:4px">Powered by HeyQuicky</footer></main></body></html>`;
 }
 
 export function sizePageRoutes(db) {

@@ -176,7 +176,7 @@ export function productPageRoutes(db, config, { inbox, notify }) {
   <div class="bar col"><button type="button" class="btn primary" id="confirm">অর্ডার কনফার্ম করুন</button><small>${chat ? 'অর্ডারের বিল আপনার মেসেঞ্জারে চলে যাবে' : 'অর্ডারের পর বিলের লিংক এখানেই পাবেন'}</small></div>
 </section>
 <section id="view-done" hidden><div class="done" id="done"></div></section>
-<footer>Powered by HeyQuicky</footer>
+<footer><img src="/brand/favicon.svg" alt="" width="14" height="14" style="vertical-align:-2px;border-radius:3px;margin-right:4px">Powered by HeyQuicky</footer>
 <script>window.HQ_PRODUCT=${json(data)}</script><script src="/p-assets/checkout.js" defer></script>`, { image: photos[0] ? (photos[0].startsWith('http') ? photos[0] : `${base(req)}${photos[0]}`) : '' }));
   });
 

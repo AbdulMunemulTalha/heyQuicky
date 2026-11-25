@@ -48,7 +48,7 @@ ${flash && c.status !== 'paid' ? `<p class="flash err" role="status">${esc(flash
 ${c.status === 'paid' ? `<section class="card center"><h2>${t.paid}</h2><p class="muted">${t.paidBody}</p>${order?.bill_token ? `<a class="btn ghost" href="/b/${esc(order.bill_token)}${lang === 'en' ? '?lang=en' : ''}">${t.bill}</a>` : ''}</section>`
     : `<section class="card"><h2>${t.with}</h2>${connected.map((k) => `<form method="post" action="/pay/${c.token}/go">${L}<input type="hidden" name="gateway" value="${k}"><button class="btn gw ${k}">${esc(t[k])}<small>${esc(GATEWAYS[k].name)}</small></button></form>`).join('')}
   <p class="muted small">🔒 ${t.secure}</p></section>`}
-<p class="powered">⚡ ${t.powered}</p>`;
+<p class="powered"><img src="/brand/favicon.svg" alt="" width="14" height="14" style="vertical-align:-2px;border-radius:3px;margin-right:4px">${t.powered}</p>`;
       res.send(page(lang, `${t.pay} ${money(c.amount, lang)} · ${ws?.name ?? ''}`, body));
     } catch (err) { next(err); }
   });

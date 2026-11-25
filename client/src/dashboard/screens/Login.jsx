@@ -3,7 +3,7 @@ import { api, session } from '../../api.js';
 import { SignupStep } from '../../components/Onboarding.jsx';
 import { dash } from '../lib/api.js';
 import { I18n, makeT } from '../lib/i18n.js';
-import { BrandMark, Icon } from '../ui/icons.jsx';
+import { Wordmark, Icon } from '../ui/icons.jsx';
 import { Button, Checkbox, Field } from '../ui/kit.jsx';
 import '../dashboard.css';
 import './login.css';
@@ -48,7 +48,7 @@ export function Login({ onSignedIn }) {
       <div id="dash" lang={lang} className="login-page">
         <div className="login-left">
           <header className="login-top">
-            <a href="/" className="logo"><BrandMark size={28} />heyquicky</a>
+            <a href="/" className="logo" aria-label="Quicky"><Wordmark height={38} /></a>
             <button type="button" className="btn btn-sm" onClick={switchLang} lang={lang === 'en' ? 'bn' : 'en'}>{t('shell.otherLang')}</button>
           </header>
           <main className="login-main">

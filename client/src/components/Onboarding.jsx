@@ -32,7 +32,7 @@ export function OnboardingShell({ current, onGo, onSaveExit, onSignOut, support,
   return (
     <div className="onb">
       <aside className="onb-side">
-        <a href="/" className="brand-link brand">heyquicky</a>
+        <a href="/" className="brand-link brand"><img src="/brand/quicky-color.svg" alt="Quicky" height="36" /></a>
         <div className="onb-progress">
           <div className="row"><span>Setup</span><span>{index} of {STEPS.length} done</span></div>
           <div className="bar"><span style={{ width: `${(index / STEPS.length) * 100}%` }} /></div>

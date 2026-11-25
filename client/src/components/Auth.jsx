@@ -49,7 +49,7 @@ export function Auth({ onSignedIn }) {
   return (
     <section className="auth">
       <form className="card" onSubmit={submit}>
-        <h1><a href="/" className="brand-link brand">heyquicky</a></h1>
+        <h1><a href="/" className="brand-link brand"><img src="/brand/quicky-color.svg" alt="Quicky" height="36" /></a></h1>
         <p className="muted">Log in to your shop's inbox.</p>
         <label>Email<input name="email" type="email" autoComplete="email" required /></label>
         <label>Password<input name="password" type="password" autoComplete="current-password" required minLength={8} /></label>

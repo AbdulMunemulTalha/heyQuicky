@@ -65,11 +65,17 @@ export function Icon({ name, size = 18, className = '', title, ...rest }) {
   );
 }
 
+// Quicky's logo (public/brand, from the logo pack): the app icon, and the "quicky" wordmark in colour (light
+// theme) and white (dark theme).
 export function BrandMark({ size = 28 }) {
+  return <img className="brand-icon" src="/brand/favicon.svg" width={size} height={size} alt="" aria-hidden="true" />;
+}
+
+export function Wordmark({ height = 32 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="9" fill="#2B4BFF" />
-      <path d="M17.5 5 8 18h7.5l-1 9L24 14h-7.5z" fill="#fff" />
-    </svg>
+    <>
+      <img className="wordmark wm-light" src="/brand/quicky-color.svg" height={height} alt="Quicky" />
+      <img className="wordmark wm-dark" src="/brand/quicky-white.svg" height={height} alt="Quicky" />
+    </>
   );
 }

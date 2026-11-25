@@ -78,7 +78,7 @@ ${live.length > 12 ? `<form class="search" method="get" role="search">${token ? 
 ${cats.length ? `<nav class="cats" aria-label="ক্যাটাগরি"><a class="cat${cat ? '' : ' on'}" href="/s/${esc(slug)}${keep(q ? { q } : {})}"${cat ? '' : ' aria-current="page"'}>সব</a>${cats.map((c) => `<a class="cat${c === cat ? ' on' : ''}" href="/s/${esc(slug)}${keep({ cat: c, ...(q ? { q } : {}) })}"${c === cat ? ' aria-current="page"' : ''}>${esc(c)}</a>`).join('')}</nav>` : ''}
 ${shown.length ? `<ul class="grid">${tiles}</ul>` : `<p class="empty">${live.length ? 'এই খোঁজে কোনো পণ্য পাওয়া যায়নি।' : 'শিগগিরই নতুন পণ্য আসছে।'}</p>`}
 ${messageUrl ? `<div class="msgbar"><a class="btn primary" style="display:block" href="${esc(messageUrl)}">মেসেজে অর্ডার করুন</a></div>` : ''}
-<footer>Powered by HeyQuicky</footer>`, { image: live.find((p) => p.photos?.[0])?.photos[0]?.startsWith('http') ? live.find((p) => p.photos?.[0]).photos[0] : '' }));
+<footer><img src="/brand/favicon.svg" alt="" width="14" height="14" style="vertical-align:-2px;border-radius:3px;margin-right:4px">Powered by HeyQuicky</footer>`, { image: live.find((p) => p.photos?.[0])?.photos[0]?.startsWith('http') ? live.find((p) => p.photos?.[0]).photos[0] : '' }));
   });
 
   return router;

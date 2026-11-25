@@ -3,7 +3,7 @@ import { Link, navigate, useLocation } from './lib/router.jsx';
 import { useT } from './lib/i18n.js';
 import { useDash } from './lib/context.js';
 import { dash } from './lib/api.js';
-import { Icon, BrandMark } from './ui/icons.jsx';
+import { Icon, BrandMark, Wordmark } from './ui/icons.jsx';
 import { Avatar, Badge, toast } from './ui/kit.jsx';
 import { canInstall, installApp, onInstallChange } from './lib/pwa.js';
 
@@ -88,7 +88,7 @@ export function Sidebar({ open, onClose }) {
 
   return (
     <aside className={`sidebar${open ? ' open' : ''}`} aria-label={t('nav.menu')} onClick={(e) => { if (e.target.closest('a')) onClose?.(); }}>
-      <Link to="/" className="logo"><BrandMark size={26} />heyquicky</Link>
+      <Link to="/" className="logo" aria-label="Quicky"><BrandMark size={30} /><Wordmark height={34} /></Link>
       <button type="button" className="brand-switch" onClick={() => openOverlay('brands')} aria-label={t('shell.switchBrand')}>
         <Avatar name={ws.name} size={30} tone="peach" />
         <span className="grow brand-text">

@@ -251,7 +251,7 @@ ${open && !order.paid_in_full && (ws?.bkash_number || ws?.nagad_number || online
   ${shopPhone ? `<a class="btn ghost" href="tel:${esc(shopPhone)}">${t.call}</a>` : ''}
 </div>
 ${open && !order.cancel_requested_at ? `<form method="post" action="/b/${esc(order.bill_token)}/cancel" class="center" onsubmit="return confirm(${esc(JSON.stringify(t.cancelConfirm))})">${L}<button class="link danger">${t.cancelAsk}</button></form>` : ''}
-<p class="powered">⚡ ${t.powered}</p>`;
+<p class="powered"><img src="/brand/favicon.svg" alt="" width="14" height="14" style="vertical-align:-2px;border-radius:3px;margin-right:4px">${t.powered}</p>`;
     return page(lang, `${t.order} #${order.number ?? order._id} · ${ws?.name ?? ''}`, body);
   }
 

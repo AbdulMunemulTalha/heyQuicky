@@ -40,7 +40,7 @@
   root.innerHTML = `<style>
     :host{all:initial}*{box-sizing:border-box}
     .p{width:300px;height:100%;background:#fff;border-left:1px solid #e4e4e0;font:13px/1.45 system-ui,-apple-system,"Segoe UI","Noto Sans Bengali",sans-serif;color:#101217;display:flex;flex-direction:column;box-shadow:-4px 0 16px rgba(0,0,0,.04)}
-    .hd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #f0f0ec}.logo{width:22px;height:22px;border-radius:6px;background:#2B4BFF;color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px}
+    .hd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #f0f0ec}.logo{width:22px;height:22px;border-radius:6px;flex:none}
     .hd strong{flex:1;font-size:14px}.x{all:unset;cursor:pointer;color:#6b7280;padding:2px 6px;border-radius:6px}.x:hover{background:#f3f3f0}
     .bd{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
     .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600}.orange{background:#fff1e0;color:#9a4b00}.red{background:#fdecec;color:#b42318}.blue{background:#e8eeff;color:#1c3a99}.gray{background:#f0f0ee;color:#4b5160}.green{background:#e5f5ea;color:#14532d}
@@ -57,7 +57,7 @@
     .ft{padding:10px 14px;border-top:1px solid #f0f0ec;color:#6b7280;font-size:11.5px}
     .toast{position:absolute;left:14px;right:14px;bottom:46px;background:#101217;color:#fff;border-radius:8px;padding:8px 10px;font-size:12px}
     .tab[hidden]{display:none}.tab{all:unset;cursor:pointer;position:fixed;right:0;top:120px;background:#2B4BFF;color:#fff;font:700 12px system-ui;padding:8px 6px;border-radius:8px 0 0 8px;writing-mode:vertical-rl}
-  </style><div class="p" role="complementary" aria-label="HeyQuicky"><div class="hd"><span class="logo" aria-hidden="true">⚡</span><strong>HeyQuicky</strong><span id="pill"></span><button class="x" id="hide">×</button></div>
+  </style><div class="p" role="complementary" aria-label="HeyQuicky"><div class="hd"><svg class="logo" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="22" height="22"><rect width="1024" height="1024" rx="200" fill="#2B4BFF"/><g transform="translate(370.0 432.0) scale(4.0000)" fill="#FFFFFF" style="color:#FFFFFF"><path d="M0 100V20A18 18 0 0 1 36 20V100Z"/><path d="M33 26L60 -30" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round"/><circle cx="18" cy="-28" r="20" fill="#FF7A3D"/></g></svg><strong>HeyQuicky</strong><span id="pill"></span><button class="x" id="hide">×</button></div>
   <div class="bd" id="bd" aria-live="polite"></div><div class="ft" id="ft"></div></div>`;
   const panel = root.querySelector('.p');
   const bd = root.getElementById('bd');
