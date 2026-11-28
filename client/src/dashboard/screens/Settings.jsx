@@ -150,7 +150,8 @@ async function downloadCsv(path, name, t) {
 // ---------- Channels ----------
 const PLATFORM_HINT = { messenger: 'set.ch.messengerHint', instagram: 'set.ch.instagramHint', whatsapp: 'set.ch.whatsappHint' };
 function Channels({ t }) {
-  const { can } = useDash();
+  const { can, me } = useDash();
+  const admin = ['owner', 'admin'].includes(me?.user?.role);
   const connect = useContext(ConnectContext);
   const { d, setD, error, load } = useData('/settings/channels');
   const [widget, setWidget] = useState(false);
@@ -171,6 +172,7 @@ function Channels({ t }) {
         {d.channels.map((c) => (
           <li key={c.id}>
             <div className="grow"><strong>{t(`set.ch.${c.platform}`, { name: c.name })}</strong><small className="muted">{t(PLATFORM_HINT[c.platform] ?? 'set.ch.otherHint')}</small></div>
+            {c.platform === 'whatsapp' && admin && <Button size="sm" onClick={() => navigate('/settings/whatsapp-templates')}>{t('settingsNav.waTemplates')}</Button>}
             <button type="button" className={`set-pill${c.aiOn ? ' on' : ''}`} disabled={!teach} onClick={() => toggle(c)} aria-pressed={c.aiOn} title={teach ? t('set.ch.toggle') : undefined}>
               {t('set.ch.connected')} · {c.aiOn ? t('ag.aiOn') : t('ag.aiOff')}
             </button>

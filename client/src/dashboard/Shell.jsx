@@ -42,6 +42,7 @@ export const SETTINGS_NAV = [
   { key: 'team', to: '/settings/team', icon: 'customers', label: 'settingsNav.team' },
   { key: 'payments', to: '/settings/payments', icon: 'card', label: 'settingsNav.payments', module: 'payments' },
   { key: 'courier', to: '/settings/courier', icon: 'truck', label: 'settingsNav.courier', module: 'courier' },
+  { key: 'whatsapp-templates', to: '/settings/whatsapp-templates', icon: 'send', label: 'settingsNav.waTemplates', admins: true },
   { key: 'integrations', to: '/settings/integrations', icon: 'bolt', label: 'settingsNav.integrations' },
   { key: 'modules', to: '/settings/modules', icon: 'overview', label: 'settingsNav.modules' },
   { key: 'notifications', to: '/settings/notifications', icon: 'bell', label: 'settingsNav.notifications' },
@@ -135,7 +136,7 @@ export function Sidebar({ open, onClose }) {
         <nav className="nav" aria-label={t('nav.settings')}>
           <Link to="/" className="nav-back">← {t('settingsNav.back')}</Link>
           <div className="nav-section">{t('settingsNav.title')}</div>
-          {SETTINGS_NAV.filter((n) => !n.module || ws.modules[n.module]).map((n) => (
+          {SETTINGS_NAV.filter((n) => (!n.module || ws.modules[n.module]) && (!n.admins || ['owner', 'admin'].includes(me.user.role))).map((n) => (
             <Link key={n.key} to={n.to} className={`nav-item${settingsKey === n.key ? ' on' : ''}`} title={t(n.label)} aria-current={settingsKey === n.key ? 'page' : undefined}>
               <Icon name={n.icon} size={17} /><span className="nav-label">{t(n.label)}</span>
             </Link>

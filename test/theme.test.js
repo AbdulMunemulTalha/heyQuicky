@@ -17,7 +17,7 @@ const LIGHT_BG = { test: (hex) => luminance(hex) > 0.7 }; // pale backgrounds (w
 const DARK_TEXT = { test: (hex) => luminance(hex) < 0.12 }; // dark text that disappears on dark
 
 // Colours that are meant to be the same in both themes: brand chips and always-dark cards.
-const ALLOWED = [/\.set-balance/, /\.pm-method\./, /\.pg-logo/, /\.wn-video/, /\.cs-legend i/, /bkash|nagad|messenger|instagram|whatsapp|sslcommerz/i, /\.set-bkash|\.sel-yellow|\.pl-pct|\.pl-tag/, /\.toggle|\.knob/, /\.avatar/, /\.login|\.lg-/, /\.th-(light|dark|system)/, /\.sc-img/];
+const ALLOWED = [/\.set-balance/, /\.pm-method\./, /\.pg-logo/, /\.wn-video/, /\.cs-legend i/, /bkash|nagad|messenger|instagram|whatsapp|sslcommerz/i, /\.set-bkash|\.sel-yellow|\.pl-pct|\.pl-tag/, /\.toggle|\.knob/, /\.avatar/, /\.login|\.lg-/, /\.th-(light|dark|system)/, /\.sc-img/, /\.wt-phone|\.wt-bubble/];
 
 function* declarations(css) {
   for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {

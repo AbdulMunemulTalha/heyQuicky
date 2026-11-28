@@ -39,6 +39,7 @@ const screens = {
   profile: lazy(() => import('./screens/Profile.jsx')),
   modules: lazy(() => import('./screens/Modules.jsx')),
   integrations: lazy(() => import('./screens/Integrations.jsx')),
+  waTemplates: lazy(() => import('./screens/WaTemplates.jsx')),
   bookings: lazy(() => import('./screens/Bookings.jsx')),
   leads: lazy(() => import('./screens/Leads.jsx')),
   content: lazy(() => import('./screens/Content.jsx')),
@@ -104,6 +105,7 @@ const ROUTES = [
   ['/settings/notifications', 'notifySettings'],
   ['/settings/modules', 'modules'],
   ['/settings/integrations', 'integrations'],
+  ['/settings/whatsapp-templates', 'waTemplates'],
   ['/bookings', 'bookings'],
   ['/settings/plan', 'plan'],
 ];
