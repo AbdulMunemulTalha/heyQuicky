@@ -109,6 +109,14 @@ export function createMetaClient({ appId, appSecret, graphVersion, publishScopes
       await post(`${phoneNumberId}/register`, { messaging_product: 'whatsapp', pin }, token);
     },
 
+    // The WhatsApp accounts this token may manage, from Meta's token check (granular scopes).
+    async wabaIdsFromToken(token) {
+      const data = await get('debug_token', { input_token: token }, `${appId}|${appSecret}`);
+      const scope = (data.data?.granular_scopes ?? []).find((s) => s.scope === 'whatsapp_business_management')
+        ?? (data.data?.granular_scopes ?? []).find((s) => s.scope === 'whatsapp_business_messaging');
+      return (scope?.target_ids ?? []).map(String);
+    },
+
     async wabaPhoneNumbers(wabaId, token) {
       const data = await get(`${wabaId}/phone_numbers`, { fields: 'id,display_phone_number,verified_name' }, token);
       return data.data ?? [];

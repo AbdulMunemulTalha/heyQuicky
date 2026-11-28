@@ -213,18 +213,27 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
   // WhatsApp Business app: it stays registered there, and its contacts and chat
   // history can be synced (only once, within 24 hours of onboarding).
   router.post('/api/connect/whatsapp', auth, requireOwner, requireMetaApp, async (req, res) => {
-    const { code, wabaId, coexistence = false, expectedNumber = '' } = req.body ?? {};
+    const { code, coexistence = false, expectedNumber = '' } = req.body ?? {};
+    let wabaId = req.body?.wabaId ?? null;
     let phoneNumberId = req.body?.phoneNumberId ?? null;
-    if (![code, wabaId].every((v) => typeof v === 'string' && v.trim())) {
+    if (typeof code !== 'string' || !code.trim()) {
       throw new InboxError(400, 'WhatsApp signup did not finish. Please try again.');
     }
-    if (!/^\d+$/.test(wabaId) || (phoneNumberId !== null && !/^\d+$/.test(String(phoneNumberId)))) {
+    if ((wabaId !== null && !/^\d+$/.test(String(wabaId))) || (phoneNumberId !== null && !/^\d+$/.test(String(phoneNumberId)))) {
       throw new InboxError(400, 'Unexpected WhatsApp account ID');
     }
 
     let token;
     try {
       token = await meta.businessTokenFromCode(code);
+      // Meta's window tells the browser which account was shared, but that note can go missing:
+      // then the account is the one the new token was granted.
+      if (!wabaId) {
+        const ids = await meta.wabaIdsFromToken(token);
+        if (!ids.length) throw new InboxError(400, 'WhatsApp signup did not share a WhatsApp account. Please run it again and finish every step.');
+        wabaId = ids[0];
+      }
+      wabaId = String(wabaId);
       await meta.subscribeWaba(wabaId, token);
       // Newer sign-up flows (and Business app numbers) only report the account, not the number.
       if (!phoneNumberId) {

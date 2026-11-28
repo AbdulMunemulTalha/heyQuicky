@@ -161,6 +161,31 @@ test('connects a WhatsApp number from Embedded Signup', async () => {
   assert.equal(bad.status, 400);
 });
 
+test('WhatsApp connects even when the browser missed Meta\'s "finished" note', async () => {
+  meta.on('GET', /\/oauth\/access_token\?.*code=NONOTE/, () => [200, { access_token: 'NONOTETOKEN' }]);
+  meta.on('GET', /\/debug_token\?.*input_token=NONOTETOKEN/, () => [200, { data: { granular_scopes: [
+    { scope: 'business_management', target_ids: ['1'] }, { scope: 'whatsapp_business_management', target_ids: ['44444'] }] } }]);
+  meta.on('POST', /\/44444\/subscribed_apps/, () => [200, { success: true }]);
+  meta.on('GET', /\/44444\/phone_numbers/, () => [200, { data: [{ id: '99999', display_phone_number: '+880 1700-000009' }] }]);
+  meta.on('GET', /\/99999\?/, () => [200, { verified_name: 'No Note Shop', display_phone_number: '+880 1700-000009' }]);
+  meta.on('POST', /\/99999\/smb_app_data/, () => [200, { request_id: 'r' }]);
+
+  const ownerToken = await login('owner@shop.test');
+  const res = await call('/api/connect/whatsapp', { method: 'POST', token: ownerToken, body: { code: 'NONOTE', wabaId: null, coexistence: true } });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.deepEqual(res.data.connected, ['No Note Shop · +880 1700-000009']);
+  const check = meta.calls.find((c) => c.path.endsWith('/debug_token'));
+  assert.equal(check.auth, `Bearer ${ctx.config.meta.appId}|${ctx.config.meta.appSecret}`, 'checked with the app token');
+  const channel = await ctx.db.channels.findOne({ platform: 'whatsapp', external_id: '99999' }).lean();
+  assert.equal(channel.waba_id, '44444');
+
+  meta.on('GET', /\/oauth\/access_token\?.*code=NOWABA/, () => [200, { access_token: 'NOWABATOKEN' }]);
+  meta.on('GET', /\/debug_token\?.*input_token=NOWABATOKEN/, () => [200, { data: { granular_scopes: [] } }]);
+  const none = await call('/api/connect/whatsapp', { method: 'POST', token: ownerToken, body: { code: 'NOWABA' } });
+  assert.equal(none.status, 400);
+  assert.match(none.data.error, /did not share a WhatsApp account/);
+});
+
 test('a channel whose token Meta rejects is flagged for reconnection', async () => {
   meta.on('POST', /\/me\/messages/, () => [400, { error: { message: 'Error validating access token: session has expired', code: 190 } }]);
   const ownerToken = await login('owner@shop.test');

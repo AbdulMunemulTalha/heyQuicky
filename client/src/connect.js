@@ -78,8 +78,9 @@ window.addEventListener('message', (event) => {
   embeddedSignup = { event: data.event, phoneNumberId: data.data?.phone_number_id, wabaId: data.data?.waba_id };
 });
 
+// Meta's note can arrive a little after the window closes, or not at all; the server can find the account without it.
 async function waitForSignupInfo() {
-  for (let i = 0; i < 30 && !embeddedSignup; i += 1) await new Promise((r) => setTimeout(r, 100));
+  for (let i = 0; i < 100 && !embeddedSignup; i += 1) await new Promise((r) => setTimeout(r, 100));
   return embeddedSignup;
 }
 
@@ -89,13 +90,16 @@ const SIGNUP_FINISHED = ['FINISH', 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING', 'F
 
 async function finishWhatsApp(code, mode, expectedNumber) {
   const info = await waitForSignupInfo();
-  if (!info || !SIGNUP_FINISHED.includes(info.event) || !info.wabaId) {
+  // A note that says the person stopped part-way (CANCEL / an error) means there is nothing to connect.
+  if (info && !SIGNUP_FINISHED.includes(info.event)) {
     return { problems: ['WhatsApp signup was not finished. Please try again and complete every step.'] };
   }
-  const coexistence = mode === 'app' || info.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
+  const finished = info && SIGNUP_FINISHED.includes(info.event);
+  const coexistence = mode === 'app' || info?.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
   try {
     const result = await api('/connect/whatsapp', {
-      method: 'POST', body: { code, wabaId: info.wabaId, phoneNumberId: info.phoneNumberId || null, coexistence, expectedNumber },
+      method: 'POST',
+      body: { code, wabaId: finished ? info.wabaId || null : null, phoneNumberId: finished ? info.phoneNumberId || null : null, coexistence, expectedNumber },
     });
     if (result.importing) {
       result.problems.push('Your WhatsApp chats are being copied in now. Keep the WhatsApp Business app open on your phone until it finishes.');
