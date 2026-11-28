@@ -18,6 +18,7 @@ const PERMISSION_GROUPS = [
   ['pages', 'See your Pages', ['pages_show_list']],
   ['messages', 'Page messages', ['pages_messaging', 'pages_manage_metadata']],
   ['instagram', 'Instagram messages', ['instagram_basic', 'instagram_manage_messages']],
+  ['comments', 'Comments', ['pages_read_user_content', 'pages_manage_engagement', 'instagram_manage_comments']],
 ];
 function summarizePermissions(granted) {
   if (!granted) return null;

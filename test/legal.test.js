@@ -9,7 +9,7 @@ test('serves the privacy policy, terms and data deletion pages Meta asks for', a
   await new Promise((resolve) => server.listen(0, resolve));
   try {
     const base = `http://127.0.0.1:${server.address().port}`;
-    for (const path of ['/privacy', '/terms', '/data-deletion']) {
+    for (const path of ['/privacy', '/terms', '/data-deletion', '/support']) {
       const res = await fetch(`${base}${path}`);
       assert.equal(res.status, 200, path);
       assert.match(res.headers.get('content-type'), /text\/html/);
@@ -28,7 +28,7 @@ test('legal pages default to info@heyquicky.com', async () => {
   await new Promise((resolve) => server.listen(0, resolve));
   try {
     const base = `http://127.0.0.1:${server.address().port}`;
-    for (const path of ['/privacy', '/terms', '/data-deletion']) {
+    for (const path of ['/privacy', '/terms', '/data-deletion', '/support']) {
       assert.match(await (await fetch(`${base}${path}`)).text(), /mailto:info@heyquicky\.com/, path);
     }
   } finally {

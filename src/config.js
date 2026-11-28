@@ -34,7 +34,7 @@ export function loadConfig(env = process.env) {
     legal: {
       operator: env.OPERATOR_NAME || 'Quicky',
       supportEmail: env.SUPPORT_EMAIL || 'info@heyquicky.com',
-      updated: env.LEGAL_UPDATED || '2 October 2026',
+      updated: env.LEGAL_UPDATED || '28 November 2026',
     },
     // AI chat agent. Off unless an API key is set for the chosen provider.
     ai: {

@@ -230,7 +230,7 @@ test('a popup login reports back to the dashboard window, with what was allowed'
 
   const pending = await call(`/api/connect/facebook/${id}`, { token: ownerToken });
   assert.equal(pending.data.userName, 'Talha');
-  assert.deepEqual(pending.data.permissions.map((p) => [p.key, p.allowed]), [['pages', true], ['messages', true], ['instagram', false]]);
+  assert.deepEqual(pending.data.permissions.map((p) => [p.key, p.allowed]), [['pages', true], ['messages', true], ['instagram', false], ['comments', true]]);
 
   // A cancelled popup login is reported to the window too.
   const again = await call('/api/connect/facebook/start?popup=1', { token: ownerToken });

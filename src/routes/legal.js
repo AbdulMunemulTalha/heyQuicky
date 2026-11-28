@@ -1,11 +1,12 @@
 import { Router } from 'express';
 
-// Pages Meta's App Review asks for: privacy policy, terms of service and data
-// deletion instructions. Their URLs go into App settings → Basic.
+// Pages Meta's App Review asks for: privacy policy, terms of service, data deletion instructions, and a
+// support page. Their URLs go into App settings → Basic. Keep them in step with what the product really does:
+// reviewers compare them with the permissions the app asks for.
 
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-function page(title, body, { operator, supportEmail }) {
+function page(title, body, { operator }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -23,13 +24,18 @@ function page(title, body, { operator, supportEmail }) {
   .logo { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font: 700 20px/1 "Space Grotesk", Inter, sans-serif; letter-spacing: -0.02em; }
   .logo img { display: block; height: 36px; width: auto; }
   main { max-width: 760px; margin: 32px auto 64px; padding: 40px; background: var(--panel); border: 1px solid var(--border); border-radius: 24px; box-sizing: border-box; }
-  h1, h2 { font-family: "Space Grotesk", Inter, sans-serif; letter-spacing: -0.02em; }
+  h1, h2, h3 { font-family: "Space Grotesk", Inter, sans-serif; letter-spacing: -0.02em; }
   h1 { margin: 0 0 4px; font-size: 36px; line-height: 1.1; }
   h2 { margin-top: 32px; font-size: 21px; }
+  h3 { margin: 20px 0 4px; font-size: 17px; }
+  li { margin: 4px 0; }
   a { color: var(--accent); }
   .muted { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 8px 0; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; }
   nav { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 14px; }
-  @media (max-width: 640px) { main { margin: 16px; padding: 24px; } h1 { font-size: 28px; } }
+  @media (max-width: 640px) { main { margin: 16px; padding: 24px; } h1 { font-size: 28px; } table { font-size: 13.5px; } }
 </style>
 </head>
 <body>
@@ -37,7 +43,7 @@ function page(title, body, { operator, supportEmail }) {
 <main>
 <h1>${escapeHtml(title)}</h1>
 ${body}
-<nav><a href="/privacy">Privacy policy</a><a href="/terms">Terms of service</a><a href="/data-deletion">Data deletion</a><a href="/">Home</a><a href="/app">Log in</a></nav>
+<nav><a href="/privacy">Privacy policy</a><a href="/terms">Terms of service</a><a href="/data-deletion">Data deletion</a><a href="/support">Support</a><a href="/">Home</a><a href="/app">Log in</a></nav>
 </main>
 </body>
 </html>`;
@@ -51,75 +57,135 @@ export function legalRoutes(config) {
     ? `<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>`
     : 'the contact address shown in your account';
   const updated = `<p class="muted">Last updated: ${escapeHtml(config.legal.updated)}</p>`;
-  const opts = { operator, supportEmail: email };
+  const opts = { operator };
   const op = escapeHtml(operator);
 
   router.get('/privacy', (_req, res) => res.send(page('Privacy policy', `${updated}
-<p>${op} ("we") runs an online inbox that lets businesses read and answer messages their customers send through
-Facebook Messenger, Instagram and WhatsApp, and record the orders that come out of those conversations.
-This policy explains what data we handle and why.</p>
+<p>${op} ("we", "us") is a customer-messaging service for online shops. It lets a business answer the messages and comments
+its customers send on Facebook, Instagram and WhatsApp from one inbox, with an AI assistant that can reply for the business,
+and record the orders, payments and deliveries that come out of those conversations. This policy explains what data we
+handle, why, and the choices you have.</p>
 
 <h2>Who this covers</h2>
-<p><strong>Businesses</strong> that sign up for ${op} and the team members they invite, and
-<strong>customers</strong> of those businesses who message them on Messenger, Instagram or WhatsApp.
-For customer data, the business decides what to collect and why; we process it on the business's behalf.</p>
+<ul>
+  <li><strong>Businesses</strong> that sign up for ${op}, and the team members they invite.</li>
+  <li><strong>Customers</strong> of those businesses: people who message a business, or comment on its Facebook or Instagram posts.</li>
+</ul>
+<p>For customer data, the business decides what it collects and why, and we process that data on the business's behalf and
+on its instructions. For business account data, we decide how it is used, as described here.</p>
 
 <h2>What we collect</h2>
+<h3>From businesses</h3>
 <ul>
-  <li><strong>Account details:</strong> business name, team members' names and email addresses, and passwords (stored only as one-way hashes).</li>
-  <li><strong>Connected accounts:</strong> the IDs and names of the Facebook Pages, Instagram accounts and WhatsApp numbers a business connects, and the access tokens Meta issues for them. Tokens are stored encrypted.</li>
-  <li><strong>Messages:</strong> messages exchanged between a business and its customers on connected accounts, the customer's name and platform ID as provided by Meta, links to attachments, and delivery status.</li>
-  <li><strong>Orders:</strong> details a business records for an order, such as customer name, phone number, delivery address, products and amounts.</li>
-  <li><strong>Technical data:</strong> basic server logs (such as IP address and time of request) used to keep the service secure and working.</li>
+  <li><strong>Account details:</strong> business name, team members' names, email addresses and phone numbers, and passwords (stored only as one-way hashes).</li>
+  <li><strong>Connected accounts:</strong> the IDs and names of the Facebook Pages, Instagram professional accounts and WhatsApp Business numbers a business connects, and the access tokens Meta issues for them. Tokens are stored encrypted.</li>
+  <li><strong>Shop setup:</strong> products, prices, stock, delivery charges, policies and answers the business teaches the AI.</li>
+  <li><strong>Billing:</strong> the plan, AI credit balance and top-up records. We do not store card numbers.</li>
+</ul>
+<h3>From Meta, about a business's customers</h3>
+<ul>
+  <li><strong>Messages:</strong> messages exchanged on the business's connected Messenger, Instagram and WhatsApp accounts, the customer's name, profile picture and platform ID as provided by Meta, attachments (such as photos and voice notes) and delivery status.</li>
+  <li><strong>Comments:</strong> comments people post on the business's Facebook Page and Instagram posts: the comment text, the commenter's name and platform ID, the post it belongs to, and the business's replies.</li>
+  <li><strong>Posts:</strong> the business's own posts (text, images and linked products), so comments can be matched to products and so the business can schedule new posts.</li>
+</ul>
+<h3>Created while the business uses ${op}</h3>
+<ul>
+  <li><strong>Orders and bookings:</strong> customer name, phone number, delivery address, products, amounts, payment status and delivery tracking.</li>
+  <li><strong>Customer notes:</strong> tags, notes and order history the business keeps about its customers.</li>
+  <li><strong>Technical data:</strong> server logs (such as IP address, browser and time of request) used to keep the service secure and working. We sign team members in with a token stored in the browser; we do not use advertising or tracking cookies.</li>
 </ul>
 
 <h2>How we use it</h2>
-<p>Only to provide the service: showing messages in the business's inbox, sending the business's replies back through the same
-platform, assigning conversations to team members, and keeping order records. We do not sell personal data, use it for
-advertising, or use data received from Meta for any purpose other than providing ${op} to the business that connected the account.</p>
+<p>Only to provide ${op} to the business that connected the account:</p>
+<ul>
+  <li>show messages and comments in the business's inbox, and send the business's replies back on the same platform;</li>
+  <li>reply to a comment publicly, send the commenter one private message about their comment (for example a product's price), and hide comments that are spam or that expose a phone number, following the business's settings;</li>
+  <li>let the AI assistant draft or send replies in the business's name, using the conversation, the shop's products and its policies;</li>
+  <li>turn voice notes into text so they can be answered;</li>
+  <li>create and track orders, payment links and courier deliveries;</li>
+  <li>publish posts the business writes or approves to its own Page and Instagram account;</li>
+  <li>send account emails (such as sign-in links, alerts and receipts), keep the service secure, and fix problems.</li>
+</ul>
+<p>We do not sell personal data, use it for advertising, build profiles of people across businesses, or use data received from
+Meta for any purpose other than providing ${op} to the business that connected the account. We do not use data received
+from Meta to train AI models.</p>
 
 <h2>Who we share it with</h2>
-<ul>
-  <li><strong>Meta Platforms</strong>, to receive and deliver messages on Messenger, Instagram and WhatsApp.</li>
-  <li><strong>Our hosting provider</strong>, which stores the data on our behalf.</li>
-  <li>Anyone else only when the business itself exports or sends the data (for example, uploading an order list to a courier), or when required by law.</li>
-</ul>
+<p>We share data only with the service providers we need to run ${op}, and only what each one needs:</p>
+<table>
+  <tr><th>Provider</th><th>What for</th></tr>
+  <tr><td>Meta Platforms (Facebook, Instagram, WhatsApp)</td><td>Receiving and sending messages and comments, and publishing posts, on the business's connected accounts.</td></tr>
+  <tr><td>Anthropic</td><td>The AI assistant: the conversation and the shop details needed to write a reply.</td></tr>
+  <tr><td>OpenAI</td><td>Turning voice notes into text, when the business uses this.</td></tr>
+  <tr><td>Payment gateways (SSLCommerz, bKash, Nagad)</td><td>Taking a payment when a customer chooses to pay online. The customer pays on the gateway's own page.</td></tr>
+  <tr><td>Couriers (such as Pathao, Steadfast and RedX)</td><td>Booking a delivery the business asks for: the customer's name, phone number, address and amount to collect.</td></tr>
+  <tr><td>Resend</td><td>Sending account emails.</td></tr>
+  <tr><td>Hostinger</td><td>Hosting the servers and database that store the data.</td></tr>
+</table>
+<p>We also share data when the business itself exports or sends it (for example to its own webhook or API connection), or when the law requires it.</p>
 
 <h2>How long we keep it</h2>
-<p>For as long as the business's account is active. When a business disconnects an account, its conversations are deleted.
-When a business closes its account or asks for deletion, we delete its data within 30 days, except where the law requires us to keep it.</p>
+<p>For as long as the business's account is active. When a business disconnects an account, the conversations and comments from
+that account are deleted. When a business closes its account or asks for deletion, we delete its data within 30 days, except
+records the law requires us to keep (such as payment records).</p>
 
 <h2>Security</h2>
-<p>Connections are encrypted with HTTPS, access tokens are encrypted at rest, passwords are hashed, and moderators only see
-their own customers and customers still waiting for a moderator.</p>
+<p>Connections use HTTPS, access tokens and other secrets are encrypted at rest, passwords are hashed, team members only see
+what their role allows, and every payment is checked with the gateway before it counts. We back up the database and limit
+who can reach the servers.</p>
 
-<h2>Your choices</h2>
+<h2>Children</h2>
+<p>${op} is a tool for businesses and is not meant for children. Businesses must not use it to knowingly collect data from children under 13.</p>
+
+<h2>Your choices and rights</h2>
 <p>You can ask us for a copy of your data, or ask us to correct or delete it. See <a href="/data-deletion">data deletion</a>,
-or contact us at ${contact}. If you are a customer of a business that uses ${op}, you can also contact that business directly.</p>
+or contact us at ${contact}. If you are a customer of a business that uses ${op}, you can also contact that business
+directly; we will help it answer your request. A business can remove ${op}'s access to its Facebook account at any time
+from its Facebook settings.</p>
 
 <h2>Changes</h2>
-<p>We will post any changes to this policy on this page and update the date above.</p>
+<p>We will post any changes to this policy on this page and update the date above. If a change is significant, we will tell businesses by email or in the app.</p>
 
 <h2>Contact</h2>
-<p>${op}, ${contact}</p>`, opts)));
+<p>${op} · ${contact}</p>`, opts)));
 
   router.get('/terms', (_req, res) => res.send(page('Terms of service', `${updated}
-<p>By creating an account or using ${op} you agree to these terms.</p>
+<p>These terms are an agreement between ${op} and the business that creates an account ("you"). By creating an account or using ${op} you agree to them.</p>
+
 <h2>The service</h2>
-<p>${op} lets a business manage messages from its own Facebook Pages, Instagram accounts and WhatsApp numbers in one inbox
-and record orders. You must have the right to manage every account you connect.</p>
+<p>${op} lets you manage messages and comments from your own Facebook Pages, Instagram professional accounts and WhatsApp
+Business numbers in one inbox, use an AI assistant to answer customers, and record orders, payments and deliveries.
+You must have the right to manage every account you connect, and you must be old enough to enter a contract.</p>
+
 <h2>Your responsibilities</h2>
 <ul>
-  <li>Follow Meta's terms and policies, including the Messenger, Instagram and WhatsApp Business policies, when messaging customers.</li>
-  <li>Only message customers in ways those platforms allow, and do not send spam or unlawful content.</li>
+  <li>Follow Meta's terms and policies, including the Meta Platform Terms, the Messenger and Instagram messaging policies, and the WhatsApp Business policies.</li>
+  <li>Only message people in ways those platforms allow (for example within the 24-hour messaging window), and send at most the one private reply to a comment that Meta allows.</li>
+  <li>Do not send spam, misleading offers, or unlawful content, and do not sell anything the platforms or the law forbid.</li>
   <li>Keep your team members' passwords safe and remove people who should no longer have access.</li>
-  <li>Handle your customers' personal data lawfully. You are responsible for the data you collect from your customers.</li>
+  <li>Handle your customers' personal data lawfully. You are responsible for the data you collect from your customers and for telling them how you use it.</li>
 </ul>
+
+<h2>The AI assistant</h2>
+<p>When you switch the AI on, it replies to customers in your name using your products, prices and policies. You are responsible
+for what your shop says, so keep your product details and policies accurate and check the AI's work. The AI hands a conversation
+to your team when it is unsure or a customer asks for a person. AI replies use AI credit from your account.</p>
+
+<h2>Payments and fees</h2>
+<p>Plans and AI credit are priced as shown in the app. Payments your customers make go to your own payment gateway account;
+${op} does not hold your money. Courier and gateway charges are between you and those providers.</p>
+
 <h2>Availability</h2>
-<p>We work to keep ${op} running, but it is provided "as is". Messaging depends on Meta's platforms, which may change or be
-unavailable, and we are not liable for losses caused by outages or by changes Meta makes.</p>
+<p>We work to keep ${op} running, but it is provided "as is". Messaging depends on Meta's platforms and other providers, which may
+change or be unavailable, and we are not liable for losses caused by outages or by changes they make.</p>
+
 <h2>Ending the service</h2>
-<p>You can stop using ${op} at any time and ask us to delete your data. We may suspend accounts that break these terms or Meta's policies.</p>
+<p>You can stop using ${op} at any time and ask us to delete your data. We may suspend accounts that break these terms or Meta's
+policies, or that put customers or the service at risk.</p>
+
+<h2>Changes and law</h2>
+<p>We may update these terms and will post changes on this page. These terms are governed by the laws of Bangladesh.</p>
+
 <h2>Contact</h2>
 <p>${contact}</p>`, opts)));
 
@@ -127,16 +193,35 @@ unavailable, and we are not liable for losses caused by outages or by changes Me
 <p>You can have your data removed from ${op} at any time.</p>
 <h2>If you are a business using ${op}</h2>
 <ol>
-  <li>To remove a single Page, Instagram account or WhatsApp number: open <strong>Settings → Connected channels</strong> and click
-    <strong>Disconnect</strong>. Its conversations are deleted straight away.</li>
+  <li>To remove a single Page, Instagram account or WhatsApp number: open <strong>Settings → Channels</strong> and click
+    <strong>Disconnect</strong>. Its conversations and comments are deleted straight away.</li>
   <li>To stop ${op} from accessing your Facebook account: on Facebook go to <strong>Settings &amp; privacy → Settings →
-    Business integrations</strong>, select ${op} and click <strong>Remove</strong>.</li>
+    Business integrations</strong>, select ${op} and click <strong>Remove</strong>. For Instagram, go to
+    <strong>Settings → Website permissions → Apps and websites</strong> and remove ${op}.</li>
   <li>To delete your whole account and all of its data: email ${contact} from your account's email address with the subject
     "Delete my account". We delete everything within 30 days and confirm by email.</li>
 </ol>
-<h2>If you messaged a business that uses ${op}</h2>
-<p>Ask that business to delete your conversation, or email ${contact} with the name of the business and the platform you
-messaged them on (Messenger, Instagram or WhatsApp). We will delete your messages and any order details within 30 days and confirm.</p>`, opts)));
+<h2>If you messaged or commented on a business that uses ${op}</h2>
+<p>Ask that business to delete your conversation, or email ${contact} with the name of the business and the platform you used
+(Messenger, Instagram or WhatsApp). We will delete your messages, comments and any order details within 30 days and confirm.
+Deleting a comment on Facebook or Instagram also removes it from ${op}.</p>`, opts)));
+
+  router.get('/support', (_req, res) => res.send(page('Support', `
+<p>Need help with ${op}? We're here.</p>
+<h2>Contact us</h2>
+<ul>
+  <li>Email: ${contact}</li>
+  <li>In the app: click the <strong>?</strong> button at the bottom of the menu for help articles, or send us a feature request.</li>
+</ul>
+<h2>Common questions</h2>
+<h3>How do I connect my Facebook Page or Instagram account?</h3>
+<p>Open <strong>Settings → Channels</strong>, click <strong>Connect</strong> and follow the Facebook window. Choose the Pages and Instagram accounts you want ${op} to manage.</p>
+<h3>Why are my comments not showing?</h3>
+<p>Reconnect the Page from <strong>Settings → Channels</strong> and allow the comment permissions in the Facebook window.</p>
+<h3>How do I turn the AI off?</h3>
+<p>Use the <strong>AI live / Off</strong> switch at the top of the dashboard. While it is off, only your team replies.</p>
+<h3>How do I delete my data?</h3>
+<p>See <a href="/data-deletion">data deletion</a>.</p>`, opts)));
 
   return router;
 }

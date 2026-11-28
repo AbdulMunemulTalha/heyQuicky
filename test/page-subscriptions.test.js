@@ -24,6 +24,17 @@ test('connected Pages are subscribed to button taps once, Instagram included thr
   assert.equal(calls.length, 1, 'not repeated');
 });
 
+test('Pages subscribed before comments were added are subscribed again with "feed"', async () => {
+  const { db, config, ws } = await setup();
+  await db.channels.updateMany({ workspace_id: ws, platform: { $in: ['messenger', 'instagram'] } },
+    { $set: { page_id: 'PAGE1', postbacks_subscribed_at: new Date(), page_fields: 'messages,message_echoes,messaging_postbacks' } });
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ success: true }) }; };
+  assert.equal((await subscribePagesToPostbacks(db, config, { fetchImpl, log: quiet })).pages, 1);
+  assert.match(calls[0].subscribed_fields, /\bfeed\b/);
+  assert.equal((await subscribePagesToPostbacks(db, config, { fetchImpl, log: quiet })).pages, 0, 'done once');
+});
+
 test('a refused subscription is tried again later; test mode never calls Meta', async () => {
   const { db, config, ws } = await setup();
   await db.channels.updateMany({ workspace_id: ws, platform: 'messenger' }, { $set: { page_id: 'PAGE1' } });

@@ -3,13 +3,18 @@ import { graphRequest, MetaApiError } from './meta.js';
 // Asked for when no Facebook Login for Business configuration is set.
 // pages_messaging / instagram_manage_messages send and receive messages;
 // pages_manage_metadata subscribes the Page to this app's webhooks.
+// pages_read_user_content / pages_manage_engagement read, answer and hide Page comments (CMT-01); the private
+// reply to a comment goes out with pages_messaging. instagram_manage_comments does the same on Instagram.
 export const LOGIN_SCOPES = [
   'pages_show_list',
   'pages_messaging',
   'pages_manage_metadata',
   'pages_read_engagement',
+  'pages_read_user_content',
+  'pages_manage_engagement',
   'instagram_basic',
   'instagram_manage_messages',
+  'instagram_manage_comments',
   'business_management',
 ];
 

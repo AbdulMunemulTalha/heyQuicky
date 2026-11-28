@@ -145,6 +145,8 @@ function defineModels(conn) {
     page_id: { type: String, default: null },
     // When the Page was subscribed to button taps (messaging_postbacks), see dashboard/pageSubscriptions.js.
     postbacks_subscribed_at: { type: Date, default: null },
+    // The webhook fields the Page was last subscribed with; a Page on an older list is subscribed again.
+    page_fields: { type: String, default: '' },
     // Import of conversations that existed before the channel was connected.
     import_status: { type: String, default: '' },
     import_count: { type: Number, default: 0 },
