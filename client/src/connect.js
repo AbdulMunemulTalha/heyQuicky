@@ -75,8 +75,19 @@ window.addEventListener('message', (event) => {
   let data;
   try { data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; } catch { return; }
   if (data?.type !== 'WA_EMBEDDED_SIGNUP') return;
-  embeddedSignup = { event: data.event, phoneNumberId: data.data?.phone_number_id, wabaId: data.data?.waba_id };
+  embeddedSignup = {
+    event: data.event, phoneNumberId: data.data?.phone_number_id, wabaId: data.data?.waba_id,
+    step: data.data?.current_step, error: data.data?.error_message,
+  };
 });
+
+// Tells the server how a sign-up ended in the browser (no code or token, just Meta's event and reason), so a
+// sign-up that never reaches the server can still be traced from its logs.
+function traceSignup(stage, info, extra = {}) {
+  api('/connect/whatsapp/trace', {
+    method: 'POST', body: { stage, event: info?.event ?? null, step: info?.step ?? null, error: info?.error ?? null, ...extra },
+  }).catch(() => {});
+}
 
 // Meta's note can arrive a little after the window closes, or not at all; the server can find the account without it.
 async function waitForSignupInfo() {
@@ -90,11 +101,9 @@ const SIGNUP_FINISHED = ['FINISH', 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING', 'F
 
 async function finishWhatsApp(code, mode, expectedNumber) {
   const info = await waitForSignupInfo();
-  // A note that says the person stopped part-way (CANCEL / an error) means there is nothing to connect.
-  if (info && !SIGNUP_FINISHED.includes(info.event)) {
-    return { problems: ['WhatsApp signup was not finished. Please try again and complete every step.'] };
-  }
+  // With a code the server always gets a try: it finds the shared account itself when the note is missing or odd.
   const finished = info && SIGNUP_FINISHED.includes(info.event);
+  if (!finished) traceSignup('code_without_finish', info);
   const coexistence = mode === 'app' || info?.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
   try {
     const result = await api('/connect/whatsapp', {
@@ -119,13 +128,18 @@ export async function connectWhatsApp(connectSettings, mode, expectedNumber = ''
   return new Promise((resolve) => {
     FB.login((response) => {
       const code = response.authResponse?.code;
-      resolve(code ? finishWhatsApp(code, mode, expectedNumber) : { problems: ['WhatsApp signup was cancelled.'] });
+      if (code) { resolve(finishWhatsApp(code, mode, expectedNumber)); return; }
+      waitForSignupInfo().then((info) => {
+        traceSignup('no_code', info, { status: response.status ?? null });
+        resolve({ problems: [info?.error ? `WhatsApp signup stopped: ${info.error}` : 'WhatsApp signup was cancelled.'] });
+      });
     }, {
       config_id: connectSettings.whatsappConfigId,
       response_type: 'code',
       override_default_response_type: true,
       // The login configuration decides the sign-up version (v4); extras only pick the Business app flow.
-      extras: mode === 'app' ? { featureType: 'whatsapp_business_app_onboarding' } : {},
+      // setup + sessionInfoVersion 3 turn on the session note Meta sends back (needed for Business app numbers).
+      extras: { setup: {}, sessionInfoVersion: '3', ...(mode === 'app' ? { featureType: 'whatsapp_business_app_onboarding' } : {}) },
     });
   });
 }

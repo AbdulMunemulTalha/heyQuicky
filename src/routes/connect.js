@@ -306,6 +306,15 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
     res.json({ connected: [name], problems, pin: registeredPin, importing, channelId, displayNumber });
   });
 
+  // How a WhatsApp sign-up ended in the browser (see client/src/connect.js). Only Meta's event names and its
+  // reason text are logged, trimmed; never codes or tokens.
+  router.post('/api/connect/whatsapp/trace', auth, (req, res) => {
+    const clean = (v, n = 80) => String(v ?? '').replace(/[^\w .,:;'()/-]/g, '').slice(0, n);
+    const b = req.body ?? {};
+    console.log(`whatsapp connect (workspace ${req.user.workspace_id}): browser ${clean(b.stage, 30)} · event ${clean(b.event, 50) || 'none'} · step ${clean(b.step, 50) || 'none'} · status ${clean(b.status, 30) || 'none'}${b.error ? ` · Meta says: ${clean(b.error, 200)}` : ''}`);
+    res.json({ ok: true });
+  });
+
   router.use('/api/connect', (err, req, res, _next) => {
     if (err instanceof InboxError) {
       if (err.status >= 400) console.warn(`connect: ${req.method} ${req.path} → ${err.status} ${err.message}`);

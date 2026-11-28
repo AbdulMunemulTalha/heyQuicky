@@ -186,6 +186,21 @@ test('WhatsApp connects even when the browser missed Meta\'s "finished" note', a
   assert.match(none.data.error, /did not share a WhatsApp account/);
 });
 
+test('the browser can report how a WhatsApp sign-up ended, for the logs', async () => {
+  const ownerToken = await login('owner@shop.test');
+  const logs = [];
+  const orig = console.log;
+  console.log = (m) => logs.push(String(m));
+  try {
+    const res = await call('/api/connect/whatsapp/trace', { method: 'POST', token: ownerToken, body: { stage: 'no_code', event: 'CANCEL', step: 'PHONE_NUMBER_SETUP', error: 'Number already in use <script>' } });
+    assert.equal(res.status, 200);
+  } finally { console.log = orig; }
+  const line = logs.find((l) => l.includes('whatsapp connect'));
+  assert.match(line, /browser no_code · event CANCEL · step PHONE_NUMBER_SETUP/);
+  assert.match(line, /Meta says: Number already in use script/);
+  assert.equal((await call('/api/connect/whatsapp/trace', { method: 'POST', body: {} })).status, 401);
+});
+
 test('a channel whose token Meta rejects is flagged for reconnection', async () => {
   meta.on('POST', /\/me\/messages/, () => [400, { error: { message: 'Error validating access token: session has expired', code: 190 } }]);
   const ownerToken = await login('owner@shop.test');
