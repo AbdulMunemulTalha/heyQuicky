@@ -223,18 +223,24 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
       throw new InboxError(400, 'Unexpected WhatsApp account ID');
     }
 
+    // Each step is logged (IDs only, never tokens) so a failed connect can be traced from the server logs.
+    const wlog = (msg) => console.log(`whatsapp connect (workspace ${req.user.workspace_id}): ${msg}`);
+    wlog(`started · account ${wabaId ?? 'not sent'} · number ${phoneNumberId ?? 'not sent'} · business app ${Boolean(coexistence)}`);
     let token;
     try {
       token = await meta.businessTokenFromCode(code);
+      wlog('code exchanged for a token');
       // Meta's window tells the browser which account was shared, but that note can go missing:
       // then the account is the one the new token was granted.
       if (!wabaId) {
         const ids = await meta.wabaIdsFromToken(token);
         if (!ids.length) throw new InboxError(400, 'WhatsApp signup did not share a WhatsApp account. Please run it again and finish every step.');
         wabaId = ids[0];
+        wlog(`account found from the token: ${wabaId} (of ${ids.length})`);
       }
       wabaId = String(wabaId);
       await meta.subscribeWaba(wabaId, token);
+      wlog(`account ${wabaId} subscribed to webhooks`);
       // Newer sign-up flows (and Business app numbers) only report the account, not the number.
       if (!phoneNumberId) {
         const numbers = await meta.wabaPhoneNumbers(wabaId, token);
@@ -242,9 +248,11 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
         phoneNumberId = String(numbers[0].id);
       }
     } catch (err) {
+      wlog(`failed: ${err.message}`);
       if (err instanceof InboxError) throw err;
       throw new InboxError(502, `WhatsApp error: ${err.message}`);
     }
+    wlog(`number ${phoneNumberId}`);
 
     const problems = [];
     let registeredPin = null;
@@ -294,11 +302,15 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
       }
     }
     emit(req.user.workspace_id, 'channels', null);
+    wlog(`connected ${phoneNumberId} as channel ${channelId}${problems.length ? ` · problems: ${problems.join(' | ')}` : ''}`);
     res.json({ connected: [name], problems, pin: registeredPin, importing, channelId, displayNumber });
   });
 
-  router.use('/api/connect', (err, _req, res, _next) => {
-    if (err instanceof InboxError) return res.status(err.status).json({ error: err.message });
+  router.use('/api/connect', (err, req, res, _next) => {
+    if (err instanceof InboxError) {
+      if (err.status >= 400) console.warn(`connect: ${req.method} ${req.path} → ${err.status} ${err.message}`);
+      return res.status(err.status).json({ error: err.message });
+    }
     console.error(err);
     res.status(500).json({ error: 'Something went wrong' });
   });
