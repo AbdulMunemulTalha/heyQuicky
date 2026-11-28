@@ -186,6 +186,23 @@ test('WhatsApp connects even when the browser missed Meta\'s "finished" note', a
   assert.match(none.data.error, /did not share a WhatsApp account/);
 });
 
+test('a number picked as a Business app number that is not one gets registered; one still on a phone is explained', async () => {
+  meta.on('GET', /\/oauth\/access_token\?.*code=NOTBIZ/, () => [200, { access_token: 'NOTBIZTOKEN' }]);
+  meta.on('POST', /\/33333\/subscribed_apps/, () => [200, { success: true }]);
+  meta.on('GET', /\/31313\?/, () => [200, { verified_name: 'Wofo', display_phone_number: '+880 1700-000031', is_on_biz_app: false }]);
+  meta.on('POST', /\/31313\/register/, () => [400, { error: { message: 'Invalid parameter', code: 100, error_user_msg: 'This number is registered to an existing WhatsApp account. To use this number, disconnect it from the existing account.' } }]);
+
+  const ownerToken = await login('owner@shop.test');
+  const before = meta.calls.length;
+  const res = await call('/api/connect/whatsapp', { method: 'POST', token: ownerToken, body: { code: 'NOTBIZ', wabaId: '33333', phoneNumberId: '31313', coexistence: true } });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  const calls = meta.calls.slice(before);
+  assert.ok(calls.some((c) => c.path.endsWith('/31313/register')), 'registered, not treated as a Business app number');
+  assert.ok(!calls.some((c) => c.path.endsWith('/smb_app_data')), 'no Business app chat sync for a plain number');
+  assert.equal(res.data.importing, false);
+  assert.match(res.data.problems.join(' '), /still in use in a WhatsApp app/);
+});
+
 test('the browser can report how a WhatsApp sign-up ended, for the logs', async () => {
   const ownerToken = await login('owner@shop.test');
   const logs = [];

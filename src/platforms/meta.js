@@ -225,7 +225,8 @@ export async function graphRequest(url, { method = 'GET', accessToken, body, fet
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data?.error) {
-    throw new MetaApiError(data?.error?.message || `Meta API returned ${res.status}`, data?.error?.code ?? null);
+    // Meta's own explanation for people (error_user_msg) says far more than "Invalid parameter".
+    throw new MetaApiError(data?.error?.error_user_msg || data?.error?.message || `Meta API returned ${res.status}`, data?.error?.code ?? null);
   }
   return data;
 }

@@ -128,7 +128,7 @@ export function createMetaClient({ appId, appSecret, graphVersion, publishScopes
     },
 
     async phoneNumber(phoneNumberId, token) {
-      return get(phoneNumberId, { fields: 'display_phone_number,verified_name' }, token);
+      return get(phoneNumberId, { fields: 'display_phone_number,verified_name,is_on_biz_app' }, token);
     },
   };
 }

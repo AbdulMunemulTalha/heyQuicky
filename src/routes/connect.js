@@ -213,7 +213,8 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
   // WhatsApp Business app: it stays registered there, and its contacts and chat
   // history can be synced (only once, within 24 hours of onboarding).
   router.post('/api/connect/whatsapp', auth, requireOwner, requireMetaApp, async (req, res) => {
-    const { code, coexistence = false, expectedNumber = '' } = req.body ?? {};
+    const { code, expectedNumber = '' } = req.body ?? {};
+    let coexistence = Boolean(req.body?.coexistence);
     let wabaId = req.body?.wabaId ?? null;
     let phoneNumberId = req.body?.phoneNumberId ?? null;
     if (typeof code !== 'string' || !code.trim()) {
@@ -256,6 +257,20 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
 
     const problems = [];
     let registeredPin = null;
+    let name = `WhatsApp ${phoneNumberId}`;
+    let displayNumber = null;
+    let info = null;
+    try {
+      info = await meta.phoneNumber(phoneNumberId, token);
+      displayNumber = info.display_phone_number ?? null;
+      name = [info.verified_name, info.display_phone_number].filter(Boolean).join(' · ') || name;
+    } catch { /* keep the fallback name */ }
+    // "On the WhatsApp Business app" was picked, but Meta says the number isn't linked to the app: it is a
+    // plain API number, which only receives messages once it is registered.
+    if (coexistence && info && info.is_on_biz_app === false) {
+      wlog('picked as a Business app number, but Meta says it is not one: registering it');
+      coexistence = false;
+    }
     if (!coexistence) {
       // A number that already uses the Cloud API is registered with its own PIN,
       // in which case this fails harmlessly.
@@ -264,17 +279,12 @@ export function connectRoutes(db, config, { fetchImpl, emit = () => {}, importer
         await meta.registerPhone(phoneNumberId, token, pin);
         registeredPin = pin;
       } catch (err) {
-        problems.push(`Could not register the number for messaging: ${err.message}`);
+        wlog(`register failed: ${err.message}`);
+        problems.push(/existing WhatsApp account/i.test(err.message)
+          ? 'This number is still in use in a WhatsApp app (on a phone or WhatsApp Web), so WhatsApp won\'t deliver its messages to Quicky. Remove the number from that WhatsApp app, wait 3 minutes, then connect it again here.'
+          : `Could not register the number for messaging: ${err.message}`);
       }
     }
-
-    let name = `WhatsApp ${phoneNumberId}`;
-    let displayNumber = null;
-    try {
-      const info = await meta.phoneNumber(phoneNumberId, token);
-      displayNumber = info.display_phone_number ?? null;
-      name = [info.verified_name, info.display_phone_number].filter(Boolean).join(' · ') || name;
-    } catch { /* keep the fallback name */ }
     // Compare the last 10 digits so "+880 1712-345678" matches "01712345678".
     const tail = (n) => String(n ?? '').replace(/\D/g, '').slice(-10);
     if (expectedNumber && displayNumber && tail(expectedNumber) !== tail(displayNumber)) {
